@@ -1,70 +1,86 @@
 <!DOCTYPE html>
-<html lang="id" x-data="{ showPass: false }">
+<html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Masuk | Vendor SEO System</title>
-    <!-- Link ke Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Link ke Alpine.js CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@2.8.2/dist/alpine.min.js" defer></script>
-    <!-- Link ke Custom CSS -->
-    <link href="<?= base_url('assets/css/auth/auth.css') ?>" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Masuk | Vendor SEO System</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
-<body class="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100 font-ui">
+<body class="font-['Montserrat'] bg-gray-50">
 
-    <div class="absolute inset-0 overflow-hidden pointer-events-none">
-        <div class="w-[800px] h-[800px] rounded-full bg-brand/10 blur-3xl absolute -top-40 -left-40"></div>
-        <div class="w-[700px] h-[700px] rounded-full bg-accent/10 blur-3xl absolute -bottom-40 -right-40"></div>
-    </div>
+  <!-- Wrapper -->
+  <div class="min-h-screen flex items-center justify-center bg-cover bg-center relative"
+       style="background-image: url('/assets/img/1.jpg');">
+    
+    <!-- Overlay -->
+    <div class="absolute inset-0 bg-black/60"></div>
 
-    <main class="relative z-10 flex items-center justify-center px-4 py-10">
-        <div class="w-full max-w-md">
-            <div class="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
-                <div class="px-8 pt-8 pb-6 text-center">
-                    <div class="mx-auto w-12 h-12 rounded-xl grid place-items-center bg-brand/20 text-brand">
-                        <span class="text-xl font-semibold">VS</span>
-                    </div>
-                    <h1 class="mt-4 text-2xl font-semibold tracking-tight">Selamat Datang</h1>
-                    <p class="mt-1 text-sm text-slate-300">Masuk untuk mengelola vendor, leads, dan laporan.</p>
-                </div>
-
-                <form action="<?= site_url('auth/attempt-login') ?>" method="post" class="px-8 pb-8 space-y-5">
-                    <?= csrf_field() ?>
-
-                    <div>
-                        <label class="block text-sm mb-1">Email</label>
-                        <input type="email" name="email" value="<?= old('email') ?>" class="w-full rounded-xl bg-slate-800/70 border border-white/10 focus:border-brand focus:ring-2 focus:ring-brand/40 px-4 py-3 outline-none" placeholder="you@example.com" required>
-                    </div>
-
-                    <div class="input-group px-4 py-3 rounded-xl bg-slate-800/70 border border-white/10">
-                        <div class="flex-1">
-                            <label class="block text-sm mb-1">Kata Sandi</label>
-                            <input :type="showPass ? 'text' : 'password'" id="password" name="password" class="w-full bg-transparent outline-none" placeholder="••••••••" required>
-                        </div>
-                        <button type="button" id="togglePassword" class="text-xs text-slate-300 hover:text-white px-2 py-1 rounded-md border border-white/10">
-                            Tampilkan
-                        </button>
-                    </div>
-
-                    <button class="w-full py-3 rounded-xl bg-brand hover:bg-brand/90 transition font-semibold shadow-lg shadow-brand/20">
-                        Masuk
-                    </button>
-
-                    <p class="text-center text-sm text-slate-300">
-                        Belum punya akun?
-                        <a href="<?= site_url('auth/register') ?>" class="text-brand hover:underline">Daftar</a>
-                    </p>
-                </form>
-            </div>
-
-            <p class="mt-6 text-center text-xs text-slate-400">
-                © <?= date('Y') ?> Vendor SEO System. All rights reserved.
-            </p>
+    <!-- Card -->
+    <div class="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
+      
+      <!-- Header -->
+      <div class="px-8 pt-10 pb-6 text-center border-b">
+        <div class="mx-auto w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center shadow">
+          <img src="/assets/img/logo.png" alt="Logo" class="w-8 h-8">
         </div>
-    </main>
+        <h1 class="mt-4 text-2xl font-bold text-gray-800">Masuk ke Sistem</h1>
+        <p class="text-gray-500 text-sm mt-1">Vendor SEO System</p>
+      </div>
 
-    <!-- Link ke Custom JS -->
-    <script src="<?= base_url('assets/js/auth/auth.js') ?>"></script>
+      <!-- Form (Shield default) -->
+      <form action="<?= site_url('Auth/Login') ?>" method="post" class="px-8 py-8 space-y-6">
+        <?= csrf_field() ?>
+
+        <!-- Email/Username -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+          <input type="text" name="email" value="<?= old('email') ?>"
+                 class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-200 outline-none"
+                 placeholder="you@example.com" required>
+        </div>
+
+        <!-- Password -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">Kata Sandi</label>
+          <div class="relative">
+            <input type="password" id="password" name="password"
+                   class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-200 outline-none"
+                   placeholder="••••••••" required>
+            <button type="button" id="togglePassword"
+                    class="absolute inset-y-0 right-3 flex items-center text-sm text-gray-500 hover:text-gray-700">
+              Tampilkan
+            </button>
+          </div>
+        </div>
+
+        <!-- Tombol Login -->
+        <button type="submit"
+                class="w-full py-3 rounded-lg bg-blue-600 hover:bg-blue-700 transition font-semibold text-white shadow">
+          Masuk
+        </button>
+
+        <!-- Link ke Register -->
+        <p class="text-center text-sm text-gray-600">
+          Belum punya akun?
+          <a href="<?= site_url('Auth/Register') ?>" class="text-blue-600 font-semibold hover:underline">Daftar</a>
+        </p>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toggle Password JS -->
+  <script>
+    const togglePassword = document.getElementById('togglePassword');
+    const password = document.getElementById('password');
+    togglePassword.addEventListener('click', () => {
+      const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+      password.setAttribute('type', type);
+      togglePassword.textContent = type === 'password' ? 'Tampilkan' : 'Sembunyikan';
+    });
+  </script>
+
 </body>
 </html>

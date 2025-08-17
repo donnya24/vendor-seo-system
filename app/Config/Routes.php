@@ -2,31 +2,32 @@
 
 use CodeIgniter\Router\RouteCollection;
 
-/**
- * @var RouteCollection $routes
- */
-$routes->get('/', 'AuthController::login');
-$routes->get('login', 'AuthController::login');
-$routes->post('login', 'AuthController::attemptLogin');
-$routes->get('logout', 'AuthController::logout');
+/** @var RouteCollection $routes */
 
+// (opsional, tapi bikin eksplisit)
+$routes->setDefaultNamespace('App\Controllers');
+$routes->setDefaultController('Landpage\Landpage');
+$routes->setDefaultMethod('index');
+$routes->setAutoRoute(false);  // disarankan biar gak tabrakan rute
 
-// Protected routes
-$routes->group('', ['filter' => 'auth'], function($routes) {
-    $routes->get('dashboard', 'Dashboard::index');
+// Landing di root
+$routes->get('/', 'Landpage\Landpage::index', ['as' => 'landing']);
 
-    // Admin
-    $routes->group('admin', ['filter' => 'role:admin'], function($routes) {
-        $routes->get('dashboard', 'Admin\Dashboard::index');
-    });
+// Rute Shield (login/register/logout) — ini TIDAK menimpa '/'
+service('auth')->routes($routes);
 
-    // SEO Team
-    $routes->group('seo', ['filter' => 'role:seo_team'], function($routes) {
-        $routes->get('dashboard', 'SeoTeam\Dashboard::index');
-    });
+// Dashboard (wajib login)
+$routes->group('dashboard', ['filter' => 'session'], static function ($routes) {
+    $routes->get('/', 'Dashboard::index');
+});
 
-    // Vendor
-    $routes->group('vendor', ['filter' => 'role:vendor'], function($routes) {
-        $routes->get('dashboard', 'Vendor\Dashboard::index');
-    });
+// (opsional) dashboard per role yang kamu punya
+$routes->group('admin', static function ($routes) {
+    $routes->get('dashboard', 'Admin\Dashboard::index');
+});
+$routes->group('seo_team', static function ($routes) {
+    $routes->get('dashboard', 'Seo_Team\Dashboard::index');
+});
+$routes->group('vendor', static function ($routes) {
+    $routes->get('dashboard', 'Vendor\Dashboard::index');
 });
