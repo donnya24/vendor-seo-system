@@ -3,31 +3,21 @@
 use CodeIgniter\Router\RouteCollection;
 
 /** @var RouteCollection $routes */
-
-// (opsional, tapi bikin eksplisit)
 $routes->setDefaultNamespace('App\Controllers');
-$routes->setDefaultController('Landpage\Landpage');
-$routes->setDefaultMethod('index');
-$routes->setAutoRoute(false);  // disarankan biar gak tabrakan rute
+$routes->get('/', 'Landpage\Landpage::index');
 
-// Landing di root
-$routes->get('/', 'Landpage\Landpage::index', ['as' => 'landing']);
+// Auth
+$routes->get('/login', 'Auth\AuthController::login');
+$routes->post('auth/attemptLogin', 'Auth\AuthController::attemptLogin');
+$routes->post('logout', 'Auth\AuthController::logout');
 
-// Rute Shield (login/register/logout) — ini TIDAK menimpa '/'
-service('auth')->routes($routes);
+// Forgot & Reset Password
+$routes->get('forgot-password', 'Auth\AuthController::forgotPassword');
+$routes->post('forgot-password', 'Auth\AuthController::attemptForgotPassword');
+$routes->get('reset-password/(:any)', 'Auth\AuthController::resetPassword/$1');
+$routes->post('reset-password/(:any)', 'Auth\AuthController::attemptResetPassword/$1');
 
-// Dashboard (wajib login)
-$routes->group('dashboard', ['filter' => 'session'], static function ($routes) {
-    $routes->get('/', 'Dashboard::index');
-});
-
-// (opsional) dashboard per role yang kamu punya
-$routes->group('admin', static function ($routes) {
-    $routes->get('dashboard', 'Admin\Dashboard::index');
-});
-$routes->group('seo_team', static function ($routes) {
-    $routes->get('dashboard', 'Seo_Team\Dashboard::index');
-});
-$routes->group('vendor', static function ($routes) {
-    $routes->get('dashboard', 'Vendor\Dashboard::index');
-});
+// Dashboard per role
+$routes->group('admin', ['filter' => 'session'], static fn($routes) => $routes->get('dashboard', 'Admin\Dashboard::index'));
+$routes->group('seo_team', ['filter' => 'session'], static fn($routes) => $routes->get('dashboard', 'Seo_Team\Dashboard::index'));
+$routes->group('vendor', ['filter' => 'session'], static fn($routes) => $routes->get('dashboard', 'Vendor\Dashboard::index'));

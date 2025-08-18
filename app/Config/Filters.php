@@ -36,7 +36,9 @@ class Filters extends BaseFilters
         'performance'   => PerformanceMetrics::class,
         'auth' => \App\Filters\AuthFilter::class,
         'role' => \App\Filters\RoleFilter::class,
+        'noCache' => \App\Filters\NoCacheFilter::class,
     ];
+
 
         
     /**
@@ -74,15 +76,13 @@ class Filters extends BaseFilters
      * }
      */
     public array $globals = [
-        'before' => [
-            // 'honeypot',
-            // 'csrf',
-            // 'invalidchars',
-        ],
-        'after' => [
-            // 'honeypot',
-            // 'secureheaders',
-        ],
+    'before' => [
+        'csrf' => ['except' => ['auth/logout']], 
+    ],
+    'after'  => [
+        'toolbar',
+        'noCache'
+    ],
     ];
 
     /**

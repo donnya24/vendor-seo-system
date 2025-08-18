@@ -1,95 +1,84 @@
 <!DOCTYPE html>
-<html lang="id" x-data="{ showPass: false, showConfirm: false }">
+<html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Daftar Akun | Vendor SEO System</title>
-    <!-- Link ke Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Link ke Alpine.js CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@2.8.2/dist/alpine.min.js" defer></script>
-    <!-- Link ke Custom CSS -->
-    <link href="<?= base_url('assets/css/auth/auth.css') ?>" rel="stylesheet">
+  <meta charset="UTF-8">
+  <title>Register | Vendor Partnership & SEO Performance</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Montserrat -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
-<body class="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100 font-ui">
+<body class="font-['Montserrat'] bg-gray-50">
 
-    <div class="absolute inset-0 overflow-hidden pointer-events-none">
-        <div class="w-[800px] h-[800px] rounded-full bg-brand/10 blur-3xl absolute -top-40 -left-40"></div>
-        <div class="w-[700px] h-[700px] rounded-full bg-accent/10 blur-3xl absolute -bottom-40 -right-40"></div>
-    </div>
+  <!-- Wrapper -->
+  <div class="min-h-screen flex items-center justify-center bg-cover bg-center relative"
+       style="background-image: url('/assets/img/logo/background.png');">
+    
+    <!-- Overlay -->
+    <div class="absolute inset-0 bg-black/60"></div>
 
-    <main class="relative z-10 flex items-center justify-center px-4 py-10">
-        <div class="w-full max-w-xl">
-            <div class="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
-                <div class="px-8 pt-8 pb-6 text-center">
-                    <h1 class="text-2xl font-semibold tracking-tight">Buat Akun Baru</h1>
-                    <p class="mt-1 text-sm text-slate-300">Daftar untuk mulai mengelola data vendor dan laporan.</p>
-                </div>
-
-                <form action="<?= site_url('auth/attempt-register') ?>" method="post" class="px-8 pb-8 grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <?= csrf_field() ?>
-
-                    <div class="md:col-span-2">
-                        <label class="block text-sm mb-1">Nama Lengkap</label>
-                        <input type="text" name="name" value="<?= old('name') ?>" class="w-full rounded-xl bg-slate-800/70 border border-white/10 focus:border-brand focus:ring-2 focus:ring-brand/40 px-4 py-3 outline-none" placeholder="Nama lengkap" required>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm mb-1">Email</label>
-                        <input type="email" name="email" value="<?= old('email') ?>" class="w-full rounded-xl bg-slate-800/70 border border-white/10 focus:border-brand focus:ring-2 focus:ring-brand/40 px-4 py-3 outline-none" placeholder="you@example.com" required>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm mb-1">No. Telepon</label>
-                        <input type="tel" name="phone" value="<?= old('phone') ?>" class="w-full rounded-xl bg-slate-800/70 border border-white/10 focus:border-brand focus:ring-2 focus:ring-brand/40 px-4 py-3 outline-none" placeholder="08xxxxxxx">
-                    </div>
-
-                    <div class="md:col-span-2">
-                        <label class="block text-sm mb-1">Perusahaan (opsional)</label>
-                        <input type="text" name="company" value="<?= old('company') ?>" class="w-full rounded-xl bg-slate-800/70 border border-white/10 focus:border-brand focus:ring-2 focus:ring-brand/40 px-4 py-3 outline-none" placeholder="Nama perusahaan">
-                    </div>
-
-                    <div class="md:col-span-1">
-                        <label class="block text-sm mb-1">Kata Sandi</label>
-                        <div class="flex items-center gap-2 rounded-xl bg-slate-800/70 border border-white/10 px-4">
-                            <input :type="showPass ? 'text' : 'password'" name="password" class="flex-1 bg-transparent outline-none py-3" placeholder="••••••••" required>
-                            <button type="button" @click="showPass = !showPass" class="text-xs text-slate-300 hover:text-white px-2 py-1 rounded-md border border-white/10">Tampilkan</button>
-                        </div>
-                    </div>
-
-                    <div class="md:col-span-1">
-                        <label class="block text-sm mb-1">Ulangi Kata Sandi</label>
-                        <div class="flex items-center gap-2 rounded-xl bg-slate-800/70 border border-white/10 px-4">
-                            <input :type="showConfirm ? 'text' : 'password'" name="password_confirm" class="flex-1 bg-transparent outline-none py-3" placeholder="••••••••" required>
-                            <button type="button" @click="showConfirm = !showConfirm" class="text-xs text-slate-300 hover:text-white px-2 py-1 rounded-md border border-white/10">Tampilkan</button>
-                        </div>
-                    </div>
-
-                    <div class="md:col-span-2 flex items-start gap-3 text-sm">
-                        <input type="checkbox" required class="mt-1 rounded border-white/20 bg-slate-800/70">
-                        <p>Saya menyetujui <a class="text-brand hover:underline" href="#">Ketentuan Layanan</a> dan <a class="text-brand hover:underline" href="#">Kebijakan Privasi</a>.</p>
-                    </div>
-
-                    <div class="md:col-span-2">
-                        <button class="w-full py-3 rounded-xl bg-brand hover:bg-brand/90 transition font-semibold shadow-lg shadow-brand/20">
-                            Daftar
-                        </button>
-                    </div>
-
-                    <p class="md:col-span-2 text-center text-sm text-slate-300">
-                        Sudah punya akun?
-                        <a href="<?= site_url('auth/login') ?>" class="text-brand hover:underline">Masuk</a>
-                    </p>
-                </form>
-            </div>
-
-            <p class="mt-6 text-center text-xs text-slate-400">
-                © <?= date('Y') ?> Vendor SEO System. All rights reserved.
-            </p>
+    <!-- Card -->
+    <div class="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
+      
+      <!-- Header -->
+      <div class="px-8 pt-10 pb-6 text-center border-b">
+        <div class="mx-auto w-14 h-14 rounded-full bg-white-100 flex items-center justify-center shadow">
+          <img src="/assets/img/logo/icon.png" alt="Logo" class="w-8 h-8">
         </div>
-    </main>
+        <h1 class="mt-4 text-2xl font-bold text-gray-800">Buat Akun Vendor</h1>
+        <p class="text-gray-500 text-sm mt-1">Kelola profil, leads & laporan dalam satu sistem</p>
+      </div>
 
-    <!-- Link ke Custom JS -->
-    <script src="<?= base_url('assets/js/auth/auth.js') ?>"></script>
+      <!-- Form -->
+      <form action="<?= site_url('auth/store') ?>" method="post" class="px-8 py-8 space-y-6">
+        <?= csrf_field() ?>
+
+        <!-- Nama Vendor -->
+        <div>
+          <label for="name" class="block text-sm font-semibold text-gray-700 mb-2">Nama Vendor</label>
+          <input type="text" name="name" id="name" value="<?= old('name') ?>"
+                 class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-200 outline-none"
+                 placeholder="Nama perusahaan / brand" required>
+        </div>
+
+        <!-- Email -->
+        <div>
+          <label for="email" class="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+          <input type="email" name="email" id="email" value="<?= old('email') ?>"
+                 class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-200 outline-none"
+                 placeholder="you@example.com" required>
+        </div>
+
+        <!-- Password -->
+        <div>
+          <label for="password" class="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+          <input type="password" name="password" id="password"
+                 class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-200 outline-none"
+                 placeholder="••••••••" required>
+        </div>
+
+        <!-- Confirm Password -->
+        <div>
+          <label for="password_confirm" class="block text-sm font-semibold text-gray-700 mb-2">Konfirmasi Password</label>
+          <input type="password" name="password_confirm" id="password_confirm"
+                 class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-200 outline-none"
+                 placeholder="••••••••" required>
+        </div>
+
+        <!-- Tombol Register -->
+        <button type="submit"
+                class="w-full py-3 rounded-lg bg-blue-600 hover:bg-blue-700 transition font-semibold text-white shadow">
+          Daftar
+        </button>
+
+        <!-- Link ke Login -->
+        <p class="text-center text-sm text-gray-600">
+          Sudah punya akun?
+          <a href="<?= site_url('login') ?>" class="text-blue-600 font-semibold hover:underline">Masuk</a>
+        </p>
+      </form>
+    </div>
+  </div>
+
 </body>
 </html>

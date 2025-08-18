@@ -1,33 +1,25 @@
 <?php
 
-namespace App\Controllers;
+namespace App\Controllers\Admin;
 
-use App\Models\VendorModel;
-use App\Models\SeoReportModel;
-use App\Models\LeadModel;
-use App\Models\CommissionModel;
+use CodeIgniter\Controller;
 
-class Dashboard extends BaseController
+class Dashboard extends Controller
 {
     public function index()
     {
-        // Load models
-        $vendorModel = new VendorModel();
-        $seoReportModel = new SeoReportModel();
-        $leadModel = new LeadModel();
-        $commissionModel = new CommissionModel();
+        $auth = service('auth');
+        $user = $auth->user();
 
-        // Fetch data from the database
-        $vendors = $vendorModel->findAll();
-        $seoReports = $seoReportModel->findAll();
-        $leads = $leadModel->findAll();
-        $commissions = $commissionModel->findAll();
+        // Cek apakah login & punya role admin
+        if (! $user || ! $user->inGroup('admin')) {
+            return redirect()->to('/login')->with('error', 'Anda tidak memiliki akses ke halaman ini.');
+        }
 
-        return view('admin/Dashboard_admin', [
-            'vendors' => $vendors,
-            'seoReports' => $seoReports,
-            'leads' => $leads,
-            'commissions' => $commissions,
+        // Kirim data user ke view
+        return view('Admin/DashboardAdmin', [
+            'title' => 'Dashboard Admin',
+            'user'  => $user,
         ]);
     }
 }

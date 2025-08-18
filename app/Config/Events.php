@@ -6,22 +6,25 @@ use CodeIgniter\Events\Events;
 use CodeIgniter\Exceptions\FrameworkException;
 use CodeIgniter\HotReloader\HotReloader;
 
-/*
- * --------------------------------------------------------------------
- * Application Events
- * --------------------------------------------------------------------
- * Events allow you to tap into the execution of the program without
- * modifying or extending core files. This file provides a central
- * location to define your events, though they can always be added
- * at run-time, also, if needed.
- *
- * You create code that can execute by subscribing to events with
- * the 'on()' method. This accepts any form of callable, including
- * Closures, that will be executed when the event is triggered.
- *
- * Example:
- *      Events::on('create', [$myInstance, 'myMethod']);
- */
+Events::on('login', static function ($user) {
+    // redirect sesuai role user
+    if ($user->can('admin.access')) {
+        return redirect()->to('/admin/dashboard');
+    } elseif ($user->can('seo_team.access')) {
+        return redirect()->to('/seo_team/dashboard');
+    } elseif ($user->can('vendor.access')) {
+        return redirect()->to('/vendor/dashboard');
+    }
+
+    // default kalau role tidak cocok
+    return redirect()->to('/dashboard');
+});
+
+Events::on('logout', static function () {
+    // setelah logout kembali ke landing page
+    return redirect()->to('/');
+});
+
 
 Events::on('pre_system', static function (): void {
     if (ENVIRONMENT !== 'testing') {

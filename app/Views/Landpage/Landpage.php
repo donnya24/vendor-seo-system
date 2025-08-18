@@ -47,13 +47,13 @@
         <!-- Floating Navigation Buttons -->
         <div class="absolute top-8 right-8 z-20 flex space-x-4">
             <!-- Tombol Masuk -->
-            <a href="<?= site_url('Login'); ?>" 
+            <a href="<?= site_url('login'); ?>" 
                class="bg-transparent border-2 border-white text-white py-2 px-6 rounded-lg hover:bg-white hover:text-blue-700 text-lg shadow-md transition">
                Masuk
             </a>
 
             <!-- Tombol Daftar -->
-            <a href="<?= site_url('Register'); ?>" 
+            <a href="<?= site_url('register'); ?>" 
                class="bg-white text-blue-700 py-2 px-6 rounded-lg hover:bg-blue-50 text-lg shadow-lg transition">
                Daftar
             </a>
