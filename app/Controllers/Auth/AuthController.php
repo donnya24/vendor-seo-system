@@ -46,20 +46,19 @@ class AuthController extends Controller
             return $this->redirectByRole($this->auth->user());
         }
 
-        // (opsional) mapping error khusus di sini
         return redirect()->back()->withInput()->with('error', 'Login gagal. Periksa kembali kredensial Anda.');
     }
 
     // ===== LOGOUT =====
     public function logout()
     {
-        // Logout jika request adalah POST
+        // Tetap pakai POST (aman)
         if (! $this->request->is('post')) {
             return redirect()->to('/login');
         }
 
-        $this->auth->logout();  // Proses logout
-        session()->destroy();   // Hancurkan sesi
+        $this->auth->logout();
+        session()->destroy();
 
         return redirect()->to('/login')->with('success', 'Anda telah berhasil keluar.');
     }
@@ -67,7 +66,7 @@ class AuthController extends Controller
     // ===== CHECK REMEMBER ME STATUS (debug) =====
     public function checkRememberStatus()
     {
-        helper('vendor'); // ambil email dari identity, karena kolom email tidak ada di tabel users
+        helper('vendor'); // butuh get_identity_email()
 
         if (! $this->auth->loggedIn()) {
             return $this->response->setJSON(['logged_in' => false]);
@@ -84,7 +83,7 @@ class AuthController extends Controller
             'logged_in' => true,
             'user_id' => $user->id,
             'username' => $user->username,
-            'email' => get_identity_email((int) $user->id), // ambil dari auth_identities.secret
+            'email' => get_identity_email((int) $user->id), // dari auth_identities.secret
             'remember_tokens_count' => count($tokens),
             'has_remember_cookie' => isset($_COOKIE['remember']),
         ]);
@@ -99,7 +98,7 @@ class AuthController extends Controller
     // ========== REGISTER (PROSES) ==========
     public function registerProcess()
     {
-        helper('vendor'); // helper util kita
+        helper('vendor'); // identity_exists, make_unique_username, create_email_password_identity, assign_user_to_group, get_identity_email
 
         $validation = service('validation');
         $validation->setRules([
@@ -134,25 +133,27 @@ class AuthController extends Controller
             $db->transException(true);
             $db->transStart();
 
-            // 1) Insert user ke tabel `users` (WAJIB ada data valid supaya tidak "There is no data to insert")
+            // 1) Insert ke tabel users (cukup username agar tidak "There is no data to insert")
             $username   = make_unique_username($vendorName, $email);
             $userEntity = new User([
                 'username' => $username,
-                'active'   => 1,
+                // HINDARI field yang belum tentu ada, mis. 'active'
             ]);
-            $userId = $users->insert($userEntity);
+
+            // pastikan dapat ID
+            $userId = $users->insert($userEntity, true);
             if (! $userId) {
                 $errs = method_exists($users, 'errors') ? $users->errors() : [];
                 throw new \RuntimeException('Gagal membuat akun user. ' . implode(', ', (array) $errs));
             }
 
-            // 2) Simpan kredensial (email di `secret`, HASH password di `secret2`)
+            // 2) Simpan kredensial ke auth_identities (email → secret, hash password → secret2)
             create_email_password_identity((int) $userId, $email, $password);
 
-            // 3) Masukkan user ke grup 'vendor' (pivot auth_groups_users)
+            // 3) Assign group vendor (pivot auth_groups_users)
             assign_user_to_group((int) $userId, 'vendor');
 
-            // 4) (opsional) profil vendor jika tabelnya ada
+            // 4) (opsional) buat profil vendor
             if ($db->tableExists('vendor_profiles')) {
                 $db->table('vendor_profiles')->insert([
                     'user_id'     => $userId,
@@ -183,6 +184,7 @@ class AuthController extends Controller
     // ===== REDIRECT BY ROLE =====
     private function redirectByRole($user)
     {
+        // HATI-HATI case pada URI (Linux case-sensitive)
         if ($user->inGroup('admin')) {
             return redirect()->to('/admin/dashboard');
         }
@@ -190,7 +192,7 @@ class AuthController extends Controller
             return redirect()->to('/seo_team/dashboard');
         }
         if ($user->inGroup('vendor')) {
-            return redirect()->to('/vendor/dashboard');
+            return redirect()->to('/vendoruser/dashboard');
         }
         return redirect()->to('/dashboard');
     }
