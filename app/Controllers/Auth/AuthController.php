@@ -53,12 +53,13 @@ class AuthController extends Controller
     // ===== LOGOUT =====
     public function logout()
     {
+        // Logout jika request adalah POST
         if (! $this->request->is('post')) {
             return redirect()->to('/login');
         }
 
-        $this->auth->logout();
-        session()->destroy();
+        $this->auth->logout();  // Proses logout
+        session()->destroy();   // Hancurkan sesi
 
         return redirect()->to('/login')->with('success', 'Anda telah berhasil keluar.');
     }

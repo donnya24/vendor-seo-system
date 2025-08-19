@@ -15,53 +15,53 @@ use CodeIgniter\Filters\PerformanceMetrics;
 
 class Filters extends BaseFilters
 {
+    // Menyatakan alias untuk filter
     public array $aliases = [
-        'csrf'          => CSRF::class,
-        'toolbar'       => DebugToolbar::class,
-        'honeypot'      => Honeypot::class,
-        'invalidchars'  => InvalidChars::class,
-        'secureheaders' => SecureHeaders::class,
-        'cors'          => Cors::class,
-        'forcehttps'    => ForceHTTPS::class,
-        'pagecache'     => PageCache::class,
-        'performance'   => PerformanceMetrics::class,
+        'csrf'          => CSRF::class,             // Filter CSRF
+        'toolbar'       => DebugToolbar::class,     // Filter untuk toolbar debug
+        'honeypot'      => Honeypot::class,          // Filter Honeypot untuk mencegah bot
+        'invalidchars'  => InvalidChars::class,     // Filter untuk karakter invalid
+        'secureheaders' => SecureHeaders::class,    // Filter untuk header keamanan
+        'cors'          => Cors::class,             // Filter untuk CORS
+        'forcehttps'    => ForceHTTPS::class,       // Filter untuk memaksa HTTPS
+        'pagecache'     => PageCache::class,        // Filter untuk cache halaman
+        'performance'   => PerformanceMetrics::class, // Filter untuk metrik performa
 
-        // filter kustom (jika dipakai per-route)
-        'auth'          => \App\Filters\AuthFilter::class,
-        'role'          => \App\Filters\RoleFilter::class,
-        'noCache'       => \App\Filters\NoCacheFilter::class,
+        // Filter kustom yang digunakan dalam routing tertentu
+        'auth'          => \App\Filters\AuthFilter::class,   // Filter untuk autentikasi pengguna
+        'role'          => \App\Filters\RoleFilter::class,   // Filter untuk peran pengguna
+        'noCache'       => \App\Filters\NoCacheFilter::class, // Filter untuk menghindari cache
 
-        // Shield (akan dipasang di route group, bukan global)
+        // Filter Shield untuk autentikasi session
         'session'       => \CodeIgniter\Shield\Filters\SessionAuth::class,
-        // 'login'      => \CodeIgniter\Shield\Filters\Login::class,
-        // 'token'      => \CodeIgniter\Shield\Filters\TokenAuth::class,
     ];
 
-    // DEV: jangan paksa https / cache global
+    // Filter yang dibutuhkan sebelum dan setelah permintaan diterima
     public array $required = [
         'before' => [
-            // 'forcehttps', // matikan di localhost
-            // 'pagecache',
+            // 'forcehttps', // Matikan di localhost jika tidak ingin memaksa HTTPS
+            // 'pagecache', // Matikan caching di lingkungan pengembangan
         ],
         'after' => [
-            // 'pagecache',
-            'performance',
-            'toolbar',
+            'performance',  // Menampilkan metrik performa setelah request
+            'toolbar',      // Menampilkan toolbar debug setelah request
         ],
     ];
 
+    // Filter global yang digunakan untuk semua rute
     public array $globals = [
         'before' => [
-            // CUKUP CSRF saja secara global
-            'csrf',
+            'csrf',  // Cegah CSRF pada semua request secara global
         ],
         'after'  => [
-            'noCache',
-            'toolbar',
+            'noCache',  // Tidak cache untuk respons
+            'toolbar',  // Tampilkan toolbar debug setelah request
         ],
     ];
 
+    // Filter berdasarkan metode (GET, POST, dll)
     public array $methods = [];
 
+    // Filter berdasarkan kondisi rute tertentu (jika diperlukan)
     public array $filters = [];
 }
