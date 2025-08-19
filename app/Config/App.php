@@ -199,4 +199,100 @@ class App extends BaseConfig
      * @see http://www.w3.org/TR/CSP/
      */
     public bool $CSPEnabled = false;
+
+    // ========== COOKIE SETTINGS ==========
+    public bool $cookieSecure = false;
+    public string $cookieDomain = '';  // kosong berarti domain lokal
+    public string $cookiePath   = '/';
+    public bool $cookieHTTPOnly = true;
+
+    // ========== SESSION SETTINGS - DIPERLUKAN UNTUK REMEMBER ME ==========
+    
+    /**
+     * --------------------------------------------------------------------------
+     * Session Driver
+     * --------------------------------------------------------------------------
+     * The session storage driver to use:
+     * - CodeIgniter\Session\Handlers\FileHandler
+     * - CodeIgniter\Session\Handlers\DatabaseHandler
+     * - CodeIgniter\Session\Handlers\MemcachedHandler
+     * - CodeIgniter\Session\Handlers\RedisHandler
+     */
+    public string $sessionDriver = 'CodeIgniter\Session\Handlers\FileHandler';
+
+    /**
+     * --------------------------------------------------------------------------
+     * Session Cookie Name
+     * --------------------------------------------------------------------------
+     * The name you want for the session cookie. If you want it secure,
+     * don't use a common name like 'session' or 'ci_session'.
+     */
+    public string $sessionCookieName = 'ci_session';
+
+    /**
+     * --------------------------------------------------------------------------
+     * Session Expiration
+     * --------------------------------------------------------------------------
+     * The number of SECONDS you want the session to last.
+     * Setting to 0 (zero) means expire when the browser is closed.
+     */
+    public int $sessionExpiration = 7200; // 2 hours (7200 seconds)
+
+    /**
+     * --------------------------------------------------------------------------
+     * Session Save Path
+     * --------------------------------------------------------------------------
+     * The location to save sessions to and is driver dependent.
+     * For the 'files' driver, it's a path to a valid directory.
+     * NOTE: This directory must be writable by the web server!
+     */
+    public string $sessionSavePath = WRITEPATH . 'session';
+
+    /**
+     * --------------------------------------------------------------------------
+     * Session Match IP
+     * --------------------------------------------------------------------------
+     * Whether to match the user's IP address when reading the session data.
+     *
+     * WARNING: If you're using the database driver, don't forget to update
+     *          your session table's PRIMARY KEY when changing this setting.
+     */
+    public bool $sessionMatchIP = false;
+
+    /**
+     * --------------------------------------------------------------------------
+     * Session Time to Update
+     * --------------------------------------------------------------------------
+     * How many seconds between CI regenerating the session ID.
+     */
+    public int $sessionTimeToUpdate = 300; // 5 minutes (300 seconds)
+
+    /**
+     * --------------------------------------------------------------------------
+     * Session Regenerate Destroy
+     * --------------------------------------------------------------------------
+     * Whether to destroy session data associated with the old session ID
+     * when auto-regenerating the session ID. When set to FALSE, the data
+     * will be later deleted by the garbage collector.
+     */
+    public bool $sessionRegenerateDestroy = false;
+
+    // ========== ADDITIONAL SETTINGS FOR REMEMBER ME ==========
+
+    /**
+     * --------------------------------------------------------------------------
+     * Cookie Prefix
+     * --------------------------------------------------------------------------
+     * Set a cookie name prefix if you need to avoid collisions.
+     */
+    public string $cookiePrefix = '';
+
+    /**
+     * --------------------------------------------------------------------------
+     * Cookie SameSite
+     * --------------------------------------------------------------------------
+     * Cookie SameSite attribute.
+     * Allowed values: None - Lax - Strict - ''
+     */
+    public string $cookieSameSite = 'Lax';
 }

@@ -17,4 +17,5 @@ class Autoload extends AutoloadConfig
 
     // Autoload helpers (cukup sekali)
     public $helpers = ['auth', 'setting']; // 'setting' opsional, tapi berguna untuk Settings
+
 }

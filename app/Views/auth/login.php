@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Login | Vendor SEO</title>
+<title>Login | Vendor Partnership SEO Performance</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
@@ -22,13 +22,16 @@
       <p class="text-gray-500 text-sm mt-1">Vendor Partnership & SEO Performance</p>
     </div>
 
-    <form action="<?= site_url('auth/attemptLogin') ?>" method="post" class="px-8 py-8 space-y-6">
+    <!-- Pesan error atau sukses -->
+    <!-- FORM LOGIN -->
+    <form action="<?= url_to('login') ?>" method="post" class="px-8 py-8 space-y-6">
       <?= csrf_field() ?>
 
-      <?php if(session()->getFlashdata('error')): ?>
-          <div class="text-red-600 text-sm mb-4"><?= session()->getFlashdata('error') ?></div>
-      <?php elseif(session()->getFlashdata('success')): ?>
-          <div class="text-green-600 text-sm mb-4"><?= session()->getFlashdata('success') ?></div>
+      <!-- Pesan error atau sukses -->
+      <?php if (session()->getFlashdata('error')): ?>
+          <div class="text-red-600 text-sm mb-4"><?= esc(session()->getFlashdata('error')) ?></div>
+      <?php elseif (session()->getFlashdata('message')): ?>
+          <div class="text-green-600 text-sm mb-4"><?= esc(session()->getFlashdata('message')) ?></div>
       <?php endif; ?>
 
       <div>
@@ -53,7 +56,7 @@
 
       <div class="flex items-center justify-between">
         <label class="flex items-center space-x-2 text-sm text-gray-600">
-          <input type="checkbox" name="remember" class="h-4 w-4 text-blue-600 rounded border-gray-300">
+          <input type="checkbox" name="remember" value="1" class="h-4 w-4 text-blue-600 rounded border-gray-300">
           <span>Ingat saya</span>
         </label>
         <a href="<?= site_url('forgot-password') ?>" class="text-blue-600 font-semibold hover:underline text-sm">Lupa password?</a>

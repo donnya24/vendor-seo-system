@@ -5,35 +5,29 @@ use CodeIgniter\Router\RouteCollection;
 /** @var RouteCollection $routes */
 $routes->setDefaultNamespace('App\Controllers');
 
-// Halaman utama
+// Landing (publik)
 $routes->get('/', 'Landpage\Landpage::index');
 
-// ============================
-// 🔐 Auth Routes
-// ============================
-$routes->group('auth', static function ($routes) {
-    $routes->get('login', 'Auth\AuthController::login');
-    $routes->post('attemptLogin', 'Auth\AuthController::attemptLogin');
-    $routes->post('logout', 'Auth\AuthController::logout');
+// Auth (publik)
+$routes->get('login', 'Auth\AuthController::login');
+$routes->post('login', 'Auth\AuthController::attemptLogin');
+$routes->post('logout', 'Auth\AuthController::logout');
 
-    // Forgot & Reset Password
-    $routes->get('forgot-password', 'Auth\AuthController::forgotPassword');
-    $routes->post('forgot-password', 'Auth\AuthController::attemptForgotPassword');
-    $routes->get('reset-password/(:any)', 'Auth\AuthController::resetPassword/$1');
-    $routes->post('reset-password/(:any)', 'Auth\AuthController::attemptResetPassword/$1');
-});
+$routes->get('register', 'Auth\AuthController::registerForm');
+$routes->post('register', 'Auth\AuthController::registerProcess');
 
-// ============================
-// 📊 Dashboard Routes (per role)
-// ============================
+$routes->get('forgot-password', 'Auth\ForgotPasswordController::showForgotForm');
+$routes->post('forgot-password', 'Auth\ForgotPasswordController::sendResetLink');
+$routes->get('reset-password', 'Auth\ForgotPasswordController::showResetForm');
+$routes->post('reset-password', 'Auth\ForgotPasswordController::resetPassword');
+
+// Dashboard per role (PRIVAT) -> pasang filter 'session'
 $routes->group('admin', ['filter' => 'session'], static function ($routes) {
     $routes->get('dashboard', 'Admin\Dashboard::index');
 });
-
 $routes->group('seo_team', ['filter' => 'session'], static function ($routes) {
     $routes->get('dashboard', 'Seo_Team\Dashboard::index');
 });
-
 $routes->group('vendor', ['filter' => 'session'], static function ($routes) {
     $routes->get('dashboard', 'Vendor\Dashboard::index');
 });
