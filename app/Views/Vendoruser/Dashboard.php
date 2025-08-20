@@ -84,28 +84,40 @@
         </div>
 
         <!-- Modal Konfirmasi Logout -->
-        <div x-show="$store.ui.modal === 'logout'" class="fixed inset-0 z-50" role="dialog" aria-modal="true">
-            <div class="min-h-screen flex items-center justify-center p-4">
-                <div class="fixed inset-0 bg-black/40" @click="$store.ui.modal=null"></div>
-                <div class="relative bg-white rounded-lg shadow-xl w-full max-w-sm p-6">
-                    <h3 class="text-lg font-medium text-gray-900">Konfirmasi Logout</h3>
-                    <p class="text-sm text-gray-500 mt-2">Apakah Anda yakin ingin keluar?</p>
-                    <div class="mt-6 flex gap-4 justify-end">
-                    <!-- Tombol Batal -->
-                    <button class="px-3 py-2 rounded-md border border-gray-300 bg-gray-100 text-gray-700 hover:bg-gray-200"
-                            @click="$store.ui.modal=null">
-                        Batal
-                    </button>
-                    <!-- Tombol Logout -->
-                    <button class="px-3 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
-                            @click="document.getElementById('logoutForm').submit()">
-                        Logout
-                    </button>
-                </div>
+        <!-- Modal Konfirmasi Logout (desain sesuai gambar) -->
+        <div x-show="$store.ui.modal === 'logout'" x-transition.opacity class="fixed inset-0 z-50" role="dialog" aria-modal="true">
+          <div class="min-h-screen flex items-center justify-center p-4">
+            <!-- backdrop -->
+            <div class="fixed inset-0 bg-black/40" @click="$store.ui.modal=null"></div>
 
-                </div>
+            <!-- card -->
+            <div class="relative w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+              <!-- icon bulat -->
+              <div class="w-14 h-14 mx-auto rounded-full bg-red-50 text-red-600 flex items-center justify-center">
+                <i class="fa-solid fa-right-from-bracket text-2xl"></i>
+              </div>
+
+              <!-- title & subtitle -->
+              <h3 class="mt-4 text-center text-xl font-semibold text-gray-900">Keluar dari Sistem?</h3>
+              <p class="mt-2 text-center text-sm text-gray-500">Anda akan keluar dari sesi saat ini.</p>
+
+              <!-- actions -->
+              <div class="mt-6 flex items-center justify-center gap-3">
+                <button
+                  class="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                  @click="$store.ui.modal=null">
+                  Batal
+                </button>
+                <button
+                  class="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-300"
+                  @click="document.getElementById('logoutForm').submit()">
+                  Ya, Keluar
+                </button>
+              </div>
             </div>
+          </div>
         </div>
+
 
     <!-- Form Logout (Disembunyikan, tidak langsung di-submit) -->
     <form id="logoutForm" action="<?= base_url('logout') ?>" method="post" style="display: none;">

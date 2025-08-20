@@ -80,7 +80,7 @@ class AuthController extends Controller
     // ===== REMEMBER STATUS =====
     public function checkRememberStatus()
     {
-        helper('vendoruser'); // <-- sudah disesuaikan
+        helper('vendoruser'); // fungsi get_identity_email() dlsb.
 
         if (! $this->auth->loggedIn()) {
             return $this->response->setJSON(['logged_in' => false]);
@@ -97,7 +97,7 @@ class AuthController extends Controller
             'logged_in' => true,
             'user_id'   => $user->id,
             'username'  => $user->username,
-            'email'     => get_identity_email((int) $user->id), // fungsi di vendoruser_helper.php
+            'email'     => get_identity_email((int) $user->id),
             'remember_tokens_count' => count($tokens),
             'has_remember_cookie'   => isset($_COOKIE['remember']),
         ]);
@@ -112,7 +112,7 @@ class AuthController extends Controller
     // ========== REGISTER (PROSES) ==========
     public function registerProcess()
     {
-        helper('vendoruser'); // <-- sudah disesuaikan
+        helper('vendoruser');
 
         $validation = service('validation');
         $validation->setRules([
@@ -146,10 +146,9 @@ class AuthController extends Controller
             $db->transException(true);
             $db->transStart();
 
+            // 1) Buat user Shield (username auto dari vendorName/email)
             $username   = make_unique_username($vendorName, $email);
-            $userEntity = new User([
-                'username' => $username,
-            ]);
+            $userEntity = new User(['username' => $username]);
 
             $userId = $users->insert($userEntity, true);
             if (! $userId) {
@@ -157,17 +156,31 @@ class AuthController extends Controller
                 throw new \RuntimeException('Gagal membuat akun user. ' . implode(', ', (array) $errs));
             }
 
+            // 2) Identitas email+password & grup vendor
             create_email_password_identity((int) $userId, $email, $password);
             assign_user_to_group((int) $userId, 'vendor');
 
+            // 3) Buat profil vendor (kolom disesuaikan dinamis dengan skema yang ada)
             if ($db->tableExists('vendor_profiles')) {
-                $db->table('vendor_profiles')->insert([
+                // Cek kolom (MySQL)
+                $hasBusiness = $db->query("SHOW COLUMNS FROM vendor_profiles LIKE 'business_name'")->getNumRows() > 0;
+                $hasOwner    = $db->query("SHOW COLUMNS FROM vendor_profiles LIKE 'owner_name'")->getNumRows() > 0;
+                $hasName     = $db->query("SHOW COLUMNS FROM vendor_profiles LIKE 'name'")->getNumRows() > 0;
+                $hasPhone    = $db->query("SHOW COLUMNS FROM vendor_profiles LIKE 'phone'")->getNumRows() > 0;
+
+                $data = [
                     'user_id'     => $userId,
-                    'name'        => $vendorName,
                     'is_verified' => 0,
+                    'status'      => 'pending',
                     'created_at'  => date('Y-m-d H:i:s'),
                     'updated_at'  => date('Y-m-d H:i:s'),
-                ]);
+                ];
+                if ($hasBusiness) $data['business_name'] = $vendorName;
+                if ($hasOwner)    $data['owner_name']    = $vendorName; // fallback awal sama dengan nama vendor
+                if ($hasName)     $data['name']          = $vendorName; // skema lama
+                if ($hasPhone)    $data['phone']         = '-';
+
+                $db->table('vendor_profiles')->insert($data);
             }
 
             $db->transComplete();
@@ -193,8 +206,8 @@ class AuthController extends Controller
         if ($user->inGroup('admin')) {
             return redirect()->to('/admin/dashboard');
         }
-        if ($user->inGroup('seo_team')) {
-            return redirect()->to('/seo_team/dashboard');
+        if ($user->inGroup('seoteam')) {
+            return redirect()->to('/seoteam/dashboard'); // FIX: konsisten dengan routes
         }
         if ($user->inGroup('vendor')) {
             return redirect()->to('/vendoruser/dashboard');

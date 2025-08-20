@@ -80,25 +80,7 @@
   </div>
 </div>
 
-<script>
-// Toggle Password Baru
-const togglePassword = document.getElementById('togglePassword');
-const password = document.getElementById('password');
-togglePassword.addEventListener('click', () => {
-    const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
-    password.setAttribute('type', type);
-    togglePassword.textContent = type === 'password' ? 'Tampilkan' : 'Sembunyikan';
-});
-
-// Toggle Konfirmasi Password
-const togglePasswordConfirm = document.getElementById('togglePasswordConfirm');
-const passwordConfirm = document.getElementById('password_confirm');
-togglePasswordConfirm.addEventListener('click', () => {
-    const type = passwordConfirm.getAttribute('type') === 'password' ? 'text' : 'password';
-    passwordConfirm.setAttribute('type', type);
-    togglePasswordConfirm.textContent = type === 'password' ? 'Tampilkan' : 'Sembunyikan';
-});
-</script>
+<script defer src="<?= base_url('assets/js/Auth/reset-password.js') ?>"></script>
 
 </body>
 </html>

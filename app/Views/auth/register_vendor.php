@@ -111,31 +111,6 @@
     </div>
   </div>
 
-  <script>
-    // Toggle helper: ganti type password <-> text + tukar ikon
-    function setupPasswordToggle(inputId, btnId) {
-      const input = document.getElementById(inputId);
-      const btn = document.getElementById(btnId);
-      if (!input || !btn) return;
-
-      const iconShow = btn.querySelector('.icon-show');
-      const iconHide = btn.querySelector('.icon-hide');
-
-      btn.addEventListener('click', function () {
-        const isPassword = input.type === 'password';
-        input.type = isPassword ? 'text' : 'password';
-        // Toggle ikon
-        if (iconShow && iconHide) {
-          iconShow.classList.toggle('hidden', !isPassword);
-          iconHide.classList.toggle('hidden', isPassword);
-        }
-      });
-    }
-
-    document.addEventListener('DOMContentLoaded', function () {
-      setupPasswordToggle('password', 'btnTogglePassword');
-      setupPasswordToggle('pass_confirm', 'btnTogglePassConfirm');
-    });
-  </script>
+<script defer src="<?= base_url('assets/js/Auth/register.js') ?>"></script>
 </body>
 </html>

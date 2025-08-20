@@ -41,13 +41,8 @@
     }
     
     /* Tambahan style untuk hamburger button */
-    .hamburger-btn {
-      transition: all 0.2s ease;
-    }
-    .hamburger-btn:hover {
-      transform: scale(1.1);
-      opacity: 0.8;
-    }
+    .hamburger-btn { transition: all 0.2s ease; }
+    .hamburger-btn:hover { transform: scale(1.1); opacity: 0.8; }
   </style>
 </head>
 <body class="bg-gray-50 font-sans" x-cloak>
@@ -132,9 +127,9 @@
 
       <div class="pt-4 border-t border-blue-700/60">
         <a href="#"
-        @click.prevent="openLogoutModal()"
-        class="block py-2 px-3 rounded-lg flex items-center nav-item hover:bg-blue-700/70 focus:ring-2 focus:ring-blue-300/40">
-        <i class="fas fa-sign-out-alt mr-3"></i> Logout
+           @click.prevent="openLogoutModal()"
+           class="block py-2 px-3 rounded-lg flex items-center nav-item hover:bg-blue-700/70 focus:ring-2 focus:ring-blue-300/40">
+          <i class="fas fa-sign-out-alt mr-3"></i> Logout
         </a>
       </div>
     </div>
@@ -1088,29 +1083,45 @@
           </div>
         </div>
 
-        <!-- Logout Confirmation Modal -->
-         <form id="logoutForm" action="<?= site_url('logout'); ?>" method="post" class="hidden">
-        <?= csrf_field() ?>
-    </form>
-        <div x-show="modalOpen === 'logout'" class="fixed z-50 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div x-show="modalOpen === 'logout'" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+        <!-- ===== Logout Confirmation (New Design) ===== -->
+        <form id="logoutForm" action="<?= site_url('logout'); ?>" method="post" class="hidden">
+          <?= csrf_field() ?>
+        </form>
 
-            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div x-show="modalOpen === 'logout'" x-transition.opacity class="fixed inset-0 z-50" role="dialog" aria-modal="true">
+          <div class="min-h-screen flex items-center justify-center p-4">
+            <!-- backdrop -->
+            <div class="fixed inset-0 bg-black/40" @click="modalOpen = null"></div>
 
-        <div x-show="modalOpen === 'logout'" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-        <div class="bg-white rounded-lg shadow-lg p-6 w-96">
-            <h2 class="text-lg font-semibold mb-4">Konfirmasi Logout</h2>
-            <p class="mb-6 text-gray-600">Apakah Anda yakin ingin keluar?</p>
-            <div class="flex justify-end space-x-3">
-            <button @click="modalOpen = null" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Batal</button>
-            <button @click="performLogout" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Logout</button>
+            <!-- card -->
+            <div class="relative w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+              <!-- icon bulat merah -->
+              <div class="w-14 h-14 mx-auto rounded-full bg-red-50 text-red-600 flex items-center justify-center">
+                <i class="fa-solid fa-right-from-bracket text-2xl"></i>
+              </div>
+
+              <!-- judul & subteks -->
+              <h3 class="mt-4 text-center text-xl font-semibold text-gray-900">Keluar dari Sistem?</h3>
+              <p class="mt-2 text-center text-sm text-gray-500">Anda akan keluar dari sesi saat ini.</p>
+
+              <!-- actions -->
+              <div class="mt-6 flex items-center justify-center gap-3">
+                <button
+                  class="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                  @click="modalOpen = null">
+                  Batal
+                </button>
+                <button
+                  class="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-300"
+                  @click="performLogout()">
+                  Ya, Keluar
+                </button>
+              </div>
             </div>
+          </div>
         </div>
-        </div>
+        <!-- ===== /Logout Confirmation ===== -->
 
-        </div>
-        </div>
       </main>
     </div>
 
@@ -1376,91 +1387,66 @@
   </div>
 
 <script>
-    function adminDashboard() {
-      return {
-        sidebarOpen: window.innerWidth > 768,
-        profileDropdownOpen: false,
-        modalOpen: null,
-        activeMenu: 'Dashboard',
-        selectedRole: '',
+  function adminDashboard() {
+    return {
+      sidebarOpen: window.innerWidth > 768,
+      profileDropdownOpen: false,
+      modalOpen: null,
+      activeMenu: 'Dashboard',
+      selectedRole: '',
 
-        stats: {
-          totalVendors: 312,
-          todayLeads: 96,
-          monthlyDeals: 54,
-          topKeywords: 428
-        },
-        recentVendors: [
-          { id: 1, name: 'Labelin Aksara', location: 'Surabaya', status: 'Verified' },
-          { id: 2, name: 'Yasin Barokah', location: 'Bangkalan', status: 'Pending' },
-          { id: 3, name: 'Kursus Pro', location: 'Semarang', status: 'Verified' },
-          { id: 4, name: 'Villa Kaliurang', location: 'Yogyakarta', status: 'Verified' },
-          { id: 5, name: 'Cetak Yasin Probolinggo', location: 'Probolinggo', status: 'Pending' }
-        ],
-        activeProjects: [
-          { id: 1, name: 'Label Baju Stratlaya', location: 'Surabaya, Malang', vendors: 12, created: '2025-08-01', status: 'Active' },
-          { id: 2, name: 'Cetak Yasin Bangkalan', location: 'Bangkalan', vendors: 8, created: '2025-08-05', status: 'Active' },
-          { id: 3, name: 'Kursus Bahasa Inggris', location: 'Semarang', vendors: 5, created: '2025-07-28', status: 'Active' },
-          { id: 4, name: 'Sewa Villa Kaliurang', location: 'Yogyakarta', vendors: 3, created: '2025-08-10', status: 'Active' }
-        ],
-        recentLeads: [
-          { id: 1001, customer: 'Ridzy', project: 'Label Baju Sidoarjo', vendor: 'Labelin Aksara', status: 'Converted', date: '2025-08-15' },
-          { id: 1002, customer: 'Nasma', project: 'Villa Kaliurang', vendor: 'Villa Asri', status: 'Assigned', date: '2025-08-14' },
-          { id: 1003, customer: 'Sisman', project: 'Kursus Bahasa Inggris', vendor: 'Kursus Pro', status: 'New', date: '2025-08-14' },
-          { id: 1004, customer: 'TanBah', project: 'Cetak Yasin', vendor: 'Yasin Barokah', status: 'Assigned', date: '2025-08-13' },
-          { id: 1005, customer: 'Rama Usaba', project: 'Label Baju', vendor: 'Labelin Aksara', status: 'Converted', date: '2025-08-12' }
-        ],
-        
-        setActive(name) { 
-          this.activeMenu = name; 
-        },
-        
-        openModal(modal) { 
-          this.modalOpen = modal; 
-        },
-        
-    openLogoutModal() {
-    this.modalOpen = 'logout'; // buka modal konfirmasi logout
-    },
+      stats: { totalVendors: 312, todayLeads: 96, monthlyDeals: 54, topKeywords: 428 },
+      recentVendors: [
+        { id: 1, name: 'Labelin Aksara', location: 'Surabaya', status: 'Verified' },
+        { id: 2, name: 'Yasin Barokah', location: 'Bangkalan', status: 'Pending' },
+        { id: 3, name: 'Kursus Pro', location: 'Semarang', status: 'Verified' },
+        { id: 4, name: 'Villa Kaliurang', location: 'Yogyakarta', status: 'Verified' },
+        { id: 5, name: 'Cetak Yasin Probolinggo', location: 'Probolinggo', status: 'Pending' }
+      ],
+      activeProjects: [
+        { id: 1, name: 'Label Baju Stratlaya', location: 'Surabaya, Malang', vendors: 12, created: '2025-08-01', status: 'Active' },
+        { id: 2, name: 'Cetak Yasin Bangkalan', location: 'Bangkalan', vendors: 8, created: '2025-08-05', status: 'Active' },
+        { id: 3, name: 'Kursus Bahasa Inggris', location: 'Semarang', vendors: 5, created: '2025-07-28', status: 'Active' },
+        { id: 4, name: 'Sewa Villa Kaliurang', location: 'Yogyakarta', vendors: 3, created: '2025-08-10', status: 'Active' }
+      ],
+      recentLeads: [
+        { id: 1001, customer: 'Ridzy', project: 'Label Baju Sidoarjo', vendor: 'Labelin Aksara', status: 'Converted', date: '2025-08-15' },
+        { id: 1002, customer: 'Nasma', project: 'Villa Kaliurang', vendor: 'Villa Asri', status: 'Assigned', date: '2025-08-14' },
+        { id: 1003, customer: 'Sisman', project: 'Kursus Bahasa Inggris', vendor: 'Kursus Pro', status: 'New', date: '2025-08-14' },
+        { id: 1004, customer: 'TanBah', project: 'Cetak Yasin', vendor: 'Yasin Barokah', status: 'Assigned', date: '2025-08-13' },
+        { id: 1005, customer: 'Rama Usaba', project: 'Label Baju', vendor: 'Labelin Aksara', status: 'Converted', date: '2025-08-12' }
+      ],
+      
+      setActive(name) { this.activeMenu = name; },
+      openModal(modal) { this.modalOpen = modal; },
 
-    performLogout() {
-    // Submit hidden form dengan CSRF
-    document.getElementById('logoutForm')?.submit();
-    },
+      openLogoutModal() { this.modalOpen = 'logout'; },
+      performLogout() { document.getElementById('logoutForm')?.submit(); },
 
-            updateSelectedRole(event) {
-          this.selectedRole = event.target.value;
-        },
+      updateSelectedRole(event) { this.selectedRole = event.target.value; },
 
-        init() {
-          // Cek apakah ada preferensi sidebar di localStorage
-          const sidebarPref = localStorage.getItem('sidebarOpen');
-          if (sidebarPref !== null) {
-            this.sidebarOpen = sidebarPref === 'true';
-          } else {
-            // Default: buka di desktop, tutup di mobile
-            this.sidebarOpen = window.innerWidth > 768;
-          }
-          
-          window.addEventListener('resize', () => {
-            // Di mobile, tetap tutup sidebar saat resize
-            if (window.innerWidth <= 768) {
-              this.sidebarOpen = false;
-            }
-          });
-          
-          // Simpan preferensi saat sidebar di-toggle
-          this.$watch('sidebarOpen', (value) => {
-            localStorage.setItem('sidebarOpen', value);
-          });
-
-          // Initialize role selection for add user modal
-          document.getElementById('role')?.addEventListener('change', (e) => {
-            this.updateSelectedRole(e);
-          });
+      init() {
+        const sidebarPref = localStorage.getItem('sidebarOpen');
+        if (sidebarPref !== null) {
+          this.sidebarOpen = sidebarPref === 'true';
+        } else {
+          this.sidebarOpen = window.innerWidth > 768;
         }
+        
+        window.addEventListener('resize', () => {
+          if (window.innerWidth <= 768) this.sidebarOpen = false;
+        });
+        
+        this.$watch('sidebarOpen', (value) => {
+          localStorage.setItem('sidebarOpen', value);
+        });
+
+        document.getElementById('role')?.addEventListener('change', (e) => {
+          this.updateSelectedRole(e);
+        });
       }
     }
-  </script>
+  }
+</script>
 </body>
 </html>
