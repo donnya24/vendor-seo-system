@@ -10,12 +10,11 @@ class Dashboard extends Controller
     {
         $auth = service('auth');
 
-        // Guard tambahan (meski sudah difilter di routes)
+        // wajib login + wajib group vendor
         if (! $auth->loggedIn() || ! $auth->user()->inGroup('vendor')) {
             return redirect()->to('/login');
         }
 
-        // Pakai path view yang sesuai nama file (dashboard.php)
-        return view('vendoruser/dashboard');
+        return view('Vendoruser/Dashboard'); // view kamu
     }
 }

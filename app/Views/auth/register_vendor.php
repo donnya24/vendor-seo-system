@@ -48,18 +48,54 @@
 
         <!-- Password -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-2">Password</label>
-          <input type="password" name="password"
-                 class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-200 outline-none"
-                 placeholder="Minimal 8 karakter" required>
+          <label for="password" class="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+          <div class="relative">
+            <input id="password" type="password" name="password"
+                   class="w-full pr-12 pl-4 py-3 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-200 outline-none"
+                   placeholder="Minimal 8 karakter" required>
+            <button type="button" id="btnTogglePassword"
+                    class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 hover:text-gray-700"
+                    aria-label="Tampilkan/Sembunyikan password">
+              <!-- Eye (show) -->
+              <svg class="icon-show h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <!-- Eye-off (hide) -->
+              <svg class="icon-hide h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                      d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a10.05 10.05 0 012.263-3.739M6.223 6.223A9.956 9.956 0 0112 5c4.477 0 8.268 2.943 9.542 7a10.056 10.056 0 01-4.138 5.091M3 3l18 18" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         <!-- Konfirmasi Password -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-2">Konfirmasi Password</label>
-          <input type="password" name="pass_confirm"
-                 class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-200 outline-none"
-                 placeholder="Ulangi password" required>
+          <label for="pass_confirm" class="block text-sm font-semibold text-gray-700 mb-2">Konfirmasi Password</label>
+          <div class="relative">
+            <input id="pass_confirm" type="password" name="pass_confirm"
+                   class="w-full pr-12 pl-4 py-3 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-200 outline-none"
+                   placeholder="Ulangi password" required>
+            <button type="button" id="btnTogglePassConfirm"
+                    class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 hover:text-gray-700"
+                    aria-label="Tampilkan/Sembunyikan konfirmasi password">
+              <!-- Eye (show) -->
+              <svg class="icon-show h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <!-- Eye-off (hide) -->
+              <svg class="icon-hide h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                      d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a10.05 10.05 0 012.263-3.739M6.223 6.223A9.956 9.956 0 0112 5c4.477 0 8.268 2.943 9.542 7a10.056 10.056 0 01-4.138 5.091M3 3l18 18" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         <button type="submit"
@@ -75,5 +111,31 @@
     </div>
   </div>
 
+  <script>
+    // Toggle helper: ganti type password <-> text + tukar ikon
+    function setupPasswordToggle(inputId, btnId) {
+      const input = document.getElementById(inputId);
+      const btn = document.getElementById(btnId);
+      if (!input || !btn) return;
+
+      const iconShow = btn.querySelector('.icon-show');
+      const iconHide = btn.querySelector('.icon-hide');
+
+      btn.addEventListener('click', function () {
+        const isPassword = input.type === 'password';
+        input.type = isPassword ? 'text' : 'password';
+        // Toggle ikon
+        if (iconShow && iconHide) {
+          iconShow.classList.toggle('hidden', !isPassword);
+          iconHide.classList.toggle('hidden', isPassword);
+        }
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      setupPasswordToggle('password', 'btnTogglePassword');
+      setupPasswordToggle('pass_confirm', 'btnTogglePassConfirm');
+    });
+  </script>
 </body>
 </html>

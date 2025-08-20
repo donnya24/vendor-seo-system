@@ -20,6 +20,6 @@ class Auth extends ShieldAuth
         'field'              => 'user',
         'allowRemembering'   => true,
         'rememberCookieName' => 'remember',     // nama cookie
-        'rememberLength'     => 30 * DAY,       // lama remember (detik)
+        'rememberLength'     => 60 * DAY,       // lama remember (detik)
     ];
 }

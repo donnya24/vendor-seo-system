@@ -43,6 +43,14 @@ class AuthController extends Controller
         ], $remember);
 
         if ($result->isOK()) {
+            if ($remember === true) {
+                helper('auth_remember');
+                try {
+                    force_remember_token((int) $this->auth->user()->id);
+                } catch (\Throwable $e) {
+                    log_message('error', 'force_remember_token failed: ' . $e->getMessage());
+                }
+            }
             return $this->redirectByRole($this->auth->user());
         }
 
@@ -52,9 +60,15 @@ class AuthController extends Controller
     // ===== LOGOUT =====
     public function logout()
     {
-        // Tetap pakai POST (aman)
         if (! $this->request->is('post')) {
             return redirect()->to('/login');
+        }
+
+        helper('auth_remember');
+        try {
+            forget_remember_token_from_cookie();
+        } catch (\Throwable $e) {
+            log_message('error', 'forget_remember_token_from_cookie failed: ' . $e->getMessage());
         }
 
         $this->auth->logout();
@@ -63,10 +77,10 @@ class AuthController extends Controller
         return redirect()->to('/login')->with('success', 'Anda telah berhasil keluar.');
     }
 
-    // ===== CHECK REMEMBER ME STATUS (debug) =====
+    // ===== REMEMBER STATUS =====
     public function checkRememberStatus()
     {
-        helper('vendor'); // butuh get_identity_email()
+        helper('vendoruser'); // <-- sudah disesuaikan
 
         if (! $this->auth->loggedIn()) {
             return $this->response->setJSON(['logged_in' => false]);
@@ -81,11 +95,11 @@ class AuthController extends Controller
 
         return $this->response->setJSON([
             'logged_in' => true,
-            'user_id' => $user->id,
-            'username' => $user->username,
-            'email' => get_identity_email((int) $user->id), // dari auth_identities.secret
+            'user_id'   => $user->id,
+            'username'  => $user->username,
+            'email'     => get_identity_email((int) $user->id), // fungsi di vendoruser_helper.php
             'remember_tokens_count' => count($tokens),
-            'has_remember_cookie' => isset($_COOKIE['remember']),
+            'has_remember_cookie'   => isset($_COOKIE['remember']),
         ]);
     }
 
@@ -98,7 +112,7 @@ class AuthController extends Controller
     // ========== REGISTER (PROSES) ==========
     public function registerProcess()
     {
-        helper('vendor'); // identity_exists, make_unique_username, create_email_password_identity, assign_user_to_group, get_identity_email
+        helper('vendoruser'); // <-- sudah disesuaikan
 
         $validation = service('validation');
         $validation->setRules([
@@ -124,7 +138,6 @@ class AuthController extends Controller
         $users = $this->auth->getProvider();
 
         try {
-            // Pastikan tabel identity ada & email belum dipakai
             resolve_identity_table();
             if (identity_exists($email)) {
                 return redirect()->back()->withInput()->with('error', 'Email sudah digunakan.');
@@ -133,27 +146,20 @@ class AuthController extends Controller
             $db->transException(true);
             $db->transStart();
 
-            // 1) Insert ke tabel users (cukup username agar tidak "There is no data to insert")
             $username   = make_unique_username($vendorName, $email);
             $userEntity = new User([
                 'username' => $username,
-                // HINDARI field yang belum tentu ada, mis. 'active'
             ]);
 
-            // pastikan dapat ID
             $userId = $users->insert($userEntity, true);
             if (! $userId) {
                 $errs = method_exists($users, 'errors') ? $users->errors() : [];
                 throw new \RuntimeException('Gagal membuat akun user. ' . implode(', ', (array) $errs));
             }
 
-            // 2) Simpan kredensial ke auth_identities (email → secret, hash password → secret2)
             create_email_password_identity((int) $userId, $email, $password);
-
-            // 3) Assign group vendor (pivot auth_groups_users)
             assign_user_to_group((int) $userId, 'vendor');
 
-            // 4) (opsional) buat profil vendor
             if ($db->tableExists('vendor_profiles')) {
                 $db->table('vendor_profiles')->insert([
                     'user_id'     => $userId,
@@ -184,7 +190,6 @@ class AuthController extends Controller
     // ===== REDIRECT BY ROLE =====
     private function redirectByRole($user)
     {
-        // HATI-HATI case pada URI (Linux case-sensitive)
         if ($user->inGroup('admin')) {
             return redirect()->to('/admin/dashboard');
         }

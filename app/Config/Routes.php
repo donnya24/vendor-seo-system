@@ -25,17 +25,17 @@ $routes->post('forgot-password', 'Auth\ForgotPasswordController::sendResetLink')
 $routes->get('reset-password', 'Auth\ForgotPasswordController::showResetForm');
 $routes->post('reset-password', 'Auth\ForgotPasswordController::resetPassword');
 
-// Vendoruser Dashboard (HARUS login)
+// Vendoruser Dashboard (HARUS login via Shield session)
 $routes->group('vendoruser', ['filter' => 'session'], static function ($routes) {
-    $routes->get('dashboard', 'vendoruser\Dashboard::index');
+    $routes->get('dashboard', 'Vendoruser\Dashboard::index'); // ← perhatikan huruf besar V
 });
 
-// (Opsional) Redirect rute lama agar link /vendor/dashboard tetap hidup
+// (Opsional) alias rute lama tetap hidup
 $routes->get('vendor/dashboard', static function () {
     return redirect()->to('/vendoruser/dashboard');
 });
 
-// Dashboard per role (HARUS login)
+// Dashboard lain (HARUS login via Shield session)
 $routes->group('admin', ['filter' => 'session'], static function ($routes) {
     $routes->get('dashboard', 'Admin\Dashboard::index');
 });
