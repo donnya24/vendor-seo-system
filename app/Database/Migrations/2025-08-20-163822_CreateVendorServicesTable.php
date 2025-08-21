@@ -1,5 +1,4 @@
 <?php
-// app/Database/Migrations/2025-08-20-000003_CreateVendorServicesTable.php
 namespace App\Database\Migrations;
 
 use CodeIgniter\Database\Migration;
