@@ -10,24 +10,18 @@ class NoCacheFilter implements FilterInterface
 {
     public function before(RequestInterface $request, $arguments = null)
     {
-        // Tambahkan header no-cache sebelum eksekusi controller
-        $response = service('response');
-        
-        $response->setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
-        $response->setHeader('Pragma', 'no-cache');
-        $response->setHeader('Expires', 'Sat, 01 Jan 2000 00:00:00 GMT');
-        $response->setHeader('Last-Modified', gmdate('D, d M Y H:i:s') . ' GMT');
-        
-        return $response;
+        // Penting: JANGAN return Response dari sini,
+        // cukup biarkan kosong supaya controller tetap dieksekusi.
     }
 
     public function after(RequestInterface $request, ResponseInterface $response, $arguments = null)
     {
-        // Tambahkan header tambahan setelah eksekusi controller
+        // Set header setelah controller dijalankan agar pasti menempel di response final
         $response->setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0, post-check=0, pre-check=0');
         $response->setHeader('Pragma', 'no-cache');
         $response->setHeader('Expires', 'Sat, 01 Jan 2000 00:00:00 GMT');
-        
-        return $response;
+        $response->setHeader('Last-Modified', gmdate('D, d M Y H:i:s') . ' GMT');
+
+        // Tidak perlu return apa pun di after()
     }
 }

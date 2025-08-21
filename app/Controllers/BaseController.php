@@ -3,56 +3,92 @@
 namespace App\Controllers;
 
 use CodeIgniter\Controller;
-use CodeIgniter\HTTP\CLIRequest;
-use CodeIgniter\HTTP\IncomingRequest;
 use CodeIgniter\HTTP\RequestInterface;
 use CodeIgniter\HTTP\ResponseInterface;
 use Psr\Log\LoggerInterface;
+use CodeIgniter\Session\Session;
+use CodeIgniter\Validation\Validation;
+use CodeIgniter\Pager\Pager;
 
-/**
- * Class BaseController
- *
- * BaseController provides a convenient place for loading components
- * and performing functions that are needed by all your controllers.
- * Extend this class in any new controllers:
- *     class Home extends BaseController
- *
- * For security be sure to declare any new methods as protected or private.
- */
 abstract class BaseController extends Controller
 {
     /**
-     * Instance of the main Request object.
-     *
-     * @var CLIRequest|IncomingRequest
+     * @var \CodeIgniter\HTTP\CLIRequest|\CodeIgniter\HTTP\IncomingRequest
      */
     protected $request;
 
-    /**
-     * An array of helpers to be loaded automatically upon
-     * class instantiation. These helpers will be available
-     * to all other controllers that extend BaseController.
-     *
-     * @var list<string>
-     */
-    protected $helpers = [];
+    /** Autoload helpers untuk semua controller (TANPA type-hint) */
+    protected $helpers = ['url', 'form', 'text'];
 
-    /**
-     * Be sure to declare properties for any property fetch you initialized.
-     * The creation of dynamic property is deprecated in PHP 8.2.
-     */
-    // protected $session;
+    /** Services umum */
+    protected ?Session $session = null;
+    protected $auth = null;
+    protected ?Validation $validation = null;
+    protected ?Pager $pager = null;
 
-    /**
-     * @return void
-     */
-    public function initController(RequestInterface $request, ResponseInterface $response, LoggerInterface $logger)
+    /** Pagination default */
+    protected int $perPage = 15;
+
+    /** Info user aktif (jika login) */
+    protected ?\CodeIgniter\Shield\Entities\User $user = null;
+    protected bool $isAdmin  = false;
+    protected bool $isSeo    = false;
+    protected bool $isVendor = false;
+
+    public function initController(RequestInterface $request, ResponseInterface $response, LoggerInterface $logger): void
     {
-        // Do Not Edit This Line
         parent::initController($request, $response, $logger);
 
-        // Preload any models, libraries, etc, here.
+        date_default_timezone_set('Asia/Jakarta');
 
-        // E.g.: $this->session = service('session');
+        $this->session    = service('session');
+        $this->validation = service('validation');
+        $this->pager      = service('pager');
+        $this->auth       = service('auth');
+
+        if ($this->auth && $this->auth->loggedIn()) {
+            $this->user     = $this->auth->user();
+            $this->isAdmin  = $this->user?->inGroup('admin')   ?? false;
+            $this->isSeo    = $this->user?->inGroup('seoteam') ?? false;
+            $this->isVendor = $this->user?->inGroup('vendor')  ?? false;
+        }
+    }
+
+    protected function q(): string
+    {
+        return trim((string) ($this->request->getGet('q') ?? ''));
+    }
+
+    protected function perPage(): int
+    {
+        $pp = (int) ($this->request->getGet('per_page') ?? $this->perPage);
+        return ($pp > 0 && $pp <= 100) ? $pp : $this->perPage;
+    }
+
+    protected function jsonOK(array $data = [], int $status = 200)
+    {
+        return $this->response
+            ->setStatusCode($status)
+            ->setHeader('X-CSRF-RENEW', csrf_hash())
+            ->setJSON(['status' => 'ok'] + $data);
+    }
+
+    protected function jsonFail(string $message, int $status = 400, array $extra = [])
+    {
+        return $this->response
+            ->setStatusCode($status)
+            ->setHeader('X-CSRF-RENEW', csrf_hash())
+            ->setJSON(['status' => 'error', 'message' => $message] + $extra);
+    }
+
+    protected function view(string $view, array $data = [])
+    {
+        $globals = [
+            'authUser' => $this->user,
+            'isAdmin'  => $this->isAdmin,
+            'isSeo'    => $this->isSeo,
+            'isVendor' => $this->isVendor,
+        ];
+        return view($view, $globals + $data);
     }
 }

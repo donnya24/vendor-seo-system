@@ -19,7 +19,8 @@ class AuthController extends Controller
         if ($this->auth->loggedIn()) {
             return $this->redirectByRole($this->auth->user());
         }
-        return view('Auth/login');
+        // view path gunakan lowercase "auth/login"
+        return view('auth/login');
     }
 
     // ===== ATTEMPT LOGIN =====
@@ -60,7 +61,7 @@ class AuthController extends Controller
     // ===== LOGOUT =====
     public function logout()
     {
-        if (! $this->request->is('post')) {
+        if ($this->request->getMethod() !== 'post') {
             return redirect()->to('/login');
         }
 
@@ -80,7 +81,7 @@ class AuthController extends Controller
     // ===== REMEMBER STATUS =====
     public function checkRememberStatus()
     {
-        helper('vendoruser'); // fungsi get_identity_email() dlsb.
+        helper('vendoruser'); // fungsi helper custom kamu
 
         if (! $this->auth->loggedIn()) {
             return $this->response->setJSON(['logged_in' => false]);
@@ -106,7 +107,7 @@ class AuthController extends Controller
     // ========== REGISTER (FORM) ==========
     public function registerForm()
     {
-        return view('Auth/register_vendor');
+        return view('auth/register_vendor');
     }
 
     // ========== REGISTER (PROSES) ==========
@@ -146,7 +147,7 @@ class AuthController extends Controller
             $db->transException(true);
             $db->transStart();
 
-            // 1) Buat user Shield (username auto dari vendorName/email)
+            // 1) Buat user Shield
             $username   = make_unique_username($vendorName, $email);
             $userEntity = new User(['username' => $username]);
 
@@ -160,9 +161,8 @@ class AuthController extends Controller
             create_email_password_identity((int) $userId, $email, $password);
             assign_user_to_group((int) $userId, 'vendor');
 
-            // 3) Buat profil vendor (kolom disesuaikan dinamis dengan skema yang ada)
+            // 3) Buat profil vendor (adaptif terhadap skema sementara)
             if ($db->tableExists('vendor_profiles')) {
-                // Cek kolom (MySQL)
                 $hasBusiness = $db->query("SHOW COLUMNS FROM vendor_profiles LIKE 'business_name'")->getNumRows() > 0;
                 $hasOwner    = $db->query("SHOW COLUMNS FROM vendor_profiles LIKE 'owner_name'")->getNumRows() > 0;
                 $hasName     = $db->query("SHOW COLUMNS FROM vendor_profiles LIKE 'name'")->getNumRows() > 0;
@@ -176,8 +176,8 @@ class AuthController extends Controller
                     'updated_at'  => date('Y-m-d H:i:s'),
                 ];
                 if ($hasBusiness) $data['business_name'] = $vendorName;
-                if ($hasOwner)    $data['owner_name']    = $vendorName; // fallback awal sama dengan nama vendor
-                if ($hasName)     $data['name']          = $vendorName; // skema lama
+                if ($hasOwner)    $data['owner_name']    = $vendorName;
+                if ($hasName)     $data['name']          = $vendorName;
                 if ($hasPhone)    $data['phone']         = '-';
 
                 $db->table('vendor_profiles')->insert($data);
@@ -203,15 +203,9 @@ class AuthController extends Controller
     // ===== REDIRECT BY ROLE =====
     private function redirectByRole($user)
     {
-        if ($user->inGroup('admin')) {
-            return redirect()->to('/admin/dashboard');
-        }
-        if ($user->inGroup('seoteam')) {
-            return redirect()->to('/seoteam/dashboard'); // FIX: konsisten dengan routes
-        }
-        if ($user->inGroup('vendor')) {
-            return redirect()->to('/vendoruser/dashboard');
-        }
-        return redirect()->to('/dashboard');
+        if ($user->inGroup('admin'))   return redirect()->to('/admin/dashboard');
+        if ($user->inGroup('seoteam')) return redirect()->to('/seo/dashboard');      // konsisten folder Seo
+        if ($user->inGroup('vendor'))  return redirect()->to('/vendor/dashboard');
+        return redirect()->to('/'); // fallback
     }
 }

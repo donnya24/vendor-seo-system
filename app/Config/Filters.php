@@ -16,6 +16,7 @@ use CodeIgniter\Filters\PerformanceMetrics;
 class Filters extends BaseFilters
 {
     public array $aliases = [
+        // Core
         'csrf'          => CSRF::class,
         'toolbar'       => DebugToolbar::class,
         'honeypot'      => Honeypot::class,
@@ -26,13 +27,15 @@ class Filters extends BaseFilters
         'pagecache'     => PageCache::class,
         'performance'   => PerformanceMetrics::class,
 
-        // kustom
+        // Custom (pastikan kelasnya ada; kalau belum, matikan dari $globals)
         'auth'          => \App\Filters\AuthFilter::class,
         'role'          => \App\Filters\RoleFilter::class,
         'noCache'       => \App\Filters\NoCacheFilter::class,
 
-        // Shield session
+        // Shield
         'session'       => \CodeIgniter\Shield\Filters\SessionAuth::class,
+        'group'         => \CodeIgniter\Shield\Filters\GroupFilter::class,       // <— DITAMBAH
+        'permission'    => \CodeIgniter\Shield\Filters\PermissionFilter::class,  // <— opsional, biarin ada
     ];
 
     // kosongkan required agar tidak dobel
@@ -46,11 +49,18 @@ class Filters extends BaseFilters
             'csrf',
         ],
         'after'  => [
-            'noCache',
+            'noCache',   // pastikan filter ini ada; kalau belum, hapus baris ini
             'toolbar',
         ],
     ];
 
-    public array $methods = [];
+    // Atur CSRF hanya untuk method tulis (opsional; aman juga biarkan di $globals)
+    public array $methods = [
+        // 'post'   => ['csrf'],
+        // 'put'    => ['csrf'],
+        // 'patch'  => ['csrf'],
+        // 'delete' => ['csrf'],
+    ];
+
     public array $filters = [];
 }

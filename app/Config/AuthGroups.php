@@ -1,5 +1,4 @@
 <?php
-
 declare(strict_types=1);
 
 namespace Config;
@@ -8,14 +7,8 @@ use CodeIgniter\Shield\Config\AuthGroups as ShieldAuthGroups;
 
 class AuthGroups extends ShieldAuthGroups
 {
-    /**
-     * Default Group untuk user baru
-     */
     public string $defaultGroup = 'vendor';
 
-    /**
-     * Groups
-     */
     public array $groups = [
         'admin' => [
             'title'       => 'Administrator',
@@ -31,9 +24,6 @@ class AuthGroups extends ShieldAuthGroups
         ],
     ];
 
-    /**
-     * Permissions
-     */
     public array $permissions = [
         // Admin
         'admin.access'    => 'Can access the admin area',
@@ -48,9 +38,6 @@ class AuthGroups extends ShieldAuthGroups
         'vendor.access'   => 'Can access vendor dashboard',
     ];
 
-    /**
-     * Permissions Matrix
-     */
     public array $matrix = [
         'admin' => [
             'admin.*',
