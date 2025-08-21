@@ -8,45 +8,34 @@ class ServicesSeeder extends Seeder
 {
     public function run()
     {
-        $data = [
-            [
-                'name'         => 'SEO Optimization',
-                'service_type' => 'digital_marketing',
-                'description'  => 'Optimasi mesin pencari untuk meningkatkan visibilitas website.',
-                'status'       => 'active',
-                'created_at'   => date('Y-m-d H:i:s'),
-            ],
-            [
-                'name'         => 'Content Writing',
-                'service_type' => 'digital_marketing',
-                'description'  => 'Pembuatan artikel dan konten berkualitas untuk mendukung SEO.',
-                'status'       => 'active',
-                'created_at'   => date('Y-m-d H:i:s'),
-            ],
-            [
-                'name'         => 'Backlink Building',
-                'service_type' => 'digital_marketing',
-                'description'  => 'Membangun tautan berkualitas dari website lain untuk meningkatkan otoritas.',
-                'status'       => 'active',
-                'created_at'   => date('Y-m-d H:i:s'),
-            ],
-            [
-                'name'         => 'Local SEO',
-                'service_type' => 'digital_marketing',
-                'description'  => 'Optimasi SEO lokal agar bisnis mudah ditemukan di daerah tertentu.',
-                'status'       => 'active',
-                'created_at'   => date('Y-m-d H:i:s'),
-            ],
-            [
-                'name'         => 'Social Media Management',
-                'service_type' => 'digital_marketing',
-                'description'  => 'Manajemen akun sosial media untuk meningkatkan brand awareness.',
-                'status'       => 'active',
-                'created_at'   => date('Y-m-d H:i:s'),
-            ],
-        ];
+        $db = \Config\Database::connect();
 
-        // Insert data ke tabel services
-        $this->db->table('services')->insertBatch($data);
+        // Ambil langsung vendor_profiles
+        $vendors = $db->table('vendor_profiles')
+            ->select('id as vendor_id, business_name, owner_name')
+            ->get()
+            ->getResult();
+
+        if (empty($vendors)) {
+            echo "Tidak ada vendor_profiles ditemukan.\n";
+            return;
+        }
+
+        $data = [];
+        foreach ($vendors as $vendor) {
+            $data[] = [
+                'vendor_id'    => $vendor->vendor_id,
+                'name'         => 'Layanan ' . $vendor->business_name,
+                'service_type' => 'vendor_service',
+                'description'  => 'Layanan utama yang ditawarkan oleh ' . $vendor->business_name .
+                                   ' milik ' . $vendor->owner_name,
+                'status'       => 'pending', // default menunggu approval Admin/SEO
+                'created_at'   => date('Y-m-d H:i:s'),
+            ];
+        }
+
+        $db->table('services')->insertBatch($data);
+
+        echo "Seeder ServicesSeeder selesai. Total service ditambahkan: " . count($data) . "\n";
     }
 }
