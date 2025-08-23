@@ -26,10 +26,6 @@ class Filters extends BaseFilters
         'forcehttps'    => ForceHTTPS::class,
         'pagecache'     => PageCache::class,
         'performance'   => PerformanceMetrics::class,
-
-        // Custom (pastikan kelasnya ada; kalau belum, matikan dari $globals)
-        'auth'          => \App\Filters\AuthFilter::class,
-        'role'          => \App\Filters\RoleFilter::class,
         'noCache'       => \App\Filters\NoCacheFilter::class,
 
         // Shield
@@ -43,17 +39,15 @@ class Filters extends BaseFilters
         'before' => [],
         'after'  => [],
     ];
-
-    public array $globals = [
-        'before' => [
-            'csrf',
-        ],
-        'after'  => [
-            'noCache',   // pastikan filter ini ada; kalau belum, hapus baris ini
-            'toolbar',
-        ],
-    ];
-
+public array $globals = [
+    'before' => [
+        'csrf' => ['except' => ['logout', 'login/*', 'auth/*']],
+    ],
+    'after'  => [
+        'noCache',
+        'toolbar',
+    ],
+];
     // Atur CSRF hanya untuk method tulis (opsional; aman juga biarkan di $globals)
     public array $methods = [
         // 'post'   => ['csrf'],

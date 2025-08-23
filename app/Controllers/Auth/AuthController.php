@@ -58,25 +58,26 @@ class AuthController extends Controller
         return redirect()->back()->withInput()->with('error', 'Login gagal. Periksa kembali kredensial Anda.');
     }
 
-    // ===== LOGOUT =====
-    public function logout()
-    {
-        if ($this->request->getMethod() !== 'post') {
-            return redirect()->to('/login');
-        }
-
-        helper('auth_remember');
-        try {
-            forget_remember_token_from_cookie();
-        } catch (\Throwable $e) {
-            log_message('error', 'forget_remember_token_from_cookie failed: ' . $e->getMessage());
-        }
-
-        $this->auth->logout();
-        session()->destroy();
-
-        return redirect()->to('/login')->with('success', 'Anda telah berhasil keluar.');
+// Di AuthController.php
+public function logout()
+{
+    // Hapus remember token jika ada
+    helper('auth_remember');
+    try {
+        forget_remember_token_from_cookie();
+    } catch (\Throwable $e) {
+        log_message('error', 'forget_remember_token_from_cookie failed: ' . $e->getMessage());
     }
+
+    // Logout menggunakan Shield
+    $this->auth->logout();
+    
+    // Hancurkan session
+    session()->destroy();
+
+    // Redirect ke halaman login dengan pesan sukses
+    return redirect()->to('/login')->with('success', 'Anda telah berhasil keluar.');
+}
 
     // ===== REMEMBER STATUS =====
     public function checkRememberStatus()

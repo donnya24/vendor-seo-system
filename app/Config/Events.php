@@ -6,25 +6,6 @@ use CodeIgniter\Events\Events;
 use CodeIgniter\Exceptions\FrameworkException;
 use CodeIgniter\HotReloader\HotReloader;
 
-Events::on('login', static function ($user) {
-    // redirect sesuai role user
-    if ($user->can('admin.access')) {
-        return redirect()->to('/admin/dashboard');
-    } elseif ($user->can('seo_team.access')) {
-        return redirect()->to('/seo_team/dashboard');
-    } elseif ($user->can('vendor.access')) {
-        return redirect()->to('/vendor/dashboard');
-    }
-
-    // default kalau role tidak cocok
-    return redirect()->to('/dashboard');
-});
-
-Events::on('logout', static function () {
-    // setelah logout kembali ke landing page
-    return redirect()->to('/');
-});
-
 
 Events::on('pre_system', static function (): void {
     if (ENVIRONMENT !== 'testing') {

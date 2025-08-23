@@ -2,24 +2,38 @@
 
 namespace App\Controllers\Admin;
 
-use CodeIgniter\Controller;
+use App\Controllers\BaseController;
+use App\Models\VendorProfilesModel;
+use App\Models\LeadsModel;
+use App\Models\CommissionsModel;
 
-class Dashboard extends Controller
+class Dashboard extends BaseController
 {
     public function index()
     {
-        $auth = service('auth');
-        $user = $auth->user();
+        $vendors     = (new VendorProfilesModel())->countAllResults();
+        $todayLeads  = (new LeadsModel())->where('DATE(created_at)', date('Y-m-d'))->countAllResults();
+        $monthlyDeals= (new LeadsModel())->where('status', 'closed')->where('MONTH(updated_at)', date('m'))->countAllResults();
+        $topKeywords = 0; // placeholder
 
-        // Cek apakah login & punya role admin
-        if (! $user || ! $user->inGroup('admin')) {
-            return redirect()->to('/login')->with('error', 'Anda tidak memiliki akses ke halaman ini.');
-        }
+        return view('admin/dashboard', [
+            'page'  => 'Dashboard',
+            'stats' => [
+                'totalVendors' => $vendors,
+                'todayLeads'   => $todayLeads,
+                'monthlyDeals' => $monthlyDeals,
+                'topKeywords'  => $topKeywords,
+            ]
+        ]);
+    }
 
-        // Kirim data user ke view
-        return view('Admin/DashboardAdmin', [
-            'title' => 'Dashboard Admin',
-            'user'  => $user,
+    public function stats()
+    {
+        return $this->response->setJSON([
+            'totalVendors' => (new VendorProfilesModel())->countAllResults(),
+            'todayLeads'   => (new LeadsModel())->where('DATE(created_at)', date('Y-m-d'))->countAllResults(),
+            'monthlyDeals' => (new LeadsModel())->where('status', 'closed')->where('MONTH(updated_at)', date('m'))->countAllResults(),
+            'topKeywords'  => 0,
         ]);
     }
 }

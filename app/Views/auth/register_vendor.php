@@ -1,105 +1,102 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" x-data>
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Register | Vendor Partnership & SEO Performance</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    html,body{height:100%}body{font-family:'Montserrat',system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial}
+  </style>
 </head>
-<body class="font-['Montserrat'] bg-gray-50">
+<body class="bg-gray-50">
 
   <div class="min-h-screen flex items-center justify-center bg-cover bg-center relative"
-       style="background-image: url('/assets/img/logo/background.png');">
+       style="background-image:url('/assets/img/logo/background.png');">
     <div class="absolute inset-0 bg-black/60"></div>
 
-    <div class="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
-      <div class="px-8 pt-10 pb-6 text-center border-b">
-        <div class="mx-auto w-14 h-14 rounded-full bg-white flex items-center justify-center shadow">
-          <img src="/assets/img/logo/icon.png" alt="Logo" class="w-8 h-8">
+    <!-- Card diperkecil & mobile-first -->
+    <div class="relative z-10 w-[92%] max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden"
+         x-data="{
+           vendor_name: '<?= esc(old('vendor_name') ?? '') ?>',
+           email: '<?= esc(old('email') ?? '') ?>',
+           password: '',
+           confirm: '',
+           showPw: false,
+           showCf: false,
+           get okPw(){ return this.password.length >= 8 },
+           get match(){ return this.password !== '' && this.password === this.confirm },
+           get canSubmit(){ return this.vendor_name.trim() && this.email.trim() && this.okPw && this.match }
+         }">
+
+      <div class="px-6 pt-8 pb-5 text-center border-b">
+        <div class="mx-auto w-12 h-12 rounded-full bg-white flex items-center justify-center shadow">
+          <img src="/assets/img/logo/icon.png" alt="Logo" class="w-7 h-7" />
         </div>
-        <h1 class="mt-4 text-2xl font-bold text-gray-800">Buat Akun Vendor</h1>
-        <p class="text-gray-500 text-sm mt-1">Kelola profil, leads & laporan dalam satu sistem</p>
+        <h1 class="mt-3 text-xl sm:text-2xl font-bold text-gray-800">Buat Akun Vendor</h1>
+        <p class="text-gray-500 text-xs sm:text-sm mt-1">Kelola profil, leads & laporan</p>
       </div>
 
-      <form action="<?= site_url('register') ?>" method="post" class="px-8 py-8 space-y-6">
+      <form action="<?= site_url('register') ?>" method="post" class="px-6 py-6 sm:py-7 space-y-5" novalidate>
         <?= csrf_field() ?>
 
         <?php if (session()->getFlashdata('error')): ?>
-          <div class="text-red-600 text-sm mb-2"><?= session()->getFlashdata('error') ?></div>
+          <div class="text-red-600 text-sm"><?= session()->getFlashdata('error') ?></div>
         <?php elseif (session()->getFlashdata('message')): ?>
-          <div class="text-green-600 text-sm mb-2"><?= session()->getFlashdata('message') ?></div>
+          <div class="text-green-600 text-sm"><?= session()->getFlashdata('message') ?></div>
         <?php endif; ?>
 
         <!-- Nama Vendor -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-2">Nama Vendor</label>
-          <input type="text" name="vendor_name" value="<?= old('vendor_name') ?>"
-                 class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-200 outline-none"
-                 placeholder="Nama perusahaan / brand" required>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Nama Vendor</label>
+          <input type="text" name="vendor_name" x-model="vendor_name"
+                 class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-200 outline-none text-[15px]"
+                 placeholder="Nama perusahaan / brand" required enterkeyhint="next" />
         </div>
 
         <!-- Email -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-2">Email</label>
-          <input type="email" name="email" value="<?= old('email') ?>"
-                 class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-200 outline-none"
-                 placeholder="you@example.com" required>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Email</label>
+          <input type="email" name="email" x-model="email"
+                 class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-200 outline-none text-[15px]"
+                 placeholder="you@example.com" required autocomplete="username" inputmode="email" autocapitalize="none" enterkeyhint="next" />
         </div>
 
         <!-- Password -->
         <div>
-          <label for="password" class="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Password</label>
           <div class="relative">
-            <input id="password" type="password" name="password"
-                   class="w-full pr-12 pl-4 py-3 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-200 outline-none"
-                   placeholder="Minimal 8 karakter" required>
-            <button type="button" id="btnTogglePassword"
-                    class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 hover:text-gray-700"
-                    aria-label="Tampilkan/Sembunyikan password">
-              <!-- Eye (show) -->
-              <svg class="icon-show h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <!-- Eye-off (hide) -->
-              <svg class="icon-hide h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                      d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a10.05 10.05 0 012.263-3.739M6.223 6.223A9.956 9.956 0 0112 5c4.477 0 8.268 2.943 9.542 7a10.056 10.056 0 01-4.138 5.091M3 3l18 18" />
-              </svg>
-            </button>
+            <input :type="showPw ? 'text' : 'password'" name="password" x-model="password"
+                   class="w-full pr-20 pl-4 py-3 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-200 outline-none text-[15px]"
+                   placeholder="Minimal 8 karakter" required minlength="8" autocomplete="new-password" />
+            <button type="button"
+                    class="absolute inset-y-0 right-0 px-4 flex items-center text-sm text-gray-500 hover:text-gray-700"
+                    @click="showPw = !showPw" x-text="showPw ? 'Sembunyikan' : 'Tampilkan'"></button>
           </div>
+          <p class="mt-1 text-xs" :class="okPw ? 'text-green-600' : 'text-gray-500'"
+             x-text="okPw ? 'Kuat.' : 'Minimal 8 karakter.'"></p>
         </div>
 
         <!-- Konfirmasi Password -->
         <div>
-          <label for="pass_confirm" class="block text-sm font-semibold text-gray-700 mb-2">Konfirmasi Password</label>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Konfirmasi Password</label>
           <div class="relative">
-            <input id="pass_confirm" type="password" name="pass_confirm"
-                   class="w-full pr-12 pl-4 py-3 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-200 outline-none"
-                   placeholder="Ulangi password" required>
-            <button type="button" id="btnTogglePassConfirm"
-                    class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 hover:text-gray-700"
-                    aria-label="Tampilkan/Sembunyikan konfirmasi password">
-              <!-- Eye (show) -->
-              <svg class="icon-show h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <!-- Eye-off (hide) -->
-              <svg class="icon-hide h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                      d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a10.05 10.05 0 012.263-3.739M6.223 6.223A9.956 9.956 0 0112 5c4.477 0 8.268 2.943 9.542 7a10.056 10.056 0 01-4.138 5.091M3 3l18 18" />
-              </svg>
-            </button>
+            <input :type="showCf ? 'text' : 'password'" name="pass_confirm" x-model="confirm"
+                   class="w-full pr-20 pl-4 py-3 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-200 outline-none text-[15px]"
+                   placeholder="Ulangi password" required autocomplete="new-password" />
+            <button type="button"
+                    class="absolute inset-y-0 right-0 px-4 flex items-center text-sm text-gray-500 hover:text-gray-700"
+                    @click="showCf = !showCf" x-text="showCf ? 'Sembunyikan' : 'Tampilkan'"></button>
           </div>
+          <p class="mt-1 text-xs" :class="match ? 'text-green-600' : 'text-gray-500'"
+             x-text="match ? 'Cocok.' : 'Ketik ulang sama persis.'"></p>
         </div>
 
         <button type="submit"
-                class="w-full py-3 rounded-lg bg-blue-600 hover:bg-blue-700 transition font-semibold text-white shadow">
+                class="w-full py-3 rounded-lg bg-blue-600 hover:bg-blue-700 transition font-semibold text-white shadow disabled:opacity-60 disabled:cursor-not-allowed"
+                :disabled="!canSubmit">
           Daftar
         </button>
 
@@ -110,7 +107,5 @@
       </form>
     </div>
   </div>
-
-<script defer src="<?= base_url('assets/js/Auth/register.js') ?>"></script>
 </body>
 </html>
