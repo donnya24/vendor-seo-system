@@ -200,13 +200,13 @@ public function logout()
             return redirect()->back()->withInput()->with('error', $msg);
         }
     }
-
-    // ===== REDIRECT BY ROLE =====
+    // app/Controllers/Auth/AuthController.php
     private function redirectByRole($user)
     {
         if ($user->inGroup('admin'))   return redirect()->to('/admin/dashboard');
-        if ($user->inGroup('seoteam')) return redirect()->to('/seo/dashboard');      // konsisten folder Seo
-        if ($user->inGroup('vendor'))  return redirect()->to('/vendor/dashboard');
-        return redirect()->to('/'); // fallback
+        if ($user->inGroup('seoteam')) return redirect()->to('/seo/dashboard');
+        if ($user->inGroup('vendor'))  return redirect()->to('/vendoruser/dashboard'); // <- pakai Vendoruser
+        return redirect()->to('/');
     }
+
 }
