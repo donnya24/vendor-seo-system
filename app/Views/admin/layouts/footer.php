@@ -47,27 +47,6 @@
   </div>
 </div>
 
-  <!-- Mobile Navigation Bottom Bar -->
-  <div class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-20">
-    <div class="flex justify-around py-2">
-      <a href="<?= site_url('admin/dashboard'); ?>" class="flex flex-col items-center text-blue-600 p-2">
-        <i class="fas fa-tachometer-alt mb-1"></i>
-        <span class="text-xs">Dashboard</span>
-      </a>
-      <a href="<?= site_url('admin/leads'); ?>" class="flex flex-col items-center text-gray-600 p-2">
-        <i class="fas fa-list mb-1"></i>
-        <span class="text-xs">Leads</span>
-      </a>
-      <button @click="sidebarOpen = true" class="flex flex-col items-center text-gray-600 p-2">
-        <i class="fas fa-bars mb-1"></i>
-        <span class="text-xs">Menu</span>
-      </button>
-      <button @click="profileDropdownOpen = !profileDropdownOpen" class="flex flex-col items-center text-gray-600 p-2">
-        <i class="fas fa-user mb-1"></i>
-        <span class="text-xs">Profil</span>
-      </button>
-    </div>
-  </div>
 
   <!-- Profile Dropdown Mobile -->
   <div x-show="profileDropdownOpen" x-cloak class="fixed inset-0 z-40 md:hidden" @click="profileDropdownOpen = false">
