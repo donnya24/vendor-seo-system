@@ -86,21 +86,20 @@ $routes->get('seo_team/dashboard', static fn () => redirect()->to('/seo/dashboar
 $routes->group('vendoruser', ['filter' => ['session', 'group:vendor']], static function ($routes) {
     // Dashboard
     $routes->get('dashboard', 'Vendoruser\Dashboard::index');
-    $routes->get('api/stats', 'Vendoruser\Dashboard::stats');
+    $routes->get('api/stats', 'Vendoruser\Dashboard::stats'); // opsional, kalau kamu punya
 
-    // Profile
-    $routes->get('profile',         'Vendoruser\Profile::index');
-    $routes->post('profile/update', 'Vendoruser\Profile::update');
+    // Profile (COCOKKAN dgn controller yang ada)
+    $routes->get('profile',          'Vendoruser\Profile::edit');        // ← tadinya ::index
+    $routes->post('profile/update',  'Vendoruser\Profile::update');
+
+    // Password
+    $routes->get('password',         'Vendoruser\Profile::password');
+    $routes->post('password/update', 'Vendoruser\Profile::passwordUpdate');
 
     // Services
     $routes->get('services',                'Vendoruser\Services::index');
     $routes->post('services/attach',        'Vendoruser\Services::attach');
     $routes->post('services/(:num)/detach', 'Vendoruser\Services::detach/$1');
-
-    // Areas
-    $routes->get('areas',                'Vendoruser\Areas::index');
-    $routes->post('areas/attach',        'Vendoruser\Areas::attach');
-    $routes->post('areas/(:num)/detach', 'Vendoruser\Areas::detach/$1');
 
     // Products
     $routes->get('products',                'Vendoruser\Products::index');
@@ -118,30 +117,14 @@ $routes->group('vendoruser', ['filter' => ['session', 'group:vendor']], static f
     $routes->post('leads/(:num)/update', 'Vendoruser\Leads::update/$1');
     $routes->post('leads/(:num)/delete', 'Vendoruser\Leads::delete/$1');
 
-    // Commissions
-    $routes->get('commissions',                'Vendoruser\Commissions::index');
-    $routes->post('commissions/report',        'Vendoruser\Commissions::report');
-    $routes->post('commissions/(:num)/proof',  'Vendoruser\Commissions::uploadProof/$1');
-
-    // Announcements & Notifications
-    $routes->get('announcements', 'Vendoruser\Notifications::announcements');
-
-    // Notifikasi: GET index, update/delete via POST (plus alias lama agar tetap jalan)
-    $routes->get('notifications', 'Vendoruser\Notifications::index');
-
-    // Mark single read
-    $routes->post('notifications/(:num)/read', 'Vendoruser\Notifications::markRead/$1');
-    $routes->post('notifications/mark/(:num)', 'Vendoruser\Notifications::markRead/$1'); // alias lama
-
-    // Mark all read (POST utama + GET kompat untuk AJAX lama)
-    $routes->post('notifications/mark-all', 'Vendoruser\Notifications::markAllRead');
-    $routes->get('notifications/mark-all',  'Vendoruser\Notifications::markAllRead'); // compat
-
-    // Delete single
-    $routes->post('notifications/(:num)/delete', 'Vendoruser\Notifications::delete/$1');
-    $routes->post('notifications/delete/(:num)', 'Vendoruser\Notifications::delete/$1'); // alias lama
-
-    // Delete all
-    $routes->post('notifications/delete-all', 'Vendoruser\Notifications::deleteAll');
+    // Notifikasi
+    $routes->get('notifications',                 'Vendoruser\Notifications::index');
+    $routes->post('notifications/(:num)/read',    'Vendoruser\Notifications::markRead/$1');
+    $routes->post('notifications/mark/(:num)',    'Vendoruser\Notifications::markRead/$1'); // alias lama
+    $routes->post('notifications/mark-all',       'Vendoruser\Notifications::markAllRead');
+    $routes->get('notifications/mark-all',        'Vendoruser\Notifications::markAllRead'); // compat utk AJAX GET
+    $routes->post('notifications/(:num)/delete',  'Vendoruser\Notifications::delete/$1');
+    $routes->post('notifications/delete/(:num)',  'Vendoruser\Notifications::delete/$1');   // alias lama
+    $routes->post('notifications/delete-all',     'Vendoruser\Notifications::deleteAll');
 });
 $routes->get('vendor/dashboard', static fn () => redirect()->to('/vendoruser/dashboard'));

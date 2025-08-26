@@ -3,7 +3,22 @@ include_once(APPPATH . 'Views/vendoruser/layouts/header.php');
 include_once(APPPATH . 'Views/vendoruser/layouts/sidebar.php');
 
 $user = service('auth')->user(); 
-$vendorName = $user->username ?? session('user_name') ?? 'Vendor'; // fallback
+$vendorName = $user->username ?? session('user_name') ?? 'Vendor';
+
+// Ambil data profil vendor
+$vendorProfileModel = new \App\Models\VendorProfilesModel();
+$vendorProfile = $vendorProfileModel->where('user_id', service('auth')->user()->id)->first();
+$profileImage = $vendorProfile['profile_image'] ?? '';
+
+// Tentukan path gambar profil
+if (!empty($profileImage) && file_exists(FCPATH . 'uploads/vendoruser/profiles/' . $profileImage)) {
+    $profileImagePath = base_url('uploads/vendoruser/profiles/' . $profileImage);
+} else {
+    $profileImagePath = base_url('assets/img/default-avatar.png');
+}
+
+// helper kecil utk JSON aman dimasukkan ke JS
+$toJson = static fn($x)=> json_encode($x, JSON_UNESCAPED_UNICODE|JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT);
 ?>
 
 <!-- Main -->
@@ -58,7 +73,6 @@ $vendorName = $user->username ?? session('user_name') ?? 'Vendor'; // fallback
                 </div>
               <?php endforeach; ?>
 
-              <!-- Footer dropdown -->
               <div class="px-4 py-2 border-t">
                 <button @click="notifModal=true; notifOpen=false" 
                         class="block mx-auto text-sm text-blue-600 hover:text-blue-800 font-medium">
@@ -79,7 +93,6 @@ $vendorName = $user->username ?? session('user_name') ?? 'Vendor'; // fallback
               x-transition:leave-end="opacity-0">
             <div class="bg-white rounded-lg shadow-lg w-full max-w-lg max-h-[85vh] sm:max-h-[75vh] flex flex-col" 
                  @click.away="notifModal=false">
-              <!-- Header -->
               <div class="flex items-center justify-between px-4 py-3 border-b sticky top-0 bg-white z-10">
                 <h3 class="text-lg font-semibold text-gray-900">Semua Notifikasi</h3>
                 <button @click="notifModal=false" class="text-gray-500 hover:text-gray-700">
@@ -87,7 +100,6 @@ $vendorName = $user->username ?? session('user_name') ?? 'Vendor'; // fallback
                 </button>
               </div>
 
-              <!-- Body -->
               <div class="flex-1 overflow-y-auto divide-y">
                 <?php if (empty($notifications)): ?>
                   <div class="p-4 text-center text-sm text-gray-500">Tidak ada notifikasi.</div>
@@ -122,7 +134,6 @@ $vendorName = $user->username ?? session('user_name') ?? 'Vendor'; // fallback
                 <?php endif; ?>
               </div>
 
-              <!-- Footer -->
               <div class="px-4 py-3 border-t flex flex-col sm:flex-row justify-between gap-2 sticky bottom-0 bg-white">
                 <form method="post" action="<?= site_url('vendoruser/notifications/mark-all') ?>" class="flex-1">
                   <?= csrf_field() ?>
@@ -147,10 +158,12 @@ $vendorName = $user->username ?? session('user_name') ?? 'Vendor'; // fallback
           <button @click="open = !open" 
                   class="flex items-center space-x-2 focus:outline-none" 
                   :aria-expanded="open" aria-haspopup="true">
-            <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white">
-              <i class="fas fa-user text-sm"></i>
-            </div>
-            <!-- ✅ Nama vendor muncul -->
+            <!-- Tampilkan gambar profil -->
+            <img src="<?= $profileImagePath ?>" 
+                 class="w-8 h-8 rounded-full object-cover border border-gray-300 profile-image"
+                 alt="Profile Image"
+                 onerror="this.onerror=null; this.src='<?= base_url('assets/img/default-avatar.png') ?>';">
+            
             <span class="hidden md:block text-sm font-medium text-gray-700"><?= esc($vendorName) ?></span>
             <i class="fas fa-chevron-down text-xs"></i>
           </button>
@@ -163,28 +176,27 @@ $vendorName = $user->username ?? session('user_name') ?? 'Vendor'; // fallback
                x-transition:leave="transition ease-in duration-75"
                x-transition:leave-start="opacity-100 transform scale-100"
                x-transition:leave-end="opacity-0 transform scale-95">
-            <a href="<?= site_url('vendoruser/profile') ?>" 
-               class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-              <i class="fas fa-user-edit mr-2"></i> Edit Profil
-            </a>
-            <a href="<?= site_url('vendoruser/profile/change-password') ?>" 
-               class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-              <i class="fas fa-key mr-2"></i> Ubah Password
-            </a>
+              <a href="<?= site_url('vendoruser/profile') ?>"
+                 @click.prevent="$store.ui.modal='profileEdit'; open=false"
+                 class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Edit Profil</a>
+
+              <a href="<?= site_url('vendoruser/password') ?>"
+                 @click.prevent="$store.ui.modal='passwordEdit'; open=false"
+                 class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Ubah Password</a>
           </div>
         </div>
       </div>
     </div>
   </header>
+  
+  <!-- Spacer untuk fixed header -->
   <div class="h-16"></div>
 
-
-<!-- CONTENT -->
+  <!-- CONTENT -->
   <main class="flex-1 overflow-y-auto p-4 bg-gray-50">
-
     <!-- ✅ Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-      <div class="bg-white p-4 rounded-lg shadow">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 mt-6">
+      <div class="bg-white p-4 rounded-lg shadow hover:shadow-lg hover:scale-[1.02] transition-transform duration-200">
         <div class="flex items-center">
           <div class="p-3 rounded-full mr-4 bg-blue-100 text-blue-600">
             <i class="fas fa-bullseye text-lg"></i>
@@ -196,7 +208,7 @@ $vendorName = $user->username ?? session('user_name') ?? 'Vendor'; // fallback
         </div>
       </div>
 
-      <div class="bg-white p-4 rounded-lg shadow">
+      <div class="bg-white p-4 rounded-lg shadow hover:shadow-lg hover:scale-[1.02] transition-transform duration-200">
         <div class="flex items-center">
           <div class="p-3 rounded-full mr-4 bg-green-100 text-green-600">
             <i class="fas fa-check-circle text-lg"></i>
@@ -208,7 +220,7 @@ $vendorName = $user->username ?? session('user_name') ?? 'Vendor'; // fallback
         </div>
       </div>
 
-      <div class="bg-white p-4 rounded-lg shadow">
+      <div class="bg-white p-4 rounded-lg shadow hover:shadow-lg hover:scale-[1.02] transition-transform duration-200">
         <div class="flex items-center">
           <div class="p-3 rounded-full mr-4 bg-yellow-100 text-yellow-600">
             <i class="fas fa-key text-lg"></i>
@@ -222,9 +234,9 @@ $vendorName = $user->username ?? session('user_name') ?? 'Vendor'; // fallback
     </div>
 
     <!-- TOP KEYWORDS + QUICK ACTIONS -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <div class="flex flex-col lg:flex-row gap-6 mb-6 mt-4">
       <!-- Top Keywords -->
-      <div class="bg-white rounded-lg shadow overflow-hidden">
+      <div class="bg-white rounded-lg shadow hover:shadow-lg hover:scale-[1.01] overflow-hidden w-full max-w-md transition-transform duration-200">
         <div class="px-4 py-4 border-b border-gray-200">
           <h3 class="text-lg font-medium text-gray-900"><i class="fas fa-chart-line mr-2 text-blue-600"></i>Top Keywords</h3>
         </div>
@@ -238,7 +250,7 @@ $vendorName = $user->username ?? session('user_name') ?? 'Vendor'; // fallback
             <div class="px-4 py-3 hover:bg-gray-50">
               <div class="flex items-start justify-between">
                 <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-gray-900 truncate" x-text="k.text || 'Unknown'"></p>
+                  <p class="text-sm font-medium text-gray-90 truncate" x-text="k.text || 'Unknown'"></p>
                   <p class="text-xs text-gray-500 truncate" x-text="k.project || 'Unknown project'"></p>
                 </div>
                 <div class="ml-2 flex-shrink-0 flex flex-col items-end">
@@ -268,11 +280,11 @@ $vendorName = $user->username ?? session('user_name') ?? 'Vendor'; // fallback
       </div>
 
       <!-- Quick Actions -->
-      <div class="bg-white rounded-lg shadow overflow-hidden">
+      <div class="bg-white rounded-lg shadow hover:shadow-lg hover:scale-[1.01] overflow-hidden w-full max-w-md transition-transform duration-200">
         <div class="px-4 py-4 border-b border-gray-200">
           <h3 class="text-lg font-medium text-gray-900">Quick Actions</h3>
         </div>
-        <div class="p-4 space-y-3">
+        <div class="p-4 space-y-3 flex flex-col items-start">
           <a href="<?= site_url('vendoruser/products/create') ?>"
              class="w-full inline-flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors">
             <i class="fas fa-box mr-2"></i> Tambah Produk
@@ -344,6 +356,10 @@ $vendorName = $user->username ?? session('user_name') ?? 'Vendor'; // fallback
   </main>
 </div>
 
+<!-- Include modal views -->
+<?= view('vendoruser/profile/edit', ['vp' => $vp ?? []]) ?>
+<?= view('vendoruser/profile/ubahpassword') ?>
+
 <script>
 function markNotifAsRead(){
   fetch("<?= site_url('vendoruser/notifications/mark-all') ?>", {
@@ -356,15 +372,17 @@ function markNotifAsRead(){
     }
   });
 }
+document.addEventListener('alpine:init', () => {
+  Alpine.store('ui', { sidebar: window.innerWidth > 768, modal: null });
+  Alpine.store('app', {
+    topKeywords: <?= $toJson($topKeywords ?? []) ?>
+  });
+});
 </script>
 
 <style>
 [x-cloak] { display: none !important; }
-@media (max-width: 767px) {
-  .max-w-\[90vw\] {
-    max-width: 90vw;
-  }
-}
+@media (max-width: 767px) { .max-w-\[90vw\] { max-width: 90vw; } }
 </style>
 
 <?php include_once(APPPATH . 'Views/vendoruser/layouts/footer.php'); ?>

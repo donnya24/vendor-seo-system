@@ -1,68 +1,137 @@
 <?php
+
 namespace App\Controllers\Vendoruser;
 
 use App\Controllers\BaseController;
 use App\Models\VendorProfilesModel;
+use App\Models\UserModel;
 
 class Profile extends BaseController
 {
-    public function edit()
+       public function edit()
     {
         $user = service('auth')->user();
-        $vp   = (new VendorProfilesModel())
-                    ->where('user_id', (int) $user->id)
-                    ->first();
+        $vendorProfileModel = new VendorProfilesModel();
+        $vp = $vendorProfileModel->where('user_id', $user->id)->first();
 
         return view('vendoruser/profile/edit', [
-            'page' => 'Profil',
-            'vp'   => $vp,
+            'vendor' => $vp,
         ]);
     }
 
     public function update()
     {
         $user = service('auth')->user();
-        $vpM  = new VendorProfilesModel();
-        $vp   = $vpM->where('user_id', (int) $user->id)->first();
+        $vendorProfileModel = new VendorProfilesModel();
+        $vp = $vendorProfileModel->where('user_id', $user->id)->first();
 
-        // Ambil commission rate (dukung nama alternatif commission_rate_used)
-        $rateRaw = $this->request->getPost('commission_rate');
-        if ($rateRaw === null || $rateRaw === '') {
-            $rateRaw = $this->request->getPost('commission_rate_used');
+        if (!$vp) {
+            return redirect()->back()->with('error', 'Profil tidak ditemukan');
         }
 
-        // Normalisasi & validasi (0–100), boleh kosong (null)
-        $commissionRate = null;
-        if ($rateRaw !== null && $rateRaw !== '') {
-            $commissionRate = (float) str_replace(',', '.', (string) $rateRaw);
-            if ($commissionRate < 0 || $commissionRate > 100) {
-                return redirect()->back()
-                    ->withInput()
-                    ->with('error', 'Komisi harus antara 0–100%.');
-            }
+        // Rules dasar
+        $rules = [
+            'business_name'   => 'required|min_length[3]',
+            'owner_name'      => 'required|min_length[3]',
+            'whatsapp_number' => 'required',
+            'phone'           => 'permit_empty',
+            'profile_image'   => 'max_size[profile_image,2048]|is_image[profile_image]|mime_in[profile_image,image/jpg,image/jpeg,image/png]',
+        ];
+
+        // hanya validasi commission kalau belum verified
+        if ($vp['status'] !== 'verified') {
+            $rules['requested_commission'] = 'required|numeric';
         }
 
+        $validation = \Config\Services::validation();
+        $validation->setRules($rules);
+
+        if (!$validation->withRequest($this->request)->run()) {
+            return redirect()->back()->withInput()->with('errors', $validation->getErrors());
+        }
+
+        // Data update
         $data = [
             'business_name'   => $this->request->getPost('business_name'),
             'owner_name'      => $this->request->getPost('owner_name'),
             'whatsapp_number' => $this->request->getPost('whatsapp_number'),
-            'phone'           => $this->request->getPost('phone') ?: null,
-            'commission_rate' => $commissionRate, // ⬅️ ditambahkan
-            'updated_at'      => date('Y-m-d H:i:s'),
+            'phone'           => $this->request->getPost('phone'),
         ];
 
-        // Update kalau ada baris; kalau belum ada, buat baru
-        if ($vp) {
-            $vpM->update((int) $vp['id'], $data);
-        } else {
-            $data['user_id']    = (int) $user->id;
-            $data['status']     = 'pending';
-            $data['is_verified']= 0;
-            $data['created_at'] = date('Y-m-d H:i:s');
-            $vpM->insert($data);
+        // Hanya update komisi kalau belum verified
+        if ($vp['status'] !== 'verified') {
+            $data['requested_commission'] = $this->request->getPost('requested_commission');
+            $data['status'] = 'pending'; // supaya diverifikasi admin lagi
         }
 
-        return redirect()->to(site_url('vendor/profile'))
-            ->with('success', 'Profil diperbarui.');
+        // Upload gambar profil
+        $file = $this->request->getFile('profile_image');
+        if ($file && $file->isValid() && !$file->hasMoved()) {
+            $newName = $file->getRandomName();
+            $file->move(FCPATH . 'uploads/vendor_profiles', $newName);
+            $data['profile_image'] = $newName;
+        }
+
+        $vendorProfileModel->update($vp['id'], $data);
+
+        return redirect()->back()->with('success', 'Profil berhasil diperbarui');
+    }
+
+    private function sendVerificationNotification($user, $vendorData)
+    {
+        // Simpan notifikasi ke database untuk admin
+        $db = db_connect();
+        if ($db->tableExists('notifications')) {
+            $notificationData = [
+                'user_id' => 1, // ID admin
+                'title' => 'Pengajuan Verifikasi Vendor Baru',
+                'message' => 'Vendor ' . $vendorData['business_name'] . ' (Pemilik: ' . $vendorData['owner_name'] . ') mengajukan komisi ' . $vendorData['requested_commission'] . '%. Silakan verifikasi profil mereka.',
+                'is_read' => 0,
+                'created_at' => date('Y-m-d H:i:s')
+            ];
+            $db->table('notifications')->insert($notificationData);
+        }
+    }
+    
+    public function password()
+    {
+        return view('vendoruser/profile/ubahpassword', [
+            'page' => 'Ubah Password'
+        ]);
+    }
+    
+    public function passwordUpdate()
+    {
+        // Pastikan method POST
+        if (!$this->request->is('post')) {
+            return redirect()->back()->with('error_password', 'Method not allowed');
+        }
+
+        $auth = service('auth');
+        $user = $auth->user();
+        
+        $validation = \Config\Services::validation();
+        $validation->setRules([
+            'current_password' => 'required',
+            'new_password' => 'required|min_length[8]|strong_password',
+            'pass_confirm' => 'required|matches[new_password]'
+        ]);
+        
+        if (!$validation->withRequest($this->request)->run()) {
+            return redirect()->back()->withInput()->with('errors_password', $validation->getErrors())->with('error_password', 'Terjadi kesalahan validasi.');
+        }
+        
+        // Verifikasi password saat ini
+        if (!password_verify($this->request->getPost('current_password'), $user->password_hash)) {
+            return redirect()->back()->withInput()->with('error_password', 'Password saat ini salah.');
+        }
+        
+        // Update password
+        $userModel = new UserModel();
+        $userModel->update($user->id, [
+            'password_hash' => password_hash($this->request->getPost('new_password'), PASSWORD_DEFAULT)
+        ]);
+        
+        return redirect()->back()->with('success_password', 'Password berhasil diubah.');
     }
 }

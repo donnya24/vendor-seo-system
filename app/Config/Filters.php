@@ -32,6 +32,7 @@ class Filters extends BaseFilters
         'session'       => \CodeIgniter\Shield\Filters\SessionAuth::class,
         'group'         => \CodeIgniter\Shield\Filters\GroupFilter::class,       // <— DITAMBAH
         'permission'    => \CodeIgniter\Shield\Filters\PermissionFilter::class,  // <— opsional, biarin ada
+        'vendorVerify' => \App\Filters\VendorVerificationFilter::class,
     ];
 
     // kosongkan required agar tidak dobel
