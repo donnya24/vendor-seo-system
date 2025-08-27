@@ -1,21 +1,45 @@
 <?= $this->include('admin/layouts/header'); ?>
 <?= $this->include('admin/layouts/sidebar'); ?>
 
-<!-- CONTENT WRAPPER -->
+<!-- Guard ringan agar tidak terpengaruh halaman error/tema lain -->
+<style>
+  #pageWrap, #pageMain { color:#111827; }
+  #pageWrap a:not([class*="text-"]){ color:inherit!important; }
+</style>
+
+<script>
+  // Pastikan Alpine store untuk modal Announcement tersedia
+  document.addEventListener('alpine:init', () => {
+    if (!Alpine.store('ui')) Alpine.store('ui', {});
+    if (typeof Alpine.store('ui').showAnnouncementModal === 'undefined') {
+      Alpine.store('ui').showAnnouncementModal = false;
+    }
+  });
+
+  // Bersihkan tema error yang mungkin tertinggal
+  (function(){
+    function clean(){ document.documentElement.classList.remove('error','error-theme','with-sidebar-fallback'); }
+    document.addEventListener('DOMContentLoaded', clean);
+    document.addEventListener('turbo:load', clean);
+    document.addEventListener('turbo:before-cache', clean);
+  })();
+</script>
+
+<!-- ======================== CONTENT WRAPPER ======================== -->
 <div
   id="pageWrap"
-  class="flex-1 flex flex-col min-h-screen bg-gray-50 pb-16 md:pb-0
-         transition-[margin] duration-300 ease-in-out"
+  class="flex-1 flex flex-col min-h-screen bg-gray-50 pb-16 md:pb-0 transition-[margin] duration-300 ease-in-out"
   :class="sidebarOpen && isDesktop ? 'md:ml-64' : 'md:ml-0'"
 >
-  <!-- MAIN CONTENT -->
+  <!-- ======================== MAIN CONTENT ======================== -->
   <main
     id="pageMain"
     class="flex-1 overflow-y-auto p-3 md:p-4 no-scrollbar transition-opacity duration-300 opacity-0"
+    x-init="$el.classList.remove('opacity-0')"
   >
-    <!-- STATS CARDS - BOLD TEXT -->
+    <!-- STATS CARDS -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-6">
-      <!-- Total Vendors Card -->
+      <!-- Total Vendors -->
       <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-2.5 rounded-lg border border-blue-200 shadow-xs hover:shadow-sm transition-shadow">
         <div class="flex items-center justify-between">
           <div class="flex-1">
@@ -34,7 +58,7 @@
         </div>
       </div>
 
-      <!-- Monthly Deals Card -->
+      <!-- Monthly Deals -->
       <div class="bg-gradient-to-br from-green-50 to-green-100 p-2.5 rounded-lg border border-green-200 shadow-xs hover:shadow-sm transition-shadow">
         <div class="flex items-center justify-between">
           <div class="flex-1">
@@ -53,7 +77,7 @@
         </div>
       </div>
 
-      <!-- Top Keywords Card -->
+      <!-- Top Keywords -->
       <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-2.5 rounded-lg border border-purple-200 shadow-xs hover:shadow-sm transition-shadow">
         <div class="flex items-center justify-between">
           <div class="flex-1">
@@ -73,13 +97,13 @@
       </div>
     </div>
 
-    <!-- SECOND ROW -->
+    <!-- ROW 2 -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-4">
-      <!-- Active Projects Card -->
+      <!-- Active Projects -->
       <div class="lg:col-span-2 bg-white rounded-lg shadow-xs border border-gray-100 overflow-hidden">
         <div class="px-3 py-2 border-b border-gray-100 flex justify-between items-center">
           <h3 class="text-sm font-semibold text-gray-800">Active Projects</h3>
-          <a href="<?= site_url('admin/projects'); ?>" class="text-xs text-blue-600 hover:text-blue-800 font-medium">
+          <a href="<?= site_url('admin/projects'); ?>" class="text-xs text-blue-600 hover:text-blue-800 font-medium visited:text-blue-600">
             <span class="font-semibold">Create new</span>
           </a>
         </div>
@@ -93,7 +117,7 @@
               </div>
               <span class="px-1.5 py-0.5 bg-green-100 text-green-800 text-[11px] font-semibold rounded-full">Active</span>
             </div>
-            
+
             <div class="flex items-start justify-between p-2 hover:bg-gray-50 rounded-md">
               <div class="flex-1">
                 <h4 class="font-bold text-gray-800 text-xs mb-0.5">Cetak Yasin Bangkalan</h4>
@@ -102,7 +126,7 @@
               </div>
               <span class="px-1.5 py-0.5 bg-green-100 text-green-800 text-[11px] font-semibold rounded-full">Active</span>
             </div>
-            
+
             <div class="flex items-start justify-between p-2 hover:bg-gray-50 rounded-md">
               <div class="flex-1">
                 <h4 class="font-bold text-gray-800 text-xs mb-0.5">Kursus Bahasa Inggris</h4>
@@ -111,7 +135,7 @@
               </div>
               <span class="px-1.5 py-0.5 bg-blue-100 text-blue-800 text-[11px] font-semibold rounded-full">Planning</span>
             </div>
-            
+
             <div class="flex items-start justify-between p-2 hover:bg-gray-50 rounded-md">
               <div class="flex-1">
                 <h4 class="font-bold text-gray-800 text-xs mb-0.5">Seven Villa Kalkuang</h4>
@@ -124,7 +148,7 @@
         </div>
       </div>
 
-      <!-- Quick Actions Card (Simplified) -->
+      <!-- Quick Actions -->
       <div class="lg:col-span-1 bg-white rounded-lg shadow-xs border border-gray-100 overflow-hidden">
         <div class="px-3 py-2 border-b border-gray-100">
           <h3 class="text-sm font-semibold text-gray-800">Quick Actions</h3>
@@ -141,9 +165,11 @@
                 <span class="text-[11px] text-blue-600">Tambah anggota tim SEO</span>
               </div>
             </button>
-            
-            <!-- Post Announcement -->
-            <a href="<?= site_url('admin/announcements/create'); ?>" class="flex items-center p-2 bg-green-50 text-green-700 rounded-md hover:bg-green-100 transition text-xs">
+
+            <!-- Post Announcement -> OPEN MODAL -->
+            <button type="button"
+                    class="flex items-center p-2 bg-green-50 text-green-700 rounded-md hover:bg-green-100 transition text-xs w-full"
+                    @click="$store.ui.showAnnouncementModal = true; document.documentElement.classList.add('overflow-hidden'); document.body.classList.add('overflow-hidden');">
               <div class="flex items-center justify-center h-8 w-8 rounded-full bg-green-600 text-white mr-2">
                 <i class="fas fa-bullhorn text-sm"></i>
               </div>
@@ -151,384 +177,346 @@
                 <span class="font-semibold block">Post Announcement</span>
                 <span class="text-[11px] text-green-600">Broadcast messages</span>
               </div>
-            </a>
+            </button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- RECENT LEADS (updated with gradient header) -->
-    <!-- RECENT LEADS – versi fleksibel -->
-        <section class="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
-          <!-- Title bar -->
-          <div class="px-4 py-3 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-            <h3 class="text-sm font-semibold text-gray-800 flex items-center">
-              <i class="fas fa-list mr-2 text-blue-600 text-xs"></i>
-              Recent Leads
-            </h3>
-            <a href="<?= site_url('admin/leads'); ?>"
-              class="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 rounded-lg text-xs font-semibold inline-flex items-center gap-1">
-              <i class="fas fa-eye text-[10px]"></i> View All
-            </a>
-          </div>
+    <!-- RECENT LEADS -->
+    <section class="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+      <div class="px-4 py-3 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+        <h3 class="text-sm font-semibold text-gray-800 flex items-center">
+          <i class="fas fa-list mr-2 text-blue-600 text-xs"></i>
+          Recent Leads
+        </h3>
+        <a href="<?= site_url('admin/leads'); ?>" class="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 rounded-lg text-xs font-semibold inline-flex items-center gap-1 visited:text-white">
+          <i class="fas fa-eye text-[10px]"></i> View All
+        </a>
+      </div>
 
-          <div class="p-0">
-            <div class="overflow-x-auto">
-              <table class="min-w-full divide-y divide-gray-100">
-                <!-- HEADER gradasi -->
-                <thead class="bg-gradient-to-r from-blue-600 to-indigo-700">
-                  <tr>
-                    <th scope="col" class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">Tanggal</th>
-                    <th scope="col" class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">Pelanggan</th>
-                    <th scope="col" class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">Vendor</th>
-                    <th scope="col" class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">Service</th>
-                    <th scope="col" class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">Status</th>
-                    <th scope="col" class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">Source</th>
-                    <th scope="col" class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">Aksi</th>
-                  </tr>
-                </thead>
+      <div class="p-0">
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-100">
+            <thead class="bg-gradient-to-r from-blue-600 to-indigo-700">
+              <tr>
+                <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">Tanggal</th>
+                <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">Pelanggan</th>
+                <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">Vendor</th>
+                <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">Service</th>
+                <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">Status</th>
+                <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">Source</th>
+                <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">Aksi</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-100">
+              <?php
+                $rows = $recentLeads ?? [
+                  ['id_lead'=>'L-202508-001','id_vendor'=>'1','service'=>'1','nama'=>'Galih Natsir M.TI.','no_telp'=>'0721 5579 101','status'=>'new','source'=>'vendor_manual','chat_at'=>date('c')],
+                  ['id_lead'=>'L-202508-002','id_vendor'=>'1','service'=>'1','nama'=>'Gabriella Puspita','no_telp'=>'0856 450 477','status'=>'in_progress','source'=>'wa_inbox','chat_at'=>date('c', strtotime('-2 hours'))],
+                  ['id_lead'=>'L-202508-003','id_vendor'=>'1','service'=>'1','nama'=>'Devi Laksita M.Pd','no_telp'=>'(+62) 829 377 690','status'=>'close','source'=>'wa_outbox','chat_at'=>date('c', strtotime('-1 day -15 minutes'))],
+                ];
+                function statusChip($s){
+                  $s=strtolower(trim($s)); if($s==='in progress') $s='in_progress';
+                  $map=[
+                    'new'=>['Baru','bg-blue-100 text-blue-800'],
+                    'in_progress'=>['Proses','bg-amber-100 text-amber-700'],
+                    'close'=>['Tertutup','bg-emerald-100 text-emerald-700'],
+                    'closed'=>['Tertutup','bg-emerald-100 text-emerald-700'],
+                  ];
+                  return $map[$s] ?? [ucwords($s),'bg-gray-100 text-gray-700'];
+                }
+              ?>
+              <?php foreach($rows as $lead): ?>
+                <?php
+                  [$statusLabel,$statusClass]=statusChip($lead['status']??'new');
+                  $tsIso = isset($lead['chat_at']) ? (is_numeric($lead['chat_at'])?date('c',(int)$lead['chat_at']):$lead['chat_at']) : date('c');
+                  $lihatUrl = isset($lead['id_lead']) ? site_url('admin/leads/'.$lead['id_lead']) : '#';
+                ?>
+                <tr class="hover:bg-gray-50">
+                  <td class="px-4 py-4 whitespace-nowrap align-top">
+                    <div class="text-sm font-bold text-gray-900"><time class="js-date" data-ts="<?= esc($tsIso) ?>">—</time></div>
+                    <div class="text-xs text-gray-500 leading-tight"><time class="js-time" data-ts="<?= esc($tsIso) ?>">—</time></div>
+                  </td>
+                  <td class="px-4 py-4 whitespace-nowrap align-top">
+                    <div class="text-sm font-semibold text-gray-900"><?= esc($lead['nama'] ?? '-') ?></div>
+                    <div class="text-xs text-gray-500"><?= esc($lead['no_telp'] ?? ($lead['no_telp_cust'] ?? '-')) ?></div>
+                  </td>
+                  <td class="px-4 py-4 whitespace-nowrap align-top"><div class="text-sm text-gray-900"><?= esc($lead['id_vendor'] ?? '-') ?></div></td>
+                  <td class="px-4 py-4 whitespace-nowrap align-top"><div class="text-sm text-gray-900"><?= esc($lead['service'] ?? '-') ?></div></td>
+                  <td class="px-4 py-4 whitespace-nowrap align-top">
+                    <span class="px-2 py-1 rounded-full text-[12px] font-semibold inline-flex <?= $statusClass ?>"><?= esc($statusLabel) ?></span>
+                  </td>
+                  <td class="px-4 py-4 whitespace-nowrap align-top"><div class="text-sm text-gray-800"><?= esc($lead['source'] ?? '-') ?></div></td>
+                  <td class="px-4 py-4 whitespace-nowrap align-top">
+                    <a href="<?= $lihatUrl ?>" class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-xl shadow-sm visited:text-white">
+                      <i class="fa-regular fa-eye text-[11px]"></i> Lihat
+                    </a>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+              <?php if(empty($rows)): ?>
+                <tr><td colspan="7" class="px-4 py-10 text-center text-sm text-gray-500">Belum ada data leads.</td></tr>
+              <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
 
-                <tbody class="bg-white divide-y divide-gray-100">
-                  <?php
-                    // ====== DATA ======
-                    // Kirim dari controller sebagai $recentLeads.
-                    // Fallback demo agar layout tetap tampil bila belum ada data.
-                    $rows = $recentLeads ?? [
-                      [
-                        'id_lead'   => 'L-202508-001',
-                        'id_vendor' => '1',
-                        'service'   => '1',
-                        'nama'      => 'Galih Natsir M.TI.',
-                        'no_telp'   => '0721 5579 101',
-                        'status'    => 'new',
-                        'source'    => 'vendor_manual',
-                        'chat_at'   => date('c'), // ISO
-                      ],
-                      [
-                        'id_lead'   => 'L-202508-002',
-                        'id_vendor' => '1',
-                        'service'   => '1',
-                        'nama'      => 'Gabriella Puspita',
-                        'no_telp'   => '0856 450 477',
-                        'status'    => 'in_progress',
-                        'source'    => 'wa_inbox',
-                        'chat_at'   => date('c', strtotime('-2 hours')),
-                      ],
-                      [
-                        'id_lead'   => 'L-202508-003',
-                        'id_vendor' => '1',
-                        'service'   => '1',
-                        'nama'      => 'Devi Laksita M.Pd',
-                        'no_telp'   => '(+62) 829 377 690',
-                        'status'    => 'close',
-                        'source'    => 'wa_outbox',
-                        'chat_at'   => date('c', strtotime('-1 day -15 minutes')),
-                      ],
-                    ];
-
-                    // Helper status -> label + warna chip
-                    function statusChip($s) {
-                      $s = strtolower(trim($s));
-                      if ($s === 'in progress') $s = 'in_progress';
-                      $map = [
-                        'new'         => ['Baru',      'bg-blue-100 text-blue-700'],
-                        'in_progress' => ['Proses',    'bg-amber-100 text-amber-700'],
-                        'close'       => ['Tertutup',  'bg-emerald-100 text-emerald-700'],
-                        'closed'      => ['Tertutup',  'bg-emerald-100 text-emerald-700'],
-                      ];
-                      return $map[$s] ?? [ucwords($s), 'bg-gray-100 text-gray-700'];
-                    }
-                  ?>
-
-                  <?php foreach ($rows as $lead): ?>
-                    <?php
-                      [$statusLabel, $statusClass] = statusChip($lead['status'] ?? 'new');
-                      $ts = $lead['chat_at'] ?? time();
-                      $tsIso = is_numeric($ts) ? date('c', (int)$ts) : (string)$ts;
-                      $lihatUrl = isset($lead['id_lead']) ? site_url('admin/leads/'.$lead['id_lead']) : '#';
-                    ?>
-                    <tr class="hover:bg-gray-50">
-                      <!-- TANGGAL (2 baris: tanggal tebal, waktu kecil) -->
-                      <td class="px-4 py-4 whitespace-nowrap align-top">
-                        <div class="text-sm font-bold text-gray-900">
-                          <time class="js-date" data-ts="<?= esc($tsIso) ?>">—</time>
-                        </div>
-                        <div class="text-xs text-gray-500 leading-tight">
-                          <time class="js-time" data-ts="<?= esc($tsIso) ?>">—</time>
-                        </div>
-                      </td>
-
-                      <!-- PELANGGAN (nama tebal, telp kecil) -->
-                      <td class="px-4 py-4 whitespace-nowrap align-top">
-                        <div class="text-sm font-semibold text-gray-900"><?= esc($lead['nama'] ?? '-') ?></div>
-                        <div class="text-xs text-gray-500"><?= esc($lead['no_telp'] ?? ($lead['no_telp_cust'] ?? '-')) ?></div>
-                      </td>
-
-                      <!-- VENDOR -->
-                      <td class="px-4 py-4 whitespace-nowrap align-top">
-                        <div class="text-sm text-gray-900"><?= esc($lead['id_vendor'] ?? '-') ?></div>
-                      </td>
-
-                      <!-- SERVICE -->
-                      <td class="px-4 py-4 whitespace-nowrap align-top">
-                        <div class="text-sm text-gray-900"><?= esc($lead['service'] ?? '-') ?></div>
-                      </td>
-
-                      <!-- STATUS (chip) -->
-                      <td class="px-4 py-4 whitespace-nowrap align-top">
-                        <span class="px-2 py-1 rounded-full text-[12px] font-semibold inline-flex <?= $statusClass ?>">
-                          <?= esc($statusLabel) ?>
-                        </span>
-                      </td>
-
-                      <!-- SOURCE -->
-                      <td class="px-4 py-4 whitespace-nowrap align-top">
-                        <div class="text-sm text-gray-800"><?= esc($lead['source'] ?? '-') ?></div>
-                      </td>
-
-                      <!-- AKSI -->
-                      <td class="px-4 py-4 whitespace-nowrap align-top">
-                        <a href="<?= $lihatUrl ?>"
-                          class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-xl shadow-sm">
-                          <i class="fa-regular fa-eye text-[11px]"></i> Lihat
-                        </a>
-                      </td>
-                    </tr>
-                  <?php endforeach; ?>
-
-                  <?php if (empty($rows)): ?>
-                    <tr>
-                      <td colspan="7" class="px-4 py-10 text-center text-sm text-gray-500">
-                        Belum ada data leads.
-                      </td>
-                    </tr>
-                  <?php endif; ?>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <!-- Waktu real-time (tanggal & jam) -->
-        <script>
-          (function () {
-            const fmtDate = new Intl.DateTimeFormat('id-ID', { day:'2-digit', month:'short', year:'numeric' });
-            const fmtTime = new Intl.DateTimeFormat('id-ID', { hour:'2-digit', minute:'2-digit' });
-
-            function render() {
-              document.querySelectorAll('.js-date').forEach(el => {
-                const ts = el.getAttribute('data-ts');
-                const d = new Date(ts);
-                el.textContent = isNaN(d) ? '—' : fmtDate.format(d);
-              });
-              document.querySelectorAll('.js-time').forEach(el => {
-                const ts = el.getAttribute('data-ts');
-                const d = new Date(ts);
-                el.textContent = isNaN(d) ? '—' : fmtTime.format(d);
-              });
-            }
-            render();
-            // Jika ingin waktu bergerak per menit, aktifkan interval di bawah:
-            setInterval(render, 1000 * 30); // update tiap 30 detik (hemat)
-          })();
-        </script>
+    <!-- Waktu real-time -->
+    <script>
+      (function(){
+        const fmtDate = new Intl.DateTimeFormat('id-ID',{day:'2-digit',month:'short',year:'numeric'});
+        const fmtTime = new Intl.DateTimeFormat('id-ID',{hour:'2-digit',minute:'2-digit'});
+        function render(){
+          document.querySelectorAll('.js-date').forEach(el=>{const d=new Date(el.dataset.ts);el.textContent=isNaN(d)?'—':fmtDate.format(d);});
+          document.querySelectorAll('.js-time').forEach(el=>{const d=new Date(el.dataset.ts);el.textContent=isNaN(d)?'—':fmtTime.format(d);});
+        }
+        render();
+        setInterval(render, 30000);
+      })();
+    </script>
   </main>
 </div>
 
-<!-- Modal Form Tim SEO -->
-<div id="seoTeamModal" class="modal-overlay" onclick="if(event.target === this) closeSeoTeamModal()">
-  <div class="profile-modal">
-    <div class="modal-header">
-      <h3 class="modal-title">Tambah Tim SEO Baru</h3>
-      <button class="modal-close" onclick="closeSeoTeamModal()">
-        <i class="fa-solid fa-times"></i>
+<!-- ======================== MODAL: Tambah Announcement ======================== -->
+<style>
+  /* Scoped ke modal announcement saja */
+  .modal-overlay-ann{ position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center; }
+  .backdrop-ann{ position:absolute; inset:0; background:rgba(0,0,0,.55); }
+  .modal-shell{ position:relative; z-index:1; width:100%; max-width:720px; margin:0 12px; background:#fff; border-radius:14px; box-shadow:0 20px 45px rgba(0,0,0,.28); display:flex; flex-direction:column; max-height:calc(100vh - 64px); overflow:hidden; }
+  .modal-header-ann{ background:#1e40af; color:#fff; padding:14px 18px; display:flex; align-items:center; justify-content:space-between; }
+  .modal-title-ann{ font-weight:700; font-size:20px; }
+  .modal-close-ann{ color:#ffffffcc; padding:4px 6px; border-radius:8px; }
+  .modal-close-ann:hover{ color:#fff; background:rgba(255,255,255,.15); }
+  .modal-body-ann{ padding:16px; overflow:auto; flex:1 1 auto; min-height:0; scrollbar-gutter:stable both-edges; }
+  .modal-footer-ann{ padding:14px 16px; background:#f8fafc; border-top:1px solid #eef2f7; display:flex; justify-content:flex-end; gap:10px; }
+  .scroll-thin{ scrollbar-width:thin; scrollbar-color:rgba(148,163,184,.9) transparent; }
+  .scroll-thin::-webkit-scrollbar{ width:6px; height:6px; }
+  .scroll-thin::-webkit-scrollbar-track{ background:transparent; }
+  .scroll-thin::-webkit-scrollbar-thumb{ background:rgba(148,163,184,.9); border-radius:9999px; }
+  .scroll-thin::-webkit-scrollbar-thumb:hover{ background:rgba(100,116,139,1); }
+  @media (max-width:640px){ .modal-shell{ max-width:96vw; margin:0 8px; border-radius:12px; } }
+</style>
+
+<script>
+  // Kunci buka/tutup scroll halaman saat modal aktif
+  function lockPageScroll(lock){
+    const cls='overflow-hidden';
+    document.documentElement.classList.toggle(cls, !!lock);
+    document.body.classList.toggle(cls, !!lock);
+  }
+  // Reset saat navigasi
+  (function(){
+    function reset(){
+      try{ if (window.Alpine?.store('ui')) Alpine.store('ui').showAnnouncementModal = false; }catch(e){}
+      lockPageScroll(false);
+    }
+    document.addEventListener('DOMContentLoaded', reset);
+    document.addEventListener('turbo:load', reset);
+    document.addEventListener('turbo:before-cache', reset);
+  })();
+</script>
+
+<div class="modal-overlay-ann"
+     x-cloak
+     x-show="$store.ui.showAnnouncementModal"
+     x-transition.opacity
+     aria-modal="true" role="dialog"
+     @keydown.escape.window="$store.ui.showAnnouncementModal=false; lockPageScroll(false);"
+     x-init="$watch(() => $store.ui.showAnnouncementModal, v => lockPageScroll(v))"
+>
+  <div class="backdrop-ann"
+       @click="$store.ui.showAnnouncementModal=false; lockPageScroll(false);"></div>
+
+  <div class="modal-shell"
+       @click.outside="$store.ui.showAnnouncementModal=false; lockPageScroll(false);">
+    <div class="modal-header-ann">
+      <div class="modal-title-ann">Tambah Announcement Baru</div>
+      <button type="button" class="modal-close-ann"
+              @click="$store.ui.showAnnouncementModal=false; lockPageScroll(false);"
+              aria-label="Tutup">
+        <i class="fa-solid fa-xmark text-xl"></i>
       </button>
     </div>
-    
-    <div class="p-6 space-y-4">
-      <form id="seoTeamForm" class="space-y-4">
-        <!-- Nama Anggota -->
-        <div class="space-y-2">
-          <label class="block text-sm font-medium text-gray-700">
-            Nama Anggota <span class="text-red-500">*</span>
-          </label>
-          <div class="relative">
-            <span class="absolute left-3 top-3 text-gray-400">
-              <i class="fas fa-user"></i>
-            </span>
-            <input 
-              type="text" 
-              name="nama" 
-              class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" 
-              placeholder="Masukkan nama lengkap"
-              required
-            >
-          </div>
+
+    <div class="modal-body-ann scroll-thin">
+      <form id="announcementForm" method="post" action="<?= site_url('admin/announcements/store'); ?>">
+        <?= csrf_field() ?>
+
+        <label class="block text-sm font-semibold text-gray-700 mb-1">Judul Announcement <span class="text-red-500">*</span></label>
+        <div class="relative mb-4">
+          <span class="absolute left-3 top-3 text-gray-400"><i class="fa-solid fa-heading"></i></span>
+          <input type="text" name="title" required
+                 class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                 placeholder="Masukkan judul announcement">
         </div>
-        
-        <!-- Email -->
-        <div class="space-y-2">
-          <label class="block text-sm font-medium text-gray-700">
-            Email <span class="text-red-500">*</span>
-          </label>
-          <div class="relative">
-            <span class="absolute left-3 top-3 text-gray-400">
-              <i class="fas fa-envelope"></i>
-            </span>
-            <input 
-              type="email" 
-              name="email" 
-              class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" 
-              placeholder="email@contoh.com"
-              required
-            >
-          </div>
+
+        <label class="block text-sm font-semibold text-gray-700 mb-1">Konten <span class="text-red-500">*</span></label>
+        <div class="relative mb-4">
+          <span class="absolute left-3 top-3 text-gray-400"><i class="fa-solid fa-align-left"></i></span>
+          <textarea name="content" required rows="6"
+                    class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Masukkan konten announcement"></textarea>
         </div>
-        
-        <!-- No Telepon -->
-        <div class="space-y-2">
-          <label class="block text-sm font-medium text-gray-700">
-            No Telepon <span class="text-red-500">*</span>
-          </label>
-          <div class="relative">
-            <span class="absolute left-3 top-3 text-gray-400">
-              <i class="fas fa-phone"></i>
-            </span>
-            <input 
-              type="tel" 
-              name="telepon" 
-              class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" 
-              placeholder="0812-3456-7890"
-              required
-            >
-          </div>
+
+        <label class="block text-sm font-semibold text-gray-700 mb-1">Target Audience <span class="text-red-500">*</span></label>
+        <div class="relative mb-4">
+          <span class="absolute left-3 top-3 text-gray-400"><i class="fa-solid fa-users"></i></span>
+          <select name="audience" required
+                  class="w-full pl-10 pr-8 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none">
+            <option value="all" selected>Semua Pengguna</option>
+            <option value="vendor">Tim SEO</option>
+            <option value="user">Vendor</option>
+          </select>
+          <span class="absolute right-3 top-3 text-gray-400 pointer-events-none">
+            <i class="fa-solid fa-chevron-down"></i>
+          </span>
         </div>
-        
-        <!-- Password -->
-        <div class="space-y-2">
-          <label class="block text-sm font-medium text-gray-700">
-            Password <span class="text-red-500">*</span>
-          </label>
-          <div class="relative">
-            <span class="absolute left-3 top-3 text-gray-400">
-              <i class="fas fa-lock"></i>
-            </span>
-            <input 
-              type="password" 
-              name="password" 
-              id="password"
-              class="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" 
-              placeholder="Minimal 8 karakter"
-              required
-              minlength="8"
-            >
-            <button type="button" onclick="togglePassword()" class="absolute right-3 top-3 text-gray-400 hover:text-gray-600">
-              <i class="fas fa-eye" id="passwordIcon"></i>
-            </button>
-          </div>
-          <p class="text-xs text-gray-500">Gunakan kombinasi huruf, angka, dan simbol</p>
-        </div>
+
+        <label class="inline-flex items-center gap-2 mb-2">
+          <input type="checkbox" name="is_active" value="1" checked
+                 class="w-4 h-4 text-blue-600 border-gray-300 rounded">
+          <span class="text-sm text-gray-700">Aktifkan announcement</span>
+        </label>
       </form>
     </div>
-    
-    <div class="modal-footer">
-      <button class="btn-secondary" onclick="closeSeoTeamModal()">
+
+    <div class="modal-footer-ann">
+      <button type="button"
+              class="px-4 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-gray-700"
+              @click="$store.ui.showAnnouncementModal=false; lockPageScroll(false);">
         Batal
       </button>
-      <button class="btn-success" onclick="document.getElementById('seoTeamForm').submit()">
-        Simpan Anggota
+      <button type="submit" form="announcementForm"
+              class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white font-semibold">
+        Simpan Announcement
       </button>
     </div>
   </div>
 </div>
 
+<!-- ======================== MODAL FORM TIM SEO (DIPERBAIKI) ======================== -->
+<style>
+  .seo-modal-overlay{ position:fixed; inset:0; z-index:60; display:none; align-items:center; justify-content:center; }
+  .seo-modal-overlay.active{ display:flex; }
+  .seo-modal-backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.55); }
+  .seo-modal-shell{
+    position:relative; z-index:1; width:100%; max-width:600px; margin:0 12px;
+    background:#fff; border-radius:14px; box-shadow:0 24px 60px rgba(0,0,0,.28);
+    display:flex; flex-direction:column; 
+    /* lebih pendek */
+    max-height:520px; 
+    overflow:hidden;
+  }
+  .seo-modal-header{
+    background:#1e40af; color:#fff; padding:14px 18px; display:flex; align-items:center; justify-content:space-between;
+  }
+  .seo-modal-title{ font-weight:800; font-size:18px; }
+  .seo-modal-x{ display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:9999px; color:#dbeafe; }
+  .seo-modal-x:hover{ background:rgba(255,255,255,.15); color:#fff; }
+  .seo-modal-body{ padding:16px; overflow:auto; flex:1 1 auto; }
+  .seo-modal-footer{ padding:12px 16px; background:#f8fafc; border-top:1px solid #eef2f7; display:flex; align-items:center; justify-content:space-between; }
+  .seo-input:focus{ outline:0; box-shadow:0 0 0 2px rgba(37,99,235,.4); border-color:#3b82f6; }
+</style>
+
+<div id="seoTeamModal" class="seo-modal-overlay" onclick="if(event.target===this) closeSeoTeamModal()">
+  <div class="seo-modal-backdrop"></div>
+
+  <div class="seo-modal-shell" role="dialog" aria-modal="true" aria-labelledby="seoModalTitle">
+    <!-- Header -->
+    <div class="seo-modal-header">
+      <h3 id="seoModalTitle" class="seo-modal-title">Tambah Tim SEO Baru</h3>
+      <button class="seo-modal-x" type="button" aria-label="Tutup" onclick="closeSeoTeamModal()">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="seo-modal-body">
+      <form id="seoTeamForm" class="space-y-3" autocomplete="off">
+        <!-- Nama -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Nama Anggota <span class="text-red-500">*</span></label>
+          <div class="relative">
+            <span class="absolute left-3 top-3 text-gray-400"><i class="fas fa-user"></i></span>
+            <input type="text" name="nama" class="seo-input w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg transition" placeholder="Masukkan nama lengkap" required>
+          </div>
+        </div>
+
+        <!-- Email -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Email <span class="text-red-500">*</span></label>
+          <div class="relative">
+            <span class="absolute left-3 top-3 text-gray-400"><i class="fas fa-envelope"></i></span>
+            <input type="email" name="email" class="seo-input w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg transition" placeholder="email@contoh.com" required>
+          </div>
+        </div>
+
+        <!-- Telepon -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700">No Telepon <span class="text-red-500">*</span></label>
+          <div class="relative">
+            <span class="absolute left-3 top-3 text-gray-400"><i class="fas fa-phone"></i></span>
+            <input type="tel" name="telepon" class="seo-input w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg transition" placeholder="0812-3456-7890" required>
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Password <span class="text-red-500">*</span></label>
+          <div class="relative">
+            <span class="absolute left-3 top-3 text-gray-400"><i class="fas fa-lock"></i></span>
+            <input type="password" name="password" id="password" class="seo-input w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg transition" placeholder="Minimal 8 karakter" minlength="8" required>
+            <button type="button" onclick="togglePassword()" class="absolute right-3 top-3 text-gray-400 hover:text-gray-600">
+              <i class="fas fa-eye" id="passwordIcon"></i>
+            </button>
+          </div>
+          <p class="text-xs text-gray-500 mt-1">Gunakan kombinasi huruf, angka, dan simbol</p>
+        </div>
+      </form>
+    </div>
+
+    <!-- Footer -->
+    <div class="seo-modal-footer">
+      <button type="button" class="px-3 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 text-sm" onclick="closeSeoTeamModal()">Batal</button>
+      <!-- tombol hijau -->
+      <button type="button" class="btn-success px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-semibold" onclick="document.getElementById('seoTeamForm').requestSubmit()">Simpan Anggota</button>
+    </div>
+  </div>
+</div>
+
 <script>
-// ===== Real-time render tanggal & waktu chat pada tabel leads =====
-(function () {
-  const fmt = new Intl.DateTimeFormat('id-ID', {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit'
-  });
-
-  function renderTimes() {
-    document.querySelectorAll('.js-time').forEach(el => {
-      const ts = el.getAttribute('data-ts');
-      let d = ts ? new Date(ts) : new Date();
-      if (isNaN(d.getTime())) d = new Date();
-      el.textContent = fmt.format(d);
-      el.setAttribute('title', d.toISOString());
-    });
-  }
-
-  renderTimes();
-  setInterval(renderTimes, 1000);
-})();
-
-// Toggle password visibility
-function togglePassword() {
-  const passwordInput = document.getElementById('password');
-  const passwordIcon = document.getElementById('passwordIcon');
-  
-  if (passwordInput.type === 'password') {
-    passwordInput.type = 'text';
-    passwordIcon.classList.remove('fa-eye');
-    passwordIcon.classList.add('fa-eye-slash');
-  } else {
-    passwordInput.type = 'password';
-    passwordIcon.classList.remove('fa-eye-slash');
-    passwordIcon.classList.add('fa-eye');
-  }
+function togglePassword(){
+  const i=document.getElementById('password'); const ic=document.getElementById('passwordIcon');
+  if(i.type==='password'){ i.type='text'; ic.classList.replace('fa-eye','fa-eye-slash'); }
+  else { i.type='password'; ic.classList.replace('fa-eye-slash','fa-eye'); }
 }
-
-// Modal open/close
-function openSeoTeamModal() {
-  const modal = document.getElementById('seoTeamModal');
-  modal.classList.add('active');
-  document.body.style.overflow = 'hidden';
+function openSeoTeamModal(){
+  document.getElementById('seoTeamModal').classList.add('active');
+  document.body.style.overflow='hidden';
 }
-function closeSeoTeamModal() {
-  const modal = document.getElementById('seoTeamModal');
-  modal.classList.remove('active');
-  document.body.style.overflow = '';
-  document.getElementById('seoTeamForm').reset();
+function closeSeoTeamModal(){
+  const m=document.getElementById('seoTeamModal');
+  m.classList.remove('active');
+  document.body.style.overflow='';
+  const f=document.getElementById('seoTeamForm'); if(f){ f.reset(); }
 }
-
-// Simulasi submit form
-document.getElementById('seoTeamForm').addEventListener('submit', function(e) {
+document.getElementById('seoTeamForm').addEventListener('submit',function(e){
   e.preventDefault();
-  const submitBtn = this.querySelector('button[type="submit"]');
-  const originalText = submitBtn ? submitBtn.innerHTML : 'Simpan Anggota';
-  if (submitBtn) {
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Menyimpan...';
-    submitBtn.disabled = true;
-  }
-  setTimeout(() => {
-    alert('Data tim SEO berhasil disimpan!');
-    if (submitBtn) {
-      submitBtn.innerHTML = originalText;
-      submitBtn.disabled = false;
-    }
-    closeSeoTeamModal();
-  }, 1500);
+  const btn=document.querySelector('#seoTeamModal .btn-success'); const t=btn.innerHTML;
+  btn.innerHTML='<i class="fas fa-spinner fa-spin mr-2"></i> Menyimpan...'; btn.disabled=true;
+  // simulasi submit
+  setTimeout(()=>{ alert('Data tim SEO berhasil disimpan!'); btn.innerHTML=t; btn.disabled=false; closeSeoTeamModal(); },1200);
 });
-
-// Validasi sederhana
-document.querySelectorAll('#seoTeamForm input, #seoTeamForm select').forEach(input => {
-  input.addEventListener('blur', function() {
-    if (!this.value && this.hasAttribute('required')) {
-      this.classList.add('border-red-500');
-    } else {
-      this.classList.remove('border-red-500');
-    }
+document.querySelectorAll('#seoTeamForm input').forEach(el=>{
+  el.addEventListener('blur',function(){
+    if(!this.value && this.hasAttribute('required')) this.classList.add('border-red-500');
+    else this.classList.remove('border-red-500');
   });
 });
-
-// ESC untuk tutup modal
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') {
-    closeSeoTeamModal();
-  }
-});
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeSeoTeamModal(); });
 </script>
 
 <?= $this->include('admin/layouts/footer'); ?>
