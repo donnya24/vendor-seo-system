@@ -98,8 +98,17 @@ $routes->group('vendoruser', ['filter' => ['session', 'group:vendor']], static f
 
     // Services
     $routes->get('services',                'Vendoruser\Services::index');
-    $routes->post('services/attach',        'Vendoruser\Services::attach');
-    $routes->post('services/(:num)/detach', 'Vendoruser\Services::detach/$1');
+    $routes->get('services/create',         'Vendoruser\Services::create');
+    $routes->post('services/store',         'Vendoruser\Services::store');
+    $routes->get('services/(:num)/edit',    'Vendoruser\Services::edit/$1');
+    $routes->post('services/(:num)/update', 'Vendoruser\Services::update/$1');
+    $routes->post('services/(:num)/delete', 'Vendoruser\Services::delete/$1');
+
+    // areas
+    // Areas (Vendoruser)
+    $routes->get('areas',                'Vendoruser\Areas::index');
+    $routes->post('areas/attach',        'Vendoruser\Areas::attach');
+    $routes->post('areas/detach/(:num)', 'Vendoruser\Areas::detach/$1');
 
     // Products
     $routes->get('products',                'Vendoruser\Products::index');
@@ -110,9 +119,11 @@ $routes->group('vendoruser', ['filter' => ['session', 'group:vendor']], static f
     $routes->post('products/(:num)/delete', 'Vendoruser\Products::delete/$1');
 
     // Leads
+ // Leads
     $routes->get('leads',                'Vendoruser\Leads::index');
     $routes->get('leads/create',         'Vendoruser\Leads::create');
     $routes->post('leads/store',         'Vendoruser\Leads::store');
+    $routes->get('leads/(:num)',         'Vendoruser\Leads::show/$1');  // TAMBAHKAN INI
     $routes->get('leads/(:num)/edit',    'Vendoruser\Leads::edit/$1');
     $routes->post('leads/(:num)/update', 'Vendoruser\Leads::update/$1');
     $routes->post('leads/(:num)/delete', 'Vendoruser\Leads::delete/$1');
