@@ -19,6 +19,25 @@ $toJson = static fn($x)=> json_encode($x, JSON_UNESCAPED_UNICODE|JSON_HEX_TAG|JS
 // flag dari controller
 $canUpload = isset($canUpload) ? (bool)$canUpload : (($vp['status'] ?? '') === 'verified');
 ?>
+<!-- FLASH MESSAGE -->
+<?php if(session()->getFlashdata('success') || session()->getFlashdata('error')): ?>
+  <div x-data="{show:true}" x-show="show" 
+       x-transition.duration.300ms
+       class="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md">
+    <?php if(session()->getFlashdata('success')): ?>
+      <div class="bg-green-500 text-white px-4 py-3 rounded-lg shadow-lg flex items-center justify-between">
+        <span><?= session()->getFlashdata('success') ?></span>
+        <button @click="show=false" class="ml-2 text-white hover:text-gray-200">&times;</button>
+      </div>
+    <?php endif; ?>
+    <?php if(session()->getFlashdata('error')): ?>
+      <div class="bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg flex items-center justify-between">
+        <span><?= session()->getFlashdata('error') ?></span>
+        <button @click="show=false" class="ml-2 text-white hover:text-gray-200">&times;</button>
+      </div>
+    <?php endif; ?>
+  </div>
+<?php endif; ?>
 
 <!-- Main -->
 <div class="flex-1 flex flex-col overflow-hidden" :class="{'md:ml-64': $store.ui.sidebar}">
@@ -192,122 +211,152 @@ $canUpload = isset($canUpload) ? (bool)$canUpload : (($vp['status'] ?? '') === '
       </div>
     </div>
 
-    <!-- TOP KEYWORDS + QUICK ACTIONS -->
-    <div class="flex flex-col lg:flex-row gap-6 mb-6 mt-4">
-      <!-- Top Keywords -->
-      <div class="bg-white rounded-lg shadow hover:shadow-lg hover:scale-[1.01] overflow-hidden w-full max-w-md transition-transform duration-200">
-        <div class="px-4 py-4 border-b border-gray-200"><h3 class="text-lg font-medium text-gray-900"><i class="fas fa-chart-line mr-2 text-blue-600"></i>Top Keywords</h3></div>
-        <div class="divide-y divide-gray-200 max-h-80 overflow-y-auto">
-          <template x-if="$store.app.topKeywords.length === 0">
-            <div class="p-4 text-center text-sm text-gray-500">Belum ada keyword.</div>
-          </template>
-          <template x-for="k in $store.app.topKeywords" :key="k.id">
-            <div class="px-4 py-3 hover:bg-gray-50">
-              <div class="flex items-start justify-between">
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-gray-900 truncate" x-text="k.text || 'Unknown'"></p>
-                  <p class="text-xs text-gray-500 truncate" x-text="k.project || 'Unknown project'"></p>
-                </div>
-                <div class="ml-2 flex-shrink-0 flex flex-col items-end">
-                  <span class="inline-flex items-center justify-center h-7 w-7 rounded-full text-xs font-semibold"
-                        :class="{
-                          'bg-green-100 text-green-700': (k.position || 999) <= 5,
-                          'bg-yellow-100 text-yellow-700': (k.position || 999) > 5 && (k.position || 999) <= 10,
-                          'bg-gray-100 text-gray-700': (k.position || 999) > 10
-                        }"
-                        x-text="k.position || '-'"></span>
-                  <div class="text-xs mt-1" :class="(k.change || 0) >= 0 ? 'text-green-600' : 'text-red-600'">
-                    <template x-if="k.change !== null && k.change !== undefined">
-                      <span><i class="fas" :class="(k.change || 0) >= 0 ? 'fa-arrow-up' : 'fa-arrow-down'"></i> <span x-text="Math.abs(k.change || 0)"></span></span>
-                    </template>
-                    <template x-if="k.change === null || k.change === undefined"><span>-</span></template>
-                  </div>
-                </div>
+<!-- TOP KEYWORDS + QUICK ACTIONS (kartu lebih kecil & rata kiri) -->
+<div class="flex flex-wrap gap-6 mb-6 items-start justify-start">
+  <!-- Top Keywords -->
+  <div class="w-full lg:w-96 xl:w-[26rem] flex-none bg-white rounded-lg shadow hover:shadow-lg overflow-hidden h-full flex flex-col transition-transform duration-200">
+    <div class="px-4 py-4 border-b border-gray-200">
+      <h3 class="text-lg font-medium text-gray-900">
+        <i class="fas fa-chart-line mr-2 text-blue-600"></i>Top Keywords
+      </h3>
+    </div>
+    <div class="divide-y divide-gray-200 max-h-80 overflow-y-auto">
+      <template x-if="$store.app.topKeywords.length === 0">
+        <div class="p-4 text-center text-sm text-gray-500">Belum ada keyword.</div>
+      </template>
+      <template x-for="k in $store.app.topKeywords" :key="k.id">
+        <div class="px-4 py-3 hover:bg-gray-50">
+          <div class="flex items-start justify-between">
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-gray-900 truncate" x-text="k.text || 'Unknown'"></p>
+              <p class="text-xs text-gray-500 truncate" x-text="k.project || 'Unknown project'"></p>
+            </div>
+            <div class="ml-2 flex-shrink-0 flex flex-col items-end">
+              <span class="inline-flex items-center justify-center h-7 w-7 rounded-full text-xs font-semibold"
+                    :class="{
+                      'bg-green-100 text-green-700': (k.position || 999) <= 5,
+                      'bg-yellow-100 text-yellow-700': (k.position || 999) > 5 && (k.position || 999) <= 10,
+                      'bg-gray-100 text-gray-700': (k.position || 999) > 10
+                    }"
+                    x-text="k.position || '-'"></span>
+              <div class="text-xs mt-1" :class="(k.change || 0) >= 0 ? 'text-green-600' : 'text-red-600'">
+                <template x-if="k.change !== null && k.change !== undefined">
+                  <span><i class="fas" :class="(k.change || 0) >= 0 ? 'fa-arrow-up' : 'fa-arrow-down'"></i> <span x-text="Math.abs(k.change || 0)"></span></span>
+                </template>
+                <template x-if="k.change === null || k.change === undefined"><span>-</span></template>
               </div>
             </div>
-          </template>
+          </div>
         </div>
-      </div>
-
-      <!-- Quick Actions -->
-      <div class="bg-white rounded-lg shadow hover:shadow-lg hover:scale-[1.01] overflow-hidden w-full max-w-md transition-transform duration-200">
-        <div class="px-4 py-4 border-b border-gray-200"><h3 class="text-lg font-medium text-gray-900">Quick Actions</h3></div>
-        <div class="p-4 space-y-3 flex flex-col items-start">
-          <?php if ($canUpload): ?>
-            <a href="<?= site_url('vendoruser/products/create') ?>" class="w-full inline-flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
-              <i class="fas fa-box mr-2"></i> Tambah Produk
-            </a>
-            <a href="<?= site_url('vendoruser/services/create') ?>" class="w-full inline-flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
-              <i class="fas fa-toolbox mr-2"></i> Tambah Layanan
-            </a>
-          <?php else: ?>
-            <button type="button" onclick="$store.ui.modal='profileEdit'"
-                    class="w-full inline-flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium text-white bg-gray-400 cursor-not-allowed opacity-70">
-              <i class="fas fa-box mr-2"></i> Tambah Produk (butuh verifikasi)
-            </button>
-            <button type="button" onclick="$store.ui.modal='profileEdit'"
-                    class="w-full inline-flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium text-white bg-gray-400 cursor-not-allowed opacity-70">
-              <i class="fas fa-toolbox mr-2"></i> Tambah Layanan (butuh verifikasi)
-            </button>
-          <?php endif; ?>
-
-          <a href="<?= site_url('vendoruser/leads/create') ?>"
-             class="w-full inline-flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium text-white bg-green-600 hover:bg-green-700">
-            <i class="fas fa-bullseye mr-2"></i> Input Lead
-          </a>
-        </div>
-      </div>
+      </template>
     </div>
+  </div>
 
-    <!-- Leads Table -->
-    <div class="bg-white rounded-lg shadow overflow-hidden">
-      <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-        <h3 class="text-lg font-medium text-gray-900"><i class="fas fa-bullseye mr-2 text-blue-600"></i>Leads Terbaru</h3>
-        <a href="<?= site_url('vendoruser/leads') ?>" class="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center">
-          <i class="fas fa-eye mr-1"></i> Lihat Semua
+  <!-- Quick Actions -->
+  <div class="w-full lg:w-96 xl:w-[26rem] flex-none bg-white rounded-lg shadow hover:shadow-lg overflow-hidden h-full flex flex-col transition-transform duration-200">
+    <div class="px-4 py-4 border-b border-gray-200">
+      <h3 class="text-lg font-medium text-gray-900">Quick Actions</h3>
+    </div>
+    <div class="p-4 space-y-3 flex-1 flex flex-col justify-start">
+      <?php if ($canUpload): ?>
+        <a href="<?= site_url('vendoruser/products/create') ?>"
+           class="w-full inline-flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+          <i class="fas fa-box mr-2"></i> Tambah Produk
         </a>
+        <a href="<?= site_url('vendoruser/services/create') ?>"
+           class="w-full inline-flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
+          <i class="fas fa-toolbox mr-2"></i> Tambah Layanan
+        </a>
+      <?php else: ?>
+        <button type="button" @click="$store.ui.modal='profileEdit'"
+                class="w-full inline-flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium text-white bg-gray-400 cursor-not-allowed">
+          <i class="fas fa-box mr-2"></i> Tambah Produk (butuh verifikasi)
+        </button>
+        <button type="button" @click="$store.ui.modal='profileEdit'"
+                class="w-full inline-flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium text-white bg-gray-400 cursor-not-allowed">
+          <i class="fas fa-toolbox mr-2"></i> Tambah Layanan (butuh verifikasi)
+        </button>
+      <?php endif; ?>
+
+      <a href="<?= site_url('vendoruser/leads/create') ?>"
+         class="w-full inline-flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium text-white bg-green-600 hover:bg-green-700">
+        <i class="fas fa-bullseye mr-2"></i> Input Lead
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Leads Table -->
+<div class="bg-white rounded-lg shadow overflow-hidden">
+  <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+    <h3 class="text-lg font-medium text-gray-900">
+      <i class="fas fa-bullseye mr-2 text-blue-600"></i>Leads Terbaru
+    </h3>
+    <a href="<?= site_url('vendoruser/leads') ?>"
+       class="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center">
+      <i class="fas fa-eye mr-1"></i> Lihat Semua
+    </a>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Project</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Masuk</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Diproses</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ditolak</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Closing</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Update</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
+        </tr>
+      </thead>
+      <tbody class="bg-white divide-y divide-gray-200">
+        <?php if (empty($recentLeads)): ?>
+          <tr>
+            <td colspan="9" class="px-6 py-4 text-center text-sm text-gray-500">Belum ada lead.</td>
+          </tr>
+        <?php else: foreach ($recentLeads as $lead): ?>
+          <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4"><?= esc($lead['id']) ?></td>
+            <td class="px-6 py-4"><?= esc($lead['project']) ?></td>
+            <td class="px-6 py-4"><?= esc($lead['masuk']) ?></td>
+            <td class="px-6 py-4"><?= esc($lead['diproses']) ?></td>
+            <td class="px-6 py-4"><?= esc($lead['ditolak']) ?></td>
+            <td class="px-6 py-4"><?= esc($lead['closing']) ?></td>
+            <td class="px-6 py-4"><?= esc($lead['tanggal']) ?></td>
+            <td class="px-6 py-4"><?= esc($lead['updated']) ?></td>
+            <td class="px-6 py-4 text-sm">
+              <button type="button" onclick="showLeadDetail(<?= $lead['id'] ?>)" 
+                      class="text-blue-600 hover:text-blue-800">Detail</button>
+            </td>
+          </tr>
+        <?php endforeach; endif; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal untuk Detail Lead -->
+<div id="leadDetailModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+  <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+    <div class="p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-xl font-semibold">Detail Laporan Leads</h3>
+        <button type="button" onclick="closeLeadDetailModal()" class="text-gray-500 hover:text-gray-700">
+          <i class="fas fa-times"></i>
+        </button>
       </div>
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Project</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">No. Telepon</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Source</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <?php if (empty($recentLeads)): ?>
-              <tr><td colspan="8" class="px-6 py-4 text-center text-sm text-gray-500">Belum ada lead.</td></tr>
-            <?php else: foreach ($recentLeads as $lead): ?>
-              <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4"><?= esc($lead['id']) ?></td>
-                <td class="px-6 py-4"><?= esc($lead['project']) ?></td>
-                <td class="px-6 py-4"><?= esc($lead['customer']) ?></td>
-                <td class="px-6 py-4"><?= esc($lead['phone']) ?></td>
-                <td class="px-6 py-4"><?= esc($lead['source']) ?></td>
-                <td class="px-6 py-4"><?= esc($lead['date']) ?></td>
-                <td class="px-6 py-4">
-                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                    <?= $lead['status']=='in_progress'?'bg-blue-100 text-blue-800':($lead['status']=='closed'?'bg-green-100 text-green-800':'bg-yellow-100 text-yellow-800') ?>">
-                    <?= $lead['status']=='in_progress'?'Diproses':($lead['status']=='closed'?'Closed':'Baru') ?>
-                  </span>
-                </td>
-                <td class="px-6 py-4 text-sm">
-                  <a href="<?= site_url('vendoruser/leads/'.$lead['id']) ?>" class="text-blue-600 hover:text-blue-800">Kelola</a>
-                </td>
-              </tr>
-            <?php endforeach; endif; ?>
-          </tbody>
-        </table>
+      <div id="leadDetailContent" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+        <!-- Konten akan diisi oleh JavaScript -->
+      </div>
+      <div class="mt-6 flex justify-end space-x-2">
+        <button type="button" onclick="closeLeadDetailModal()" 
+                class="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300">Tutup</button>
       </div>
     </div>
-  </main>
+  </div>
 </div>
 
 <!-- Include modal views (pastikan file ini ada) -->
@@ -326,6 +375,64 @@ function markNotifAsRead(){
     }
   });
 }
+
+// Fungsi untuk menampilkan detail lead dalam modal
+function showLeadDetail(leadId) {
+  // Tampilkan loading
+  document.getElementById('leadDetailContent').innerHTML = `
+    <div class="col-span-2 flex justify-center items-center py-8">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+    </div>
+  `;
+  
+  // Tampilkan modal
+  document.getElementById('leadDetailModal').classList.remove('hidden');
+  
+  // Ambil data lead via AJAX
+  fetch(`<?= site_url('vendoruser/leads/') ?>${leadId}`)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.text();
+    })
+    .then(html => {
+      // Parse HTML response untuk mengambil konten utama
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const leadContent = doc.querySelector('.grid.grid-cols-1.md\\:grid-cols-2.gap-4.text-sm');
+      
+      if (leadContent) {
+        document.getElementById('leadDetailContent').innerHTML = leadContent.innerHTML;
+      } else {
+        document.getElementById('leadDetailContent').innerHTML = `
+          <div class="col-span-2 text-center py-4 text-red-500">
+            Gagal memuat detail lead.
+          </div>
+        `;
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      document.getElementById('leadDetailContent').innerHTML = `
+        <div class="col-span-2 text-center py-4 text-red-500">
+          Terjadi kesalahan saat memuat data.
+        </div>
+      `;
+    });
+}
+
+// Fungsi untuk menutup modal
+function closeLeadDetailModal() {
+  document.getElementById('leadDetailModal').classList.add('hidden');
+}
+
+// Tutup modal ketika klik di luar konten
+document.getElementById('leadDetailModal').addEventListener('click', function(e) {
+  if (e.target === this) {
+    closeLeadDetailModal();
+  }
+});
 
 document.addEventListener('alpine:init', () => {
   Alpine.store('ui', { sidebar: window.innerWidth > 768, modal: null });

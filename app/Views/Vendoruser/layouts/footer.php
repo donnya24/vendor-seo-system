@@ -1,4 +1,4 @@
-<!-- Alpine Stores (inject data dari server) -->
+
 <script>
 document.addEventListener('alpine:init', () => {
   Alpine.store('ui', { 
@@ -7,12 +7,11 @@ document.addEventListener('alpine:init', () => {
   });
 
   Alpine.store('app', {
-    stats: <?= $JSON($stats) ?>,
-    recentLeads: <?= $JSON($recentLeads) ?>,
-    topKeywords: <?= $JSON($topKeywords) ?>,
-    unread: <?= (int)($stats['unread'] ?? 0) ?>,
+    stats: <?= isset($stats) ? json_encode($stats) : '{}' ?>,
+    recentLeads: <?= isset($recentLeads) ? json_encode($recentLeads) : '[]' ?>,
+    topKeywords: <?= isset($topKeywords) ? json_encode($topKeywords) : '[]' ?>,
+    unread: <?= isset($stats['unread']) ? (int)$stats['unread'] : 0 ?>,
     init() { 
-      // Inisialisasi data jika diperlukan
       console.log('Vendor Dashboard initialized');
     }
   });

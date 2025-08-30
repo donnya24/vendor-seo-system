@@ -15,30 +15,22 @@ $successMessage = $session->getFlashdata('success');
 $errorMessage   = $session->getFlashdata('error');
 $errors         = $session->getFlashdata('errors');
 
-// Foto profil dari DB kolom profile_image
 $profileImage     = $vp['profile_image'] ?? '';
 $profileImagePath = base_url('assets/img/default-avatar.png');
-if (!empty($profileImage)) {
-    $candidate = FCPATH . 'uploads/vendor_profiles/' . $profileImage;
-    if (is_file($candidate)) {
-        $profileImagePath = base_url('uploads/vendor_profiles/' . $profileImage);
-    }
+if ($profileImage) {
+  $candidate = FCPATH . 'uploads/vendor_profiles/' . $profileImage;
+  if (is_file($candidate)) $profileImagePath = base_url('uploads/vendor_profiles/' . $profileImage);
 }
 ?>
 
-<!-- MODAL: Ubah Password (biarkan seperti punyamu) -->
-<!-- ... (modal password kamu sudah OK) ... -->
-
-<!-- MODAL: Edit Profil -->
 <div x-show="$store.ui.modal==='profileEdit'" x-cloak
-     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+     class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4">
   <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" @click.away="$store.ui.modal=null">
     <div class="px-6 py-4 border-b flex items-center justify-between sticky top-0 bg-white z-10">
       <h3 class="text-lg font-semibold">Edit Profil Vendor</h3>
       <button class="text-gray-500 hover:text-gray-700" @click="$store.ui.modal=null"><i class="fas fa-times"></i></button>
     </div>
 
-    <!-- Status -->
     <div class="px-6 py-4 bg-gray-50 border-b">
       <div class="flex items-center justify-between">
         <span class="text-sm font-medium text-gray-600">Status Akun:</span>
@@ -58,7 +50,6 @@ if (!empty($profileImage)) {
       <?php endif; ?>
     </div>
 
-    <!-- Flash -->
     <?php if ($successMessage): ?>
       <div class="px-6 py-4 bg-green-50 border-b text-green-700"><i class="fas fa-check-circle mr-2"></i><?= esc($successMessage) ?></div>
     <?php endif; ?>
@@ -81,7 +72,7 @@ if (!empty($profileImage)) {
         <h4 class="text-md font-semibold text-gray-800 mb-3 border-b pb-2">Foto Profil</h4>
         <div class="flex items-center">
           <div class="relative mr-4">
-            <img id="profile-image-preview" src="<?= $profileImagePath ?>" class="w-24 h-24 rounded-full object-cover border-2 border-gray-300">
+            <img id="profile-image-preview" src="<?= $profileImagePath ?>" class="w-24 h-24 rounded-full object-cover border-2 border-gray-300" alt="Foto Profil">
             <div class="absolute bottom-0 right-0 bg-white rounded-full p-1 border">
               <label for="profile_image" class="cursor-pointer text-blue-600 hover:text-blue-800">
                 <i class="fas fa-camera text-lg"></i>
@@ -93,7 +84,7 @@ if (!empty($profileImage)) {
           <div class="text-sm text-gray-600">
             <p>Klik ikon kamera untuk mengubah foto profil</p>
             <p class="text-xs mt-1">Format: JPG/PNG/GIF/WEBP, maksimal 2MB</p>
-            <?php if (!empty($profileImage)): ?>
+            <?php if ($profileImage): ?>
               <button type="button" onclick="removeProfileImage()" class="text-red-600 hover:text-red-800 text-xs mt-2 flex items-center">
                 <i class="fas fa-trash mr-1"></i> Hapus foto
               </button>
@@ -120,13 +111,11 @@ if (!empty($profileImage)) {
         <label class="block text-sm font-semibold mb-2">Nama Bisnis <span class="text-red-500">*</span></label>
         <input name="business_name" value="<?= esc($vp['business_name'] ?? '') ?>" required
                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-200 focus:border-blue-600">
-        <?php if (!empty($errors['business_name'])): ?><p class="text-red-500 text-xs mt-1"><?= $errors['business_name'] ?></p><?php endif; ?>
       </div>
       <div>
         <label class="block text-sm font-semibold mb-2">Nama Pemilik <span class="text-red-500">*</span></label>
         <input name="owner_name" value="<?= esc($vp['owner_name'] ?? '') ?>" required
                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-200 focus:border-blue-600">
-        <?php if (!empty($errors['owner_name'])): ?><p class="text-red-500 text-xs mt-1"><?= $errors['owner_name'] ?></p><?php endif; ?>
       </div>
 
       <!-- Kontak -->
@@ -137,7 +126,6 @@ if (!empty($profileImage)) {
         <label class="block text-sm font-semibold mb-2">No. WhatsApp (Pribadi) <span class="text-red-500">*</span></label>
         <input name="whatsapp_number" value="<?= esc($vp['whatsapp_number'] ?? '') ?>" required
                class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-200 focus:border-blue-600">
-        <?php if (!empty($errors['whatsapp_number'])): ?><p class="text-red-500 text-xs mt-1"><?= $errors['whatsapp_number'] ?></p><?php endif; ?>
       </div>
       <div>
         <label class="block text-sm font-semibold mb-2">No. Telepon Imersa (opsional)</label>
@@ -148,7 +136,6 @@ if (!empty($profileImage)) {
       <div class="md:col-span-2 mt-2">
         <h4 class="text-md font-semibold text-gray-800 mb-3 border-b pb-2">Komisi</h4>
       </div>
-
       <?php if ($isVerified): ?>
         <div class="md:col-span-2">
           <label class="block text-sm font-semibold mb-2">Komisi yang disetujui</label>
@@ -161,10 +148,8 @@ if (!empty($profileImage)) {
           <div class="flex items-center">
             <input type="number" name="requested_commission" min="1" max="100" step="0.1"
                    value="<?= esc($requestedCommission ?? '') ?>"
-                   class="w-28 border rounded-lg px-3 py-2 mr-2" required>
-            <span>%</span>
+                   class="w-28 border rounded-lg px-3 py-2 mr-2" required><span>%</span>
           </div>
-          <?php if (!empty($errors['requested_commission'])): ?><p class="text-red-500 text-xs mt-1"><?= $errors['requested_commission'] ?></p><?php endif; ?>
           <p class="text-xs text-gray-500 mt-1">Selama status belum <b>verified</b>, Anda bebas mengubah nilai ini.</p>
         </div>
       <?php endif; ?>
@@ -178,29 +163,19 @@ if (!empty($profileImage)) {
 </div>
 
 <script>
-function previewImage(input, previewId) {
-  const preview = document.getElementById(previewId);
-  const file = input.files && input.files[0];
-  if (!file) return;
-
-  if (file.size > 2 * 1024 * 1024) { alert('Ukuran file terlalu besar. Maks 2MB.'); input.value=''; return; }
-
-  const ok = ['image/jpeg','image/png','image/gif','image/webp'];
-  if (!ok.includes(file.type)) { alert('Format tidak didukung. JPG/PNG/GIF/WEBP'); input.value=''; return; }
-
-  const reader = new FileReader();
-  reader.onload = e => {
-    preview.src = e.target.result;
-    document.getElementById('remove_profile_image').value = '0';
-  };
-  reader.readAsDataURL(file);
+function previewImage(input, previewId){
+  const preview=document.getElementById(previewId);
+  const file=input.files&&input.files[0]; if(!file) return;
+  if(file.size>2*1024*1024){ alert('Ukuran file terlalu besar. Maks 2MB.'); input.value=''; return; }
+  const ok=['image/jpeg','image/png','image/gif','image/webp'];
+  if(!ok.includes(file.type)){ alert('Format tidak didukung. JPG/PNG/GIF/WEBP'); input.value=''; return; }
+  const r=new FileReader(); r.onload=e=>{ preview.src=e.target.result; document.getElementById('remove_profile_image').value='0'; }; r.readAsDataURL(file);
 }
-
-function removeProfileImage() {
-  const def = "<?= base_url('assets/img/default-avatar.png') ?>";
-  document.getElementById('profile-image-preview').src = def;
-  const inp = document.getElementById('profile_image'); if (inp) inp.value = '';
-  document.getElementById('remove_profile_image').value = '1';
-  alert('Foto profil akan dihapus setelah Anda menyimpan perubahan.');
+function removeProfileImage(){
+  const def="<?= base_url('assets/img/default-avatar.png') ?>";
+  document.getElementById('profile-image-preview').src=def;
+  const inp=document.getElementById('profile_image'); if(inp) inp.value='';
+  document.getElementById('remove_profile_image').value='1';
+  Alpine.store('toast')?.show('Foto profil akan dihapus setelah Anda menyimpan perubahan.','info');
 }
 </script>

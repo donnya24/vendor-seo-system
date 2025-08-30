@@ -38,13 +38,17 @@ class Dashboard extends BaseController
         // ===== KARTU STAT =====
         $leadsModel = new LeadsModel();
 
+        // total leads masuk
         $leadsNew = (clone $leadsModel)
-            ->where(['vendor_id' => $vendorId, 'status' => 'new'])
-            ->countAllResults();
+            ->selectSum('jumlah_leads_masuk')
+            ->where('vendor_id', $vendorId)
+            ->get()->getRow('jumlah_leads_masuk') ?? 0;
 
+        // total leads diproses
         $leadsInProgress = (clone $leadsModel)
-            ->where(['vendor_id' => $vendorId, 'status' => 'in_progress'])
-            ->countAllResults();
+            ->selectSum('jumlah_leads_diproses')
+            ->where('vendor_id', $vendorId)
+            ->get()->getRow('jumlah_leads_diproses') ?? 0;
 
         // Jumlah keyword: dari seo_keyword_targets
         $keywordsTotal = 0;
@@ -54,8 +58,7 @@ class Dashboard extends BaseController
                 ->countAllResults();
         }
 
-        // ===== TOP KEYWORDS (PASTI SESUAI KOLOM DB) =====
-        // Ambil dari seo_reports: keyword, project, position, change
+        // ===== TOP KEYWORDS =====
         $topKeywords = [];
         if ($db->tableExists('seo_reports')) {
             $topKeywords = $db->table('seo_reports')
@@ -65,7 +68,6 @@ class Dashboard extends BaseController
                 ->limit(6)
                 ->get()->getResultArray();
         } elseif ($db->tableExists('seo_keyword_targets')) {
-            // fallback kalau belum ada laporan
             $rows = $db->table('seo_keyword_targets')
                 ->select('id, keyword AS text, project')
                 ->where('vendor_id', $vendorId)
@@ -75,14 +77,14 @@ class Dashboard extends BaseController
             $topKeywords = array_map(fn($r)=> $r + ['position'=>null,'change'=>null], $rows);
         }
 
-        // ===== LEADS TERBARU (manual) =====
+        // ===== LEADS TERBARU =====
         $recentRows = (clone $leadsModel)
             ->where(['vendor_id' => $vendorId, 'reported_by_vendor' => 1])
             ->orderBy('id', 'DESC')
             ->limit(10)
             ->findAll();
 
-        // Map nama service
+        // Map service name
         $serviceNames = [];
         if ($recentRows) {
             $serviceIds = array_unique(array_filter(array_column($recentRows, 'service_id')));
@@ -97,16 +99,17 @@ class Dashboard extends BaseController
             }
         }
 
+        // Mapping leads agar sesuai dengan tabel leads
         $recentLeads = array_map(function ($l) use ($serviceNames) {
-            $dt = $l['updated_at'] ?? $l['assigned_at'] ?? $l['created_at'] ?? null;
             return [
                 'id'       => (int) ($l['id'] ?? 0),
                 'project'  => $serviceNames[(int) ($l['service_id'] ?? 0)] ?? '-',
-                'customer' => (string) ($l['customer_name'] ?? ''),
-                'phone'    => (string) ($l['customer_phone'] ?? ''),
-                'source'   => (string) ($l['source'] ?? ''),
-                'date'     => $dt ? date('Y-m-d H:i', strtotime($dt)) : '-',
-                'status'   => (string) ($l['status'] ?? 'new'),
+                'masuk'    => (int) ($l['jumlah_leads_masuk'] ?? 0),
+                'diproses' => (int) ($l['jumlah_leads_diproses'] ?? 0),
+                'ditolak'  => (int) ($l['jumlah_leads_ditolak'] ?? 0),
+                'closing'  => (int) ($l['jumlah_leads_closing'] ?? 0),
+                'tanggal'  => !empty($l['tanggal']) ? date('Y-m-d', strtotime($l['tanggal'])) : '-',
+                'updated'  => !empty($l['updated_at']) ? date('Y-m-d H:i', strtotime($l['updated_at'])) : '-',
             ];
         }, $recentRows ?? []);
 
@@ -136,12 +139,11 @@ class Dashboard extends BaseController
                 ->countAllResults();
         }
 
-        // Profil (untuk isi default modal Edit Profil)
+        // Profil vendor
         $vp = (new VendorProfilesModel())
             ->where('user_id', (int)$authUser->id)
             ->first();
-            
-        // Ambil data gambar profil untuk ditampilkan di topbar
+
         $profileImage = $vp['profile_image'] ?? '';
 
         return view('vendoruser/dashboard', [
@@ -155,8 +157,8 @@ class Dashboard extends BaseController
             'recentLeads'   => $recentLeads,
             'topKeywords'   => $topKeywords,
             'notifications' => $notifications,
-            'vp'            => $vp, // untuk modal edit profil
-            'profileImage'  => $profileImage, // untuk gambar profil di topbar
+            'vp'            => $vp,
+            'profileImage'  => $profileImage,
         ]);
     }
 }

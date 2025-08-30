@@ -30,11 +30,16 @@
       <i class="fas fa-toolbox mr-3"></i> Layanan
     </a>
 
+    <!-- 🔹 Areas (baru ditambahkan) -->
+    <a href="<?= site_url('vendoruser/areas') ?>"
+       class="block py-2 px-3 rounded-lg mb-1 flex items-center nav-item <?= strpos(current_url(), site_url('vendoruser/areas')) !== false ? 'active' : 'hover:bg-blue-700/70 focus:ring-2 focus:ring-blue-300/40' ?>">
+      <i class="fas fa-map-marker-alt mr-3"></i> Area
+    </a>
+
     <a href="<?= site_url('vendoruser/products') ?>"
        class="block py-2 px-3 rounded-lg mb-1 flex items-center nav-item <?= strpos(current_url(), site_url('vendoruser/products')) !== false ? 'active' : 'hover:bg-blue-700/70 focus:ring-2 focus:ring-blue-300/40' ?>">
       <i class="fas fa-boxes mr-3"></i> Produk
     </a>
-
   </nav>
 
   <!-- Logout -->
@@ -43,6 +48,11 @@
             @click.prevent="$store.ui.modal='logout'">
       <i class="fas fa-sign-out-alt mr-3"></i> Logout
     </button>
+    
+    <!-- Copyright Imersa -->
+    <div class="text-center text-xs text-blue-200/70 mt-4">
+      &copy; <?= date('Y') ?> Imersa. All rights reserved.
+    </div>
   </div>
 
   <!-- Modal Logout -->
@@ -67,3 +77,18 @@
     </div>
   </div>
 </aside>
+
+<!-- Alpine Stores (inject data dari server) -->
+<script>
+Alpine.store('app', {
+  stats: <?= isset($stats) ? json_encode($stats) : '{}' ?>,
+  recentLeads: <?= isset($recentLeads) ? json_encode($recentLeads) : '[]' ?>,
+  topKeywords: <?= isset($topKeywords) ? json_encode($topKeywords) : '[]' ?>,
+  unread: <?= isset($stats['unread']) ? (int)$stats['unread'] : 0 ?>,
+  init() { 
+    console.log('Vendor Dashboard initialized');
+  }
+});
+</script>
+</body>
+</html>

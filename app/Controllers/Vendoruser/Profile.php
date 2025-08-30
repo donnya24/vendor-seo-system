@@ -34,36 +34,31 @@ class Profile extends BaseController
         $vendorProfileModel = new VendorProfilesModel();
         $vp = $this->vp();
 
-        if (!$vp) {
-            return redirect()->back()->with('error', 'Profil tidak ditemukan');
-        }
+        if (!$vp) return redirect()->back()->with('error','Profil tidak ditemukan');
 
-        // ========= VALIDATION =========
+        // ===== VALIDATION =====
         $rules = [
-            'business_name'   => 'required|min_length[3]',
-            'owner_name'      => 'required|min_length[3]',
-            'whatsapp_number' => 'required',
-            'phone'           => 'permit_empty',
-            'profile_image'   => 'permit_empty|max_size[profile_image,2048]|is_image[profile_image]|mime_in[profile_image,image/jpg,image/jpeg,image/png,image/webp,image/gif]',
-            'remove_profile_image' => 'permit_empty|in_list[0,1]'
+            'business_name'         => 'required|min_length[3]',
+            'owner_name'            => 'required|min_length[3]',
+            'whatsapp_number'       => 'required',
+            'phone'                 => 'permit_empty',
+            'profile_image'         => 'permit_empty|max_size[profile_image,2048]|is_image[profile_image]|mime_in[profile_image,image/jpg,image/jpeg,image/png,image/webp,image/gif]',
+            'remove_profile_image'  => 'permit_empty|in_list[0,1]',
         ];
 
         $isVerified = ($vp['status'] ?? 'pending') === 'verified';
-        if (!$isVerified) {
-            // vendor boleh & harus mengisi komisi saat belum verified/pending
+        if (! $isVerified) {
+            // vendor boleh & HARUS isi komisi saat belum verified/pending
             $rules['requested_commission'] = 'required|numeric|greater_than_equal_to[1]|less_than_equal_to[100]';
         }
 
         $validation = \Config\Services::validation();
         $validation->setRules($rules);
-
-        if (!$validation->withRequest($this->request)->run()) {
-            return redirect()->back()
-                ->withInput()
-                ->with('errors', $validation->getErrors());
+        if (! $validation->withRequest($this->request)->run()) {
+            return redirect()->back()->withInput()->with('errors', $validation->getErrors());
         }
 
-        // ========= PAYLOAD DASAR =========
+        // ===== PAYLOAD =====
         $data = [
             'business_name'   => (string)$this->request->getPost('business_name'),
             'owner_name'      => (string)$this->request->getPost('owner_name'),
@@ -72,72 +67,65 @@ class Profile extends BaseController
             'updated_at'      => date('Y-m-d H:i:s'),
         ];
 
-        // ========= KOMISI: boleh diubah kalau BELUM verified =========
-        if (!$isVerified) {
+        // ===== KOMISI (boleh edit jika BELUM verified) =====
+        if (! $isVerified) {
             $reqRaw = str_replace(',', '.', (string)$this->request->getPost('requested_commission'));
-            $reqVal = is_numeric($reqRaw) ? (float)$reqRaw : null;
-            $data['requested_commission'] = $reqVal;
-            // bila vendor mengubah data saat belum verified → tetap pending agar admin review
+            $data['requested_commission'] = is_numeric($reqRaw) ? (float)$reqRaw : null;
+            // tetap pending agar direview admin lagi
             $data['status'] = 'pending';
         }
 
-        // ========= FOTO PROFIL (DB pakai kolom profile_image) =========
-        // folder publik: public/uploads/vendor_profiles/
-        $pubDir = FCPATH . 'uploads/vendor_profiles';
-        if (!is_dir($pubDir)) {
-            @mkdir($pubDir, 0775, true);
-        }
+        // ===== FOTO PROFIL (samakan path dengan view/header) =====
+        $pubDir = FCPATH . 'uploads/vendoruser/profiles';
+        if (!is_dir($pubDir)) @mkdir($pubDir, 0775, true);
 
-        // hapus foto jika diminta
-        $removeFlag = (string)$this->request->getPost('remove_profile_image') === '1';
-        if ($removeFlag && !empty($vp['profile_image'])) {
+        // Hapus jika diminta
+        if ((string)$this->request->getPost('remove_profile_image') === '1' && !empty($vp['profile_image'])) {
             $oldPath = $pubDir . '/' . $vp['profile_image'];
             if (is_file($oldPath)) @unlink($oldPath);
             $data['profile_image'] = null;
         }
 
-        // upload baru (replace file lama jika ada)
+        // Upload baru
         $file = $this->request->getFile('profile_image');
         if ($file && $file->isValid() && !$file->hasMoved()) {
-            $newName = $file->getRandomName();
             // hapus lama
             if (!empty($vp['profile_image'])) {
                 $oldPath = $pubDir . '/' . $vp['profile_image'];
                 if (is_file($oldPath)) @unlink($oldPath);
             }
+            $newName = $file->getRandomName();
             $file->move($pubDir, $newName);
             $data['profile_image'] = $newName;
         }
 
-        // simpan
         $vendorProfileModel->update($vp['id'], $data);
 
-        // Kirim notifikasi admin kalau status masih pending (opsional)
-        if (!$isVerified) {
+        // (opsional) kirim notifikasi admin kalau belum verified
+        if (! $isVerified) {
             try { $this->sendVerificationNotification($user, $data + ['requested_commission' => $data['requested_commission'] ?? null]); } catch (\Throwable $e) {}
         }
 
-        return redirect()->back()->with('success', 'Profil berhasil diperbarui');
+        return redirect()->back()->with('success','Profil berhasil diperbarui');
     }
 
     private function sendVerificationNotification($user, $vendorData)
     {
         $db = db_connect();
         if ($db->tableExists('notifications')) {
-            $msg = 'Vendor ' . ($vendorData['business_name'] ?? '-') .
-                   ' (Pemilik: ' . ($vendorData['owner_name'] ?? '-') .
-                   ') mengajukan/ubah komisi ' . ($vendorData['requested_commission'] ?? '-') . '%.';
             $db->table('notifications')->insert([
-                'user_id'    => 1, // ID admin (silakan sesuaikan)
+                'user_id'    => 1, // ID admin (sesuaikan)
                 'title'      => 'Pengajuan/Perubahan Komisi Vendor',
-                'message'    => $msg,
+                'message'    => 'Vendor ' . ($vendorData['business_name'] ?? '-') .
+                                ' (Pemilik: ' . ($vendorData['owner_name'] ?? '-') .
+                                ') mengajukan/ubah komisi ' . ($vendorData['requested_commission'] ?? '-') . '%.',
                 'is_read'    => 0,
                 'created_at' => date('Y-m-d H:i:s'),
             ]);
         }
     }
 
-    // ---------- Password ----------
+    // ========= Password =========
     public function password()
     {
         return view('vendoruser/profile/ubahpassword', ['page' => 'Ubah Password']);
@@ -145,38 +133,68 @@ class Profile extends BaseController
 
     public function passwordUpdate()
     {
-        if (!$this->request->is('post')) {
-            return redirect()->back()->with('error_password', 'Method not allowed');
+        if (! $this->request->is('post')) {
+            return redirect()->back()->with('error_password','Method not allowed');
         }
 
-        $auth = service('auth');
-        $user = $auth->user();
+        $user = $this->user();
 
-        $validation = \Config\Services::validation();
-        $validation->setRules([
+        // Validasi sederhana
+        $val = \Config\Services::validation();
+        $val->setRules([
             'current_password' => 'required',
-            // jika "strong_password" tidak aktif di project kamu, ganti jadi min_length[8]
             'new_password'     => 'required|min_length[8]',
-            'pass_confirm'     => 'required|matches[new_password]'
+            'pass_confirm'     => 'required|matches[new_password]',
+        ], [
+            'pass_confirm' => ['matches' => 'Konfirmasi password tidak cocok.']
         ]);
-
-        if (!$validation->withRequest($this->request)->run()) {
-            return redirect()->back()
-                ->withInput()
-                ->with('errors_password', $validation->getErrors())
-                ->with('error_password', 'Terjadi kesalahan validasi.');
+        if (! $val->withRequest($this->request)->run()) {
+            return redirect()->back()->withInput()->with('errors_password', $val->getErrors())->with('error_password','Terjadi kesalahan validasi.');
         }
 
-        // ambil hash dari user model (pastikan $user punya field password_hash)
-        if (empty($user->password_hash) || !password_verify($this->request->getPost('current_password'), $user->password_hash)) {
-            return redirect()->back()->withInput()->with('error_password', 'Password saat ini salah.');
+        $db  = db_connect();
+        $row = $db->table('auth_identities')
+                  ->select('id, secret, secret2')
+                  ->where('user_id', (int)$user->id)
+                  ->where('type', 'email_password')
+                  ->get()->getRowArray();
+
+        if (! $row) {
+            return redirect()->back()->with('error_password','Identitas login tidak ditemukan.');
         }
 
-        $userModel = new UserModel();
-        $userModel->update($user->id, [
-            'password_hash' => password_hash($this->request->getPost('new_password'), PASSWORD_DEFAULT)
-        ]);
+        // Deteksi kolom mana yang menyimpan HASH (secret atau secret2)
+        $hashCol = null;
+        foreach (['secret','secret2'] as $col) {
+            $val = (string)($row[$col] ?? '');
+            $info = password_get_info($val);
+            if (!empty($info['algo'])) { $hashCol = $col; break; }
+        }
+        // Fallback: jika `secret` berformat email, asumsi hash di `secret2`
+        if (!$hashCol) {
+            if (filter_var($row['secret'] ?? '', FILTER_VALIDATE_EMAIL)) $hashCol = 'secret2';
+            elseif (filter_var($row['secret2'] ?? '', FILTER_VALIDATE_EMAIL)) $hashCol = 'secret';
+        }
+        if (!$hashCol) {
+            return redirect()->back()->with('error_password','Kolom hash password tidak terdeteksi.');
+        }
 
-        return redirect()->back()->with('success_password', 'Password berhasil diubah.');
+        $current = (string)$this->request->getPost('current_password');
+        $new     = (string)$this->request->getPost('new_password');
+
+        if (! password_verify($current, (string)$row[$hashCol])) {
+            return redirect()->back()->withInput()->with('error_password','Password saat ini salah.');
+        }
+
+        $newHash = password_hash($new, PASSWORD_DEFAULT);
+        try {
+            $db->table('auth_identities')
+               ->where('id', (int)$row['id'])
+               ->update([$hashCol => $newHash, 'updated_at' => date('Y-m-d H:i:s')]);
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('error_password','Gagal menyimpan password baru.');
+        }
+
+        return redirect()->back()->with('success_password','Password berhasil diubah.');
     }
 }

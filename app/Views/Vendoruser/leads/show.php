@@ -4,37 +4,47 @@
 <div class="flex-1 md:ml-64 p-4">
   <div class="bg-white rounded-xl p-6 shadow max-w-3xl">
     <div class="flex items-center justify-between">
-      <h2 class="text-xl font-semibold">Detail Lead</h2>
+      <h2 class="text-xl font-semibold">Detail Laporan Leads</h2>
       <div class="space-x-2">
-        <a href="<?= site_url('vendor/leads/'.$lead['id'].'/edit'); ?>" class="px-3 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">Edit</a>
-        <a href="<?= site_url('vendor/leads'); ?>" class="px-3 py-2 rounded-lg bg-gray-200 hover:bg-gray-300">Kembali</a>
+        <a href="<?= site_url('vendoruser/leads/'.$lead['id'].'/edit'); ?>" 
+           class="px-3 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">Edit</a>
+        <a href="<?= site_url('vendoruser/leads'); ?>" 
+           class="px-3 py-2 rounded-lg bg-gray-200 hover:bg-gray-300">Kembali</a>
       </div>
     </div>
 
     <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
       <div>
-        <div class="text-gray-500">Customer</div>
-        <div class="font-medium"><?= esc($lead['customer_name']); ?></div>
+        <div class="text-gray-500">Tanggal</div>
+        <div class="font-medium"><?= esc($lead['tanggal']); ?></div>
       </div>
       <div>
-        <div class="text-gray-500">Kontak</div>
-        <div class="font-medium"><?= esc($lead['customer_phone']); ?></div>
+        <div class="text-gray-500">Layanan</div>
+        <div class="font-medium"><?= esc($lead['service_name'] ?? ''); ?></div>
       </div>
       <div>
-        <div class="text-gray-500">Status</div>
-        <div class="font-medium"><?= esc($lead['status']); ?></div>
+        <div class="text-gray-500">Leads Masuk</div>
+        <div class="font-medium"><?= esc($lead['jumlah_leads_masuk']); ?></div>
       </div>
       <div>
-        <div class="text-gray-500">Sumber</div>
-        <div class="font-medium"><?= esc($lead['source']); ?></div>
+        <div class="text-gray-500">Diproses</div>
+        <div class="font-medium"><?= esc($lead['jumlah_leads_diproses']); ?></div>
       </div>
-      <div class="md:col-span-2">
-        <div class="text-gray-500 mb-1">Waktu Kontak</div>
-        <div class="font-medium"><?= esc($lead['contact_time'] ?? ''); ?></div>
+      <div>
+        <div class="text-gray-500">Ditolak</div>
+        <div class="font-medium"><?= esc($lead['jumlah_leads_ditolak']); ?></div>
       </div>
-      <div class="md:col-span-2">
-        <div class="text-gray-500 mb-1">Ringkasan</div>
-        <div class="font-medium whitespace-pre-line"><?= esc($lead['summary'] ?? '-'); ?></div>
+      <div>
+        <div class="text-gray-500">Closing</div>
+        <div class="font-medium"><?= esc($lead['jumlah_leads_closing']); ?></div>
+      </div>
+      <div>
+        <div class="text-gray-500">Reported By Vendor</div>
+        <div class="font-medium"><?= esc($lead['reported_by_vendor']); ?></div>
+      </div>
+      <div>
+        <div class="text-gray-500">Terakhir Update</div>
+        <div class="font-medium"><?= esc($lead['updated_at']); ?></div>
       </div>
     </div>
   </div>

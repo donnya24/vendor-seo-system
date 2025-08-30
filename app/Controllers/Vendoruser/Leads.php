@@ -8,10 +8,7 @@ use App\Models\VendorProfilesModel;
 
 class Leads extends BaseController
 {
-    /**
-     * Ambil vendor_id milik user login; redirect bila belum punya profil.
-     */
-    private function requireVendorId(): int
+    private function requireVendorId(): ?int
     {
         $user = service('auth')->user();
         $vp   = (new VendorProfilesModel())
@@ -19,113 +16,93 @@ class Leads extends BaseController
                     ->where('user_id', (int) $user->id)
                     ->first();
 
-        if (! $vp || empty($vp['id'])) {
-            // aman: hentikan eksekusi setelah redirect
-            redirect()->to(site_url('vendor/dashboard'))
-                ->with('error', 'Profil vendor belum ada. Lengkapi profil terlebih dulu.')
-                ->send();
-            exit;
-        }
-
-        return (int) $vp['id'];
+        return $vp['id'] ?? null;
     }
 
     public function index()
     {
-        $vid   = $this->requireVendorId();
-        $m     = new LeadsModel();
-
-        // Filter opsional
-        $status = trim((string) $this->request->getGet('status'));
-        $q      = trim((string) $this->request->getGet('q'));
-
-        $m->where('vendor_id', $vid)->orderBy('id', 'DESC');
-
-        if ($status !== '' && in_array($status, ['new','in_progress','closed','rejected'], true)) {
-            $m->where('status', $status);
+        $vid = $this->requireVendorId();
+        if (! $vid) {
+            return redirect()->to(site_url('vendoruser/dashboard'))
+                ->with('error', 'Profil vendor belum ada. Lengkapi profil terlebih dulu.');
         }
-        if ($q !== '') {
-            $m->groupStart()
-                ->like('customer_name', $q)
-                ->orLike('customer_phone', $q)
-                ->orLike('summary', $q)
-            ->groupEnd();
-        }
+
+        $m = new LeadsModel();
+        $m->select('leads.*, services.name as service_name')
+          ->join('services', 'services.id = leads.service_id', 'left')
+          ->where('leads.vendor_id', $vid)
+          ->orderBy('leads.tanggal', 'DESC');
 
         return view('vendoruser/leads/index', [
-            'page'  => 'Leads',
+            'page'  => 'Laporan Leads',
             'leads' => $m->findAll(),
-            'status'=> $status,
-            'q'     => $q,
         ]);
     }
 
     public function create()
     {
         $vid = $this->requireVendorId();
+        if (! $vid) {
+            return redirect()->to(site_url('vendoruser/dashboard'))
+                ->with('error', 'Profil vendor belum ada. Lengkapi profil terlebih dulu.');
+        }
 
-        // Ambil service: bila skemamu punya kolom vendor_id di services
-        // tampilkan service milik vendor; jika tidak ada, fallback ke semua service.
         $svc = new ServicesModel();
-
-        // Coba prioritas milik vendor
         $services = $svc->where('vendor_id', $vid)->orderBy('name', 'ASC')->findAll();
-
-        // Fallback: kalau kosong, tampilkan semua (atau sesuaikan kebijakanmu)
         if (empty($services)) {
             $services = $svc->orderBy('name', 'ASC')->findAll();
         }
 
         return view('vendoruser/leads/create', [
-            'page'     => 'Leads',
+            'page'     => 'Tambah Laporan Leads',
             'services' => $services,
         ]);
     }
-
-    public function store()
+    public function show($id)
     {
         $vid = $this->requireVendorId();
+        $m   = new LeadsModel();
 
-        $rules = [
-            'customer_name'  => 'required|min_length[2]',
-            'customer_phone' => 'required|min_length[6]',
-            'source'         => 'required|in_list[whatsapp,vendor_manual]',
-            // kolom opsional → validasi longgar
-            'service_id'     => 'permit_empty|integer',
-            'status'         => 'permit_empty|in_list[new,in_progress,closed,rejected]',
-            'contact_time'   => 'permit_empty', // kalau kolomnya ada
-            'summary'        => 'permit_empty',
-        ];
+        $lead = $m->select('leads.*, services.name as service_name')
+                ->join('services', 'services.id = leads.service_id', 'left')
+                ->where(['leads.id' => (int) $id, 'leads.vendor_id' => $vid])
+                ->first();
 
-        if (! $this->validate($rules)) {
-            return redirect()->back()->withInput()
-                ->with('error', implode('<br>', $this->validator->getErrors()));
+        if (! $lead) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON(['status'=>'error','message'=>'Data tidak ditemukan']);
+            }
+            return redirect()->to(site_url('vendoruser/leads'))->with('error','Data tidak ditemukan');
         }
 
-        $data = [
-            'vendor_id'      => $vid,
-            'customer_name'  => trim((string) $this->request->getPost('customer_name')),
-            'customer_phone' => trim((string) $this->request->getPost('customer_phone')),
-            'service_id'     => (int) ($this->request->getPost('service_id') ?: 0) ?: null,
-            'status'         => $this->request->getPost('status') ?: 'new',
-            'source'         => $this->request->getPost('source') ?: 'vendor_manual',
-            // opsional — hanya tersimpan jika ada di $allowedFields LeadsModel
-            'summary'        => $this->request->getPost('summary') ?: null,
-            'contact_time'   => $this->request->getPost('contact_time') ?: null,
-            'created_at'     => date('Y-m-d H:i:s'),
-        ];
+        // Response AJAX → JSON
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'status'  => 'success',
+                'lead'    => $lead
+            ]);
+        }
 
-        (new LeadsModel())->insert($data);
-
-        return redirect()->to(site_url('vendor/leads'))->with('success', 'Lead berhasil dibuat.');
+        // Response biasa (misal akses langsung via URL)
+        return view('vendoruser/leads/show', ['lead'=>$lead]);
     }
 
     public function edit($id)
     {
-        $vid  = $this->requireVendorId();
-        $lead = (new LeadsModel())->where(['id' => (int) $id, 'vendor_id' => $vid])->first();
+        $vid = $this->requireVendorId();
+        if (! $vid) {
+            return redirect()->to(site_url('vendoruser/dashboard'))
+                ->with('error', 'Profil vendor belum ada. Lengkapi profil terlebih dulu.');
+        }
+
+        $lead = (new LeadsModel())->where([
+            'id'        => (int) $id,
+            'vendor_id' => $vid,
+        ])->first();
+
         if (! $lead) {
-            return redirect()->to(site_url('vendor/leads'))->with('error', 'Lead tidak ditemukan.');
+            return redirect()->to(site_url('vendoruser/leads'))
+                ->with('error', 'Laporan tidak ditemukan.');
         }
 
         $svc = new ServicesModel();
@@ -135,62 +112,116 @@ class Leads extends BaseController
         }
 
         return view('vendoruser/leads/edit', [
-            'page'     => 'Leads',
+            'page'     => 'Edit Laporan Leads',
             'lead'     => $lead,
             'services' => $services,
         ]);
     }
 
-    public function update($id)
+    public function store()
     {
-        $vid  = $this->requireVendorId();
-        $m    = new LeadsModel();
-        $lead = $m->where(['id' => (int) $id, 'vendor_id' => $vid])->first();
-
-        if (! $lead) {
-            return redirect()->to(site_url('vendor/leads'))->with('error', 'Lead tidak ditemukan.');
+        $vid = $this->requireVendorId();
+        if (! $vid) {
+            return $this->respondAjax('error', 'Profil vendor belum ada. Lengkapi profil terlebih dulu.');
         }
 
         $rules = [
-            'customer_name'  => 'required|min_length[2]',
-            'customer_phone' => 'required|min_length[6]',
-            'status'         => 'required|in_list[new,in_progress,closed,rejected]',
-            'source'         => 'required|in_list[whatsapp,vendor_manual]',
-            'service_id'     => 'permit_empty|integer',
-            'summary'        => 'permit_empty',
-            'contact_time'   => 'permit_empty',
+            'tanggal'               => 'required|valid_date[Y-m-d]',
+            'service_id'            => 'required|integer',
+            'jumlah_leads_masuk'    => 'required|integer',
+            'jumlah_leads_diproses' => 'required|integer',
+            'jumlah_leads_ditolak'  => 'required|integer',
+            'jumlah_leads_closing'  => 'required|integer',
         ];
 
         if (! $this->validate($rules)) {
-            return redirect()->back()->withInput()
-                ->with('error', implode('<br>', $this->validator->getErrors()));
+            return $this->respondAjax('error', implode('<br>', $this->validator->getErrors()));
+        }
+
+        $data = [
+            'vendor_id'             => $vid,
+            'tanggal'               => $this->request->getPost('tanggal'),
+            'service_id'            => (int) $this->request->getPost('service_id'),
+            'jumlah_leads_masuk'    => (int) $this->request->getPost('jumlah_leads_masuk'),
+            'jumlah_leads_diproses' => (int) $this->request->getPost('jumlah_leads_diproses'),
+            'jumlah_leads_ditolak'  => (int) $this->request->getPost('jumlah_leads_ditolak'),
+            'jumlah_leads_closing'  => (int) $this->request->getPost('jumlah_leads_closing'),
+            'reported_by_vendor'    => $vid,
+            'assigned_at'           => date('Y-m-d H:i:s'),
+            'updated_at'            => date('Y-m-d H:i:s'),
+        ];
+
+        (new LeadsModel())->insert($data);
+
+        return $this->respondAjax('success', 'Laporan leads berhasil ditambahkan.');
+    }
+
+    public function update($id)
+    {
+        $vid = $this->requireVendorId();
+        $m   = new LeadsModel();
+        $lead = $m->where(['id' => (int) $id, 'vendor_id' => $vid])->first();
+
+        if (! $lead) {
+            return $this->respondAjax('error', 'Laporan tidak ditemukan.');
+        }
+
+        $rules = [
+            'tanggal'               => 'required|valid_date[Y-m-d]',
+            'service_id'            => 'required|integer',
+            'jumlah_leads_masuk'    => 'required|integer',
+            'jumlah_leads_diproses' => 'required|integer',
+            'jumlah_leads_ditolak'  => 'required|integer',
+            'jumlah_leads_closing'  => 'required|integer',
+        ];
+
+        if (! $this->validate($rules)) {
+            return $this->respondAjax('error', implode('<br>', $this->validator->getErrors()));
         }
 
         $m->update((int) $id, [
-            'customer_name'  => trim((string) $this->request->getPost('customer_name')),
-            'customer_phone' => trim((string) $this->request->getPost('customer_phone')),
-            'service_id'     => (int) ($this->request->getPost('service_id') ?: 0) ?: null,
-            'status'         => $this->request->getPost('status'),
-            'source'         => $this->request->getPost('source'),
-            'summary'        => $this->request->getPost('summary') ?: null,
-            'contact_time'   => $this->request->getPost('contact_time') ?: null,
-            'updated_at'     => date('Y-m-d H:i:s'),
+            'tanggal'               => $this->request->getPost('tanggal'),
+            'service_id'            => (int) $this->request->getPost('service_id'),
+            'jumlah_leads_masuk'    => (int) $this->request->getPost('jumlah_leads_masuk'),
+            'jumlah_leads_diproses' => (int) $this->request->getPost('jumlah_leads_diproses'),
+            'jumlah_leads_ditolak'  => (int) $this->request->getPost('jumlah_leads_ditolak'),
+            'jumlah_leads_closing'  => (int) $this->request->getPost('jumlah_leads_closing'),
+            'updated_at'            => date('Y-m-d H:i:s'),
         ]);
 
-        return redirect()->to(site_url('vendor/leads'))->with('success', 'Lead diperbarui.');
+        return $this->respondAjax('success', 'Laporan leads berhasil diperbarui.');
     }
 
     public function delete($id)
     {
-        $vid  = $this->requireVendorId();
-        $m    = new LeadsModel();
+        $vid = $this->requireVendorId();
+        $m   = new LeadsModel();
         $lead = $m->where(['id' => (int) $id, 'vendor_id' => $vid])->first();
 
         if (! $lead) {
-            return redirect()->to(site_url('vendor/leads'))->with('error', 'Lead tidak ditemukan.');
+            return $this->respondAjax('error', 'Laporan tidak ditemukan.');
         }
 
         $m->delete((int) $id);
-        return redirect()->to(site_url('vendor/leads'))->with('success', 'Lead dihapus.');
+
+        return $this->respondAjax('success', 'Laporan leads berhasil dihapus.');
+    }
+
+    /**
+     * Helper untuk balikan response sesuai request:
+     * - Kalau AJAX → JSON
+     * - Kalau normal → redirect dengan flashdata
+     */
+    private function respondAjax(string $status, string $message)
+    {
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'status'  => $status,
+                'message' => $message
+            ]);
+        }
+
+        $type = $status === 'success' ? 'success' : 'error';
+        return redirect()->back()->with($type, $message);
     }
 }
