@@ -190,77 +190,52 @@
           <i class="fas fa-list mr-2 text-blue-600 text-xs"></i>
           Recent Leads
         </h3>
-        <a href="<?= site_url('admin/leads'); ?>" class="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 rounded-lg text-xs font-semibold inline-flex items-center gap-1 visited:text-white">
+        <a href="<?= site_url('admin/leads'); ?>" 
+          class="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 rounded-lg text-xs font-semibold inline-flex items-center gap-1 visited:text-white">
           <i class="fas fa-eye text-[10px]"></i> View All
         </a>
       </div>
 
-      <div class="p-0">
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-100">
-            <thead class="bg-gradient-to-r from-blue-600 to-indigo-700">
-              <tr>
-                <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">Tanggal</th>
-                <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">Pelanggan</th>
-                <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">Vendor</th>
-                <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">Service</th>
-                <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">Status</th>
-                <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">Source</th>
-                <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">Aksi</th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-100">
-              <?php
-                $rows = $recentLeads ?? [
-                  ['id_lead'=>'L-202508-001','id_vendor'=>'1','service'=>'1','nama'=>'Galih Natsir M.TI.','no_telp'=>'0721 5579 101','status'=>'new','source'=>'vendor_manual','chat_at'=>date('c')],
-                  ['id_lead'=>'L-202508-002','id_vendor'=>'1','service'=>'1','nama'=>'Gabriella Puspita','no_telp'=>'0856 450 477','status'=>'in_progress','source'=>'wa_inbox','chat_at'=>date('c', strtotime('-2 hours'))],
-                  ['id_lead'=>'L-202508-003','id_vendor'=>'1','service'=>'1','nama'=>'Devi Laksita M.Pd','no_telp'=>'(+62) 829 377 690','status'=>'close','source'=>'wa_outbox','chat_at'=>date('c', strtotime('-1 day -15 minutes'))],
-                ];
-                function statusChip($s){
-                  $s=strtolower(trim($s)); if($s==='in progress') $s='in_progress';
-                  $map=[
-                    'new'=>['Baru','bg-blue-100 text-blue-800'],
-                    'in_progress'=>['Proses','bg-amber-100 text-amber-700'],
-                    'close'=>['Tertutup','bg-emerald-100 text-emerald-700'],
-                    'closed'=>['Tertutup','bg-emerald-100 text-emerald-700'],
-                  ];
-                  return $map[$s] ?? [ucwords($s),'bg-gray-100 text-gray-700'];
-                }
-              ?>
-              <?php foreach($rows as $lead): ?>
-                <?php
-                  [$statusLabel,$statusClass]=statusChip($lead['status']??'new');
-                  $tsIso = isset($lead['chat_at']) ? (is_numeric($lead['chat_at'])?date('c',(int)$lead['chat_at']):$lead['chat_at']) : date('c');
-                  $lihatUrl = isset($lead['id_lead']) ? site_url('admin/leads/'.$lead['id_lead']) : '#';
-                ?>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-100">
+          <thead class="bg-gradient-to-r from-blue-600 to-indigo-700">
+            <tr>
+              <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase">Tanggal</th>
+              <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase">Vendor</th>
+              <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase">Service</th>
+              <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase">Masuk</th>
+              <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase">Diproses</th>
+              <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase">Ditolak</th>
+              <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase">Closing</th>
+              <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase">Aksi</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-100">
+            <?php if(!empty($recentLeads)): ?>
+              <?php foreach($recentLeads as $lead): ?>
                 <tr class="hover:bg-gray-50">
-                  <td class="px-4 py-4 whitespace-nowrap align-top">
-                    <div class="text-sm font-bold text-gray-900"><time class="js-date" data-ts="<?= esc($tsIso) ?>">—</time></div>
-                    <div class="text-xs text-gray-500 leading-tight"><time class="js-time" data-ts="<?= esc($tsIso) ?>">—</time></div>
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap align-top">
-                    <div class="text-sm font-semibold text-gray-900"><?= esc($lead['nama'] ?? '-') ?></div>
-                    <div class="text-xs text-gray-500"><?= esc($lead['no_telp'] ?? ($lead['no_telp_cust'] ?? '-')) ?></div>
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap align-top"><div class="text-sm text-gray-900"><?= esc($lead['id_vendor'] ?? '-') ?></div></td>
-                  <td class="px-4 py-4 whitespace-nowrap align-top"><div class="text-sm text-gray-900"><?= esc($lead['service'] ?? '-') ?></div></td>
-                  <td class="px-4 py-4 whitespace-nowrap align-top">
-                    <span class="px-2 py-1 rounded-full text-[12px] font-semibold inline-flex <?= $statusClass ?>"><?= esc($statusLabel) ?></span>
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap align-top"><div class="text-sm text-gray-800"><?= esc($lead['source'] ?? '-') ?></div></td>
-                  <td class="px-4 py-4 whitespace-nowrap align-top">
-                    <a href="<?= $lihatUrl ?>" class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-xl shadow-sm visited:text-white">
+                  <td class="px-4 py-3 text-sm text-gray-800"><?= esc($lead['tanggal']) ?></td>
+                  <td class="px-4 py-3 text-sm text-gray-800"><?= esc($lead['vendor_name'] ?? $lead['vendor_id']) ?></td>
+                  <td class="px-4 py-3 text-sm text-gray-800"><?= esc($lead['service_name'] ?? $lead['service_id']) ?></td>
+                  <td class="px-4 py-3 text-sm font-semibold text-blue-700"><?= esc($lead['jumlah_leads_masuk']) ?></td>
+                  <td class="px-4 py-3 text-sm text-amber-700"><?= esc($lead['jumlah_leads_diproses']) ?></td>
+                  <td class="px-4 py-3 text-sm text-red-700"><?= esc($lead['jumlah_leads_ditolak']) ?></td>
+                  <td class="px-4 py-3 text-sm text-green-700 font-bold"><?= esc($lead['jumlah_leads_closing']) ?></td>
+                  <td class="px-4 py-3">
+                    <a href="<?= site_url('admin/leads/'.$lead['id']); ?>" 
+                      class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-xl shadow-sm">
                       <i class="fa-regular fa-eye text-[11px]"></i> Lihat
                     </a>
                   </td>
                 </tr>
               <?php endforeach; ?>
-              <?php if(empty($rows)): ?>
-                <tr><td colspan="7" class="px-4 py-10 text-center text-sm text-gray-500">Belum ada data leads.</td></tr>
-              <?php endif; ?>
-            </tbody>
-          </table>
-        </div>
+            <?php else: ?>
+              <tr>
+                <td colspan="8" class="px-4 py-10 text-center text-sm text-gray-500">Belum ada data leads.</td>
+              </tr>
+            <?php endif; ?>
+          </tbody>
+        </table>
       </div>
     </section>
 

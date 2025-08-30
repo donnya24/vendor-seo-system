@@ -23,7 +23,7 @@
            email: '<?= esc(old('email') ?? '') ?>',
            password: '',
            show: false,
-           get validPw(){ return this.password.length >= 6 }
+           get validPw(){ return this.password.length >= 8 }
          }">
 
       <div class="px-6 pt-8 pb-5 text-center border-b">
