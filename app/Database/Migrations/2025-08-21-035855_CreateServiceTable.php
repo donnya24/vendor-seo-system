@@ -14,7 +14,6 @@ class CreateServicesTable extends Migration
             'name'         => ['type' => 'VARCHAR', 'constraint' => 100],
             'service_type' => ['type' => 'VARCHAR', 'constraint' => 50, 'null' => true],
             'description'  => ['type' => 'TEXT', 'null' => true],
-            'status'       => ['type' => 'ENUM', 'constraint' => ['pending','active','inactive'], 'default' => 'pending'],
             'created_at'   => ['type' => 'DATETIME', 'default' => new RawSql('CURRENT_TIMESTAMP')],
             'updated_at'   => ['type' => 'DATETIME', 'null' => true],
         ]);

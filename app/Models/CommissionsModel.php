@@ -10,7 +10,14 @@ class CommissionsModel extends Model
     protected $primaryKey    = 'id';
     protected $returnType    = 'array';
     protected $allowedFields = [
-        'vendor_id','lead_id','amount','status','period',
-        'payment_note','proof_url','verify_note','paid_at','created_at','updated_at'
+        'vendor_id',
+        'period_start',
+        'period_end',
+        'amount',
+        'status',
+        'proof',
+        'paid_at',
+        'created_at',
+        'updated_at',
     ];
 }

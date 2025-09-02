@@ -14,6 +14,7 @@ class CreateVendorProductsTable extends Migration
             'product_name' => ['type'=>'VARCHAR','constraint'=>150],
             'description'  => ['type'=>'TEXT','null'=>true],
             'price'        => ['type'=>'DECIMAL','constraint'=>'12,2','null'=>true],
+            'attachment'   => ['type'=>'VARCHAR','constraint'=>255,'null'=>true], // kolom baru
             'created_at'   => ['type'=>'DATETIME','default'=>new RawSql('CURRENT_TIMESTAMP')],
             'updated_at'   => ['type'=>'DATETIME','null'=>true],
         ]);
@@ -22,6 +23,7 @@ class CreateVendorProductsTable extends Migration
         $this->forge->addForeignKey('vendor_id','vendor_profiles','id','CASCADE','CASCADE');
         $this->forge->createTable('vendor_products', true, ['ENGINE'=>'InnoDB','CHARSET'=>'utf8mb4','COLLATE'=>'utf8mb4_unicode_ci']);
     }
+
     public function down()
     {
         $this->forge->dropTable('vendor_products', true);

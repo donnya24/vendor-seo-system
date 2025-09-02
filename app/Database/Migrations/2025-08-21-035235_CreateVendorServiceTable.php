@@ -24,16 +24,7 @@ class CreateVendorServicesTable extends Migration
                 'unsigned' => true,
                 'null'     => false,
             ],
-            'approval_status' => [
-                'type'       => 'ENUM',
-                'constraint' => ['pending','approved','rejected'],
-                'default'    => 'pending',
-            ],
-            'commission_rate' => [
-                'type'       => 'DECIMAL',
-                'constraint' => '5,2',
-                'null'       => true,
-            ],
+
             'start_date' => [
                 'type' => 'DATE',
                 'null' => true,

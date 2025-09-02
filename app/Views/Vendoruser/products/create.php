@@ -2,7 +2,8 @@
 <div class="w-full">
   <h2 class="text-lg font-semibold mb-4">Tambah Produk</h2>
   <form method="post" action="<?= site_url('vendoruser/products/store'); ?>" 
-        class="space-y-4" onsubmit="return validateForm(this)">
+        class="space-y-4" onsubmit="return validateForm(this)"
+        enctype="multipart/form-data">
     <?= csrf_field() ?>
     
     <div>
@@ -27,14 +28,20 @@
              class="w-full border rounded-lg px-3 py-2">
     </div>
 
+    <div>
+      <label class="text-sm font-semibold mb-1 block">Lampiran</label>
+      <input type="file" name="attachment" 
+             class="w-full border rounded-lg px-3 py-2"
+             accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.ppt,.pptx">
+      <p class="text-sm text-gray-500 mt-1">Format: PDF, JPG, PNG, Word, Excel, PPT (Opsional, Maks 10MB)</p>
+    </div>
+
     <div class="pt-2 flex gap-2">
-      <!-- Tombol Simpan -->
       <button type="submit" 
               class="px-4 py-2 bg-blue-600 text-white rounded-lg 
                      hover:bg-blue-700 transition-colors duration-200">
         Simpan
       </button>
-      <!-- Tombol Batal -->
       <button type="button" onclick="closeModal()" 
               class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg 
                      hover:bg-gray-200 transition-colors duration-200">
@@ -50,17 +57,31 @@ function validateForm(form) {
   let nama = form.querySelector('[name="product_name"]').value.trim();
   let desc = form.querySelector('[name="description"]').value.trim();
   let price = form.querySelector('[name="price"]').value.trim();
+  let file  = form.querySelector('[name="attachment"]').files[0];
 
   if (!nama || !desc || !price || parseFloat(price) <= 0) {
     Swal.fire({
       icon: 'warning',
       title: 'Kolom wajib diisi',
-      text: 'Semua kolom harus diisi dengan benar!',
+      text: 'Nama produk, deskripsi, dan harga harus diisi dengan benar!',
       width: 350,
       customClass: { popup: 'rounded-lg text-sm' }
     });
     return false;
   }
+
+  // Validasi file max 10MB
+  if (file && file.size > 10 * 1024 * 1024) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'File terlalu besar',
+      text: 'Lampiran maksimal 10MB',
+      width: 350,
+      customClass: { popup: 'rounded-lg text-sm' }
+    });
+    return false;
+  }
+
   return true;
 }
 </script>

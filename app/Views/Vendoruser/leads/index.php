@@ -12,29 +12,31 @@
 
   <!-- TABLE -->
   <div class="bg-white rounded-xl shadow overflow-x-auto">
-    <table class="w-full text-sm">
-      <thead class="bg-gray-100 text-gray-700">
-        <tr>
-          <th class="px-4 py-2">Tanggal</th>
-          <th class="px-4 py-2">Layanan</th>
-          <th class="px-4 py-2 text-center">Masuk</th>
-          <th class="px-4 py-2 text-center">Diproses</th>
-          <th class="px-4 py-2 text-center">Ditolak</th>
-          <th class="px-4 py-2 text-center">Closing</th>
-          <th class="px-4 py-2 text-center">Aksi</th>
+    <table class="w-full text-sm border border-gray-300 border-collapse text-center">
+      <thead class="bg-blue-600 text-white">
+        <tr class="uppercase">
+          <th class="px-4 py-2 border border-gray-300 text-center font-semibold">ID LEADS</th>
+          <th class="px-4 py-2 border border-gray-300 text-center font-semibold">TANGGAL</th>
+          <th class="px-4 py-2 border border-gray-300 text-center font-semibold">LAYANAN</th>
+          <th class="px-4 py-2 border border-gray-300 text-center font-semibold">MASUK</th>
+          <th class="px-4 py-2 border border-gray-300 text-center font-semibold">DIPROSES</th>
+          <th class="px-4 py-2 border border-gray-300 text-center font-semibold">DITOLAK</th>
+          <th class="px-4 py-2 border border-gray-300 text-center font-semibold">CLOSING</th>
+          <th class="px-4 py-2 border border-gray-300 text-center font-semibold">AKSI</th>
         </tr>
       </thead>
       <tbody>
         <?php if (!empty($leads)): ?>
           <?php foreach ($leads as $l): ?>
-            <tr class="border-b">
-              <td class="px-4 py-2"><?= esc($l['tanggal']); ?></td>
-              <td class="px-4 py-2"><?= esc($l['service_name'] ?? '-'); ?></td>
-              <td class="px-4 py-2 text-center"><?= esc($l['jumlah_leads_masuk']); ?></td>
-              <td class="px-4 py-2 text-center"><?= esc($l['jumlah_leads_diproses']); ?></td>
-              <td class="px-4 py-2 text-center"><?= esc($l['jumlah_leads_ditolak']); ?></td>
-              <td class="px-4 py-2 text-center"><?= esc($l['jumlah_leads_closing']); ?></td>
-              <td class="px-4 py-2 text-center space-x-2">
+            <tr class="border border-gray-300 hover:bg-gray-50 transition">
+              <td class="px-4 py-2 border border-gray-300 text-center"><?= esc($l['id']); ?></td>
+              <td class="px-4 py-2 border border-gray-300 text-center"><?= esc($l['tanggal']); ?></td>
+              <td class="px-4 py-2 border border-gray-300 text-center"><?= esc($l['service_name'] ?? '-'); ?></td>
+              <td class="px-4 py-2 border border-gray-300 text-center"><?= esc($l['jumlah_leads_masuk']); ?></td>
+              <td class="px-4 py-2 border border-gray-300 text-center"><?= esc($l['jumlah_leads_diproses']); ?></td>
+              <td class="px-4 py-2 border border-gray-300 text-center"><?= esc($l['jumlah_leads_ditolak']); ?></td>
+              <td class="px-4 py-2 border border-gray-300 text-center"><?= esc($l['jumlah_leads_closing']); ?></td>
+              <td class="px-4 py-2 border border-gray-300 text-center space-x-2">
                 <button onclick="openModal('<?= site_url('vendoruser/leads/'.$l['id'].'/edit') ?>')" 
                   class="px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700">Edit</button>
 
@@ -48,7 +50,7 @@
           <?php endforeach; ?>
         <?php else: ?>
           <tr>
-            <td colspan="7" class="px-4 py-4 text-center text-gray-500">Belum ada laporan leads.</td>
+            <td colspan="8" class="px-4 py-4 border border-gray-300 text-center text-gray-500">Belum ada laporan leads.</td>
           </tr>
         <?php endif; ?>
       </tbody>

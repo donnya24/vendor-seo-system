@@ -16,6 +16,7 @@ class CommissionsSeeder extends Seeder
                 'leads_count'  => 8,
                 'amount'       => 1200000.00,
                 'status'       => 'unpaid',
+                'proof'        => null, // bisa diganti 'bukti_transfer.pdf' jika mau contoh
                 'paid_at'      => null,
                 'created_at'   => date('Y-m-d H:i:s'),
                 'updated_at'   => date('Y-m-d H:i:s'),

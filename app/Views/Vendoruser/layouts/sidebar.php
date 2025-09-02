@@ -30,7 +30,6 @@
       <i class="fas fa-toolbox mr-3"></i> Layanan
     </a>
 
-    <!-- 🔹 Areas (baru ditambahkan) -->
     <a href="<?= site_url('vendoruser/areas') ?>"
        class="block py-2 px-3 rounded-lg mb-1 flex items-center nav-item <?= strpos(current_url(), site_url('vendoruser/areas')) !== false ? 'active' : 'hover:bg-blue-700/70 focus:ring-2 focus:ring-blue-300/40' ?>">
       <i class="fas fa-map-marker-alt mr-3"></i> Area
@@ -39,6 +38,16 @@
     <a href="<?= site_url('vendoruser/products') ?>"
        class="block py-2 px-3 rounded-lg mb-1 flex items-center nav-item <?= strpos(current_url(), site_url('vendoruser/products')) !== false ? 'active' : 'hover:bg-blue-700/70 focus:ring-2 focus:ring-blue-300/40' ?>">
       <i class="fas fa-boxes mr-3"></i> Produk
+    </a>
+
+    <a href="<?= site_url('vendoruser/commissions') ?>"
+       class="block py-2 px-3 rounded-lg mb-1 flex items-center nav-item <?= strpos(current_url(), site_url('vendoruser/commissions')) !== false ? 'active' : 'hover:bg-blue-700/70 focus:ring-2 focus:ring-blue-300/40' ?>">
+      <i class="fas fa-coins mr-3"></i> Komisi
+    </a>
+
+    <a href="<?= site_url('vendoruser/activity_logs') ?>"
+      class="block py-2 px-3 rounded-lg mb-1 flex items-center nav-item <?= strpos(current_url(), site_url('vendoruser/activity')) !== false ? 'active' : 'hover:bg-blue-700/70 focus:ring-2 focus:ring-blue-300/40' ?>">
+      <i class="fas fa-clock-rotate-left mr-3"></i> Histori Aktivitas
     </a>
   </nav>
 

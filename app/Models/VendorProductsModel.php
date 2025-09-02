@@ -10,7 +10,13 @@ class VendorProductsModel extends Model
     protected $primaryKey    = 'id';
     protected $returnType    = 'array';
     protected $allowedFields = [
-        'vendor_id','product_name','description','price','created_at','updated_at'
+        'vendor_id',
+        'product_name',
+        'description',
+        'price',
+        'attachment',
+        'created_at',
+        'updated_at'
     ];
 
     protected $useTimestamps = true;

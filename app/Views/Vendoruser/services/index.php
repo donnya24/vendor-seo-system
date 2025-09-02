@@ -5,30 +5,34 @@
   <div class="flex items-center justify-between mb-4">
     <h2 class="text-xl font-semibold">Daftar Layanan</h2>
     <button onclick="openModal('<?= site_url('vendoruser/services/create') ?>')" 
-      class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+      class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm">
       + Tambah Layanan
     </button>
   </div>
 
   <!-- TABLE -->
   <div class="bg-white rounded-xl shadow overflow-x-auto">
-    <table class="w-full text-sm">
-      <thead class="bg-gray-100 text-gray-700">
-        <tr>
-          <th class="px-4 py-2">Nama Layanan</th>
-          <th class="px-4 py-2">Deskripsi</th>
-          <th class="px-4 py-2 text-center">Status</th>
-          <th class="px-4 py-2 text-center">Aksi</th>
+    <table class="w-full text-sm border border-gray-300 border-collapse text-center">
+      <thead class="bg-blue-600 text-white">
+        <tr class="uppercase">
+          <th class="px-4 py-3 border-r font-semibold">ID LAYANAN</th>
+          <th class="px-4 py-3 border-r font-semibold">NAMA LAYANAN</th>
+          <th class="px-4 py-3 border-r font-semibold">DESKRIPSI</th>
+          <th class="px-4 py-3 font-semibold">AKSI</th>
         </tr>
       </thead>
+
       <tbody>
         <?php if (!empty($items)): ?>
           <?php foreach($items as $it): ?>
-            <tr class="border-b">
-              <td class="px-4 py-2"><?= esc($it['name']); ?></td>
-              <td class="px-4 py-2">
+            <tr class="border-b hover:bg-gray-50 transition">
+              <td class="px-4 py-2 border-r text-gray-600 font-medium">
+                <?= esc($it['id']); ?>
+              </td>
+              <td class="px-4 py-2 border-r"><?= esc($it['name']); ?></td>
+              <td class="px-4 py-2 border-r">
                 <?php if (!empty($it['description'])): ?>
-                  <div class="max-w-xs truncate" title="<?= esc($it['description']); ?>">
+                  <div class="max-w-xs mx-auto truncate" title="<?= esc($it['description']); ?>">
                     <?= esc($it['description']); ?>
                   </div>
                   <button type="button" 
@@ -39,56 +43,47 @@
                 <?php else: ?>
                   <span class="text-gray-400 italic">Tidak ada deskripsi</span>
                 <?php endif; ?>
-              </td>
-              <td class="px-4 py-2 text-center">
-                <span class="px-2 py-1 rounded text-xs 
-                  <?= $it['status']==='active'
-                        ? 'bg-green-100 text-green-700'
-                        : ($it['status']==='pending'
-                              ? 'bg-yellow-100 text-yellow-700'
-                              : 'bg-gray-100 text-gray-700') ?>">
-                  <?= esc(ucfirst($it['status'])); ?>
-                </span>
-              </td>
-              <td class="px-4 py-2 text-center space-x-2">
+              <td class="px-4 py-2 space-x-2">
                 <button onclick="openModal('<?= site_url('vendoruser/services/'.$it['id'].'/edit') ?>')" 
-                  class="px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700">Edit</button>
+                  class="px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 shadow-sm text-xs">Edit</button>
                 
                 <form method="post" action="<?= site_url('vendoruser/services/'.$it['id'].'/delete'); ?>" 
                       class="inline delete-form">
                   <?= csrf_field() ?>
-                  <button type="submit" class="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700">Hapus</button>
+                  <button type="submit" class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 shadow-sm text-xs">Hapus</button>
                 </form>
               </td>
             </tr>
           <?php endforeach; ?>
         <?php else: ?>
           <tr>
-            <td colspan="4" class="px-4 py-4 text-center text-gray-500">Belum ada layanan.</td>
+            <td colspan="5" class="px-4 py-4 text-center text-gray-500">Belum ada layanan.</td>
           </tr>
         <?php endif; ?>
       </tbody>
     </table>
   </div>
-  
-  <p class="text-xs text-gray-500 mt-3">Status "pending" menunggu verifikasi Admin/SEO.</p>
 </div>
 
-<!-- MODAL FORM SERVICE -->
+<!-- 🔹 Modal Form Tambah/Edit -->
 <div id="serviceModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-  <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+  <div class="bg-white rounded-lg shadow-lg w-full max-w-lg p-4">
+    <div class="flex justify-between items-center mb-3">
+      <h3 class="text-lg font-semibold">Form Layanan</h3>
+      <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700">&times;</button>
+    </div>
     <div id="modalContent">Loading...</div>
   </div>
 </div>
 
-<!-- MODAL DESKRIPSI FULL -->
+<!-- 🔹 Modal Lihat Deskripsi -->
 <div id="descModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-  <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-6">
-    <h3 id="descTitle" class="text-lg font-semibold mb-3">Deskripsi</h3>
-    <p id="descContent" class="text-gray-700 whitespace-pre-line"></p>
-    <div class="flex justify-end mt-4">
-      <button type="button" onclick="closeDescModal()" class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Tutup</button>
+  <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-4">
+    <div class="flex justify-between items-center mb-3">
+      <h3 id="descTitle" class="text-lg font-semibold">Judul</h3>
+      <button onclick="closeDescModal()" class="text-gray-500 hover:text-gray-700">&times;</button>
     </div>
+    <p id="descContent" class="text-sm text-gray-700"></p>
   </div>
 </div>
 

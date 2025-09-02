@@ -9,5 +9,5 @@ class AreasModel extends Model
     protected $table         = 'areas';
     protected $primaryKey    = 'id';
     protected $returnType    = 'array';
-    protected $allowedFields = ['name','created_at','updated_at'];
+    protected $allowedFields = ['name', 'type', 'created_at', 'updated_at'];
 }

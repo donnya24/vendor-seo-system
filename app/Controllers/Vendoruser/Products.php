@@ -50,17 +50,25 @@ class Products extends BaseController
 
         $rules = [
             'product_name' => 'required|min_length[3]',
-            'price'        => 'permit_empty|decimal'
+            'price'        => 'permit_empty|decimal',
+            'attachment'   => 'permit_empty|uploaded[attachment]|max_size[attachment,10240]|ext_in[attachment,pdf,jpg,jpeg,png,doc,docx,xls,xlsx,ppt,pptx]'
         ];
 
-        if (! $this->validate($rules)) {
+        if (!$this->validate($rules)) {
+            $errors = implode("\n", $this->validator->getErrors());
             if ($this->request->isAJAX()) {
-                return $this->response->setJSON([
-                    'status'=>'error',
-                    'message'=>implode("\n", $this->validator->getErrors())
-                ]);
+                return $this->response->setJSON(['status'=>'error','message'=>$errors]);
             }
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
+        }
+
+        // handle file upload
+        $attachmentPath = null;
+        if ($file = $this->request->getFile('attachment')) {
+            if ($file->isValid() && !$file->hasMoved()) {
+                $attachmentPath = $file->getRandomName();
+                $file->move(FCPATH . 'uploads/vendor_products/', $attachmentPath);
+            }
         }
 
         (new VendorProductsModel())->insert([
@@ -68,6 +76,7 @@ class Products extends BaseController
             'product_name' => $this->request->getPost('product_name'),
             'description'  => $this->request->getPost('description'),
             'price'        => $this->request->getPost('price') !== '' ? $this->request->getPost('price') : null,
+            'attachment'   => $attachmentPath
         ]);
 
         if ($this->request->isAJAX()) {
@@ -97,27 +106,50 @@ class Products extends BaseController
         $vid = $this->vendorId();
         $rules = [
             'product_name' => 'required|min_length[3]',
-            'price'        => 'permit_empty|decimal'
+            'price'        => 'permit_empty|decimal',
+            'attachment'   => 'permit_empty|uploaded[attachment]|max_size[attachment,10240]|ext_in[attachment,pdf,jpg,jpeg,png,doc,docx,xls,xlsx,ppt,pptx]'
         ];
 
-        if (! $this->validate($rules)) {
+        if (!$this->validate($rules)) {
+            $errors = implode("\n", $this->validator->getErrors());
             if ($this->request->isAJAX()) {
-                return $this->response->setJSON([
-                    'status'=>'error',
-                    'message'=>implode("\n", $this->validator->getErrors())
-                ]);
+                return $this->response->setJSON(['status'=>'error','message'=>$errors]);
             }
-            return redirect()->back()->withInput()->with('errors',$this->validator->getErrors());
+            return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
 
-        (new VendorProductsModel())
-            ->where(['id'=>$id,'vendor_id'=>$vid])
-            ->set([
-                'product_name'=>$this->request->getPost('product_name'),
-                'description' =>$this->request->getPost('description'),
-                'price'       =>$this->request->getPost('price')!==''?$this->request->getPost('price'):null,
-                'updated_at'  =>date('Y-m-d H:i:s')
-            ])->update();
+        $model = new VendorProductsModel();
+        $item  = $model->where(['id'=>$id,'vendor_id'=>$vid])->first();
+
+        if (!$item) {
+            return redirect()->back()->with('errors', ['Produk tidak ditemukan']);
+        }
+
+        $updateData = [
+            'product_name' => $this->request->getPost('product_name'),
+            'description'  => $this->request->getPost('description'),
+            'price'        => $this->request->getPost('price') !== '' ? $this->request->getPost('price') : null,
+            'updated_at'   => date('Y-m-d H:i:s')
+        ];
+
+        // handle new attachment
+        if ($file = $this->request->getFile('attachment')) {
+            if ($file->isValid() && !$file->hasMoved()) {
+                // hapus file lama jika ada
+                if (!empty($item['attachment'])) {
+                    $oldFile = FCPATH . 'uploads/vendor_products/' . $item['attachment'];
+                    if (file_exists($oldFile)) {
+                        unlink($oldFile);
+                    }
+                }
+
+                $attachmentName = $file->getRandomName();
+                $file->move(FCPATH . 'uploads/vendor_products/', $attachmentName);
+                $updateData['attachment'] = $attachmentName;
+            }
+        }
+
+        $model->where(['id'=>$id,'vendor_id'=>$vid])->set($updateData)->update();
 
         if ($this->request->isAJAX()) {
             return $this->response->setJSON(['status'=>'success','message'=>'Produk berhasil diperbarui']);
@@ -129,7 +161,21 @@ class Products extends BaseController
     public function delete($id)
     {
         $vid = $this->vendorId();
-        (new VendorProductsModel())->where(['id'=>$id,'vendor_id'=>$vid])->delete();
+        $model = new VendorProductsModel();
+        $item  = $model->where(['id'=>$id,'vendor_id'=>$vid])->first();
+
+        if ($item) {
+            // hapus file lampiran jika ada
+            if (!empty($item['attachment'])) {
+                $filePath = FCPATH . 'uploads/vendor_products/' . $item['attachment'];
+                if (file_exists($filePath)) {
+                    unlink($filePath);
+                }
+            }
+
+            // hapus record
+            $model->where(['id'=>$id,'vendor_id'=>$vid])->delete();
+        }
 
         if ($this->request->isAJAX()) {
             return $this->response->setJSON(['status'=>'success','message'=>'Produk berhasil dihapus']);

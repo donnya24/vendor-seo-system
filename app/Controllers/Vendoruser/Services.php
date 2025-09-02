@@ -42,7 +42,6 @@ class Services extends BaseController
             'vendor_id'   => $vid,
             'name'        => $this->request->getPost('name'),
             'description' => $this->request->getPost('description'),
-            'status'      => 'pending',
             'created_at'  => date('Y-m-d H:i:s'),
             'updated_at'  => date('Y-m-d H:i:s'),
         ]);
@@ -56,7 +55,7 @@ class Services extends BaseController
         
         return redirect()
             ->to(site_url('vendoruser/services'))
-            ->with('success','Layanan ditambahkan (menunggu verifikasi).');
+            ->with('success','Layanan berhasil ditambahkan.');
     }
 
     public function edit($id)
@@ -101,7 +100,7 @@ class Services extends BaseController
         
         return redirect()
             ->to(site_url('vendoruser/services'))
-            ->with('success','Layanan diperbarui.');
+            ->with('success','Layanan berhasil diperbarui.');
     }
 
     public function delete($id)
@@ -121,6 +120,6 @@ class Services extends BaseController
         
         return redirect()
             ->to(site_url('vendoruser/services'))
-            ->with('success','Layanan dihapus.');
+            ->with('success','Layanan berhasil dihapus.');
     }
 }

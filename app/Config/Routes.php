@@ -33,7 +33,6 @@ $routes->get('auth/remember-status', 'Auth\AuthController::checkRememberStatus')
 // ==================== ADMIN ====================
 $routes->group('admin', ['filter' => ['session', 'group:admin']], static function ($routes) {
     $routes->get('dashboard', 'Admin\Dashboard::index');
-    $routes->get('api/stats', 'Admin\Dashboard::stats');
 
     // Users
     $routes->get('users',                 'Admin\Users::index');
@@ -86,7 +85,6 @@ $routes->get('seo_team/dashboard', static fn () => redirect()->to('/seo/dashboar
 $routes->group('vendoruser', ['filter' => ['session', 'group:vendor']], static function ($routes) {
     // Dashboard
     $routes->get('dashboard', 'Vendoruser\Dashboard::index');
-    $routes->get('api/stats', 'Vendoruser\Dashboard::stats'); // opsional, kalau kamu punya
 
     // Profile (COCOKKAN dgn controller yang ada)
     $routes->get('profile',          'Vendoruser\Profile::edit');        // ← tadinya ::index
@@ -105,10 +103,11 @@ $routes->group('vendoruser', ['filter' => ['session', 'group:vendor']], static f
     $routes->post('services/(:num)/delete', 'Vendoruser\Services::delete/$1');
 
     // areas
-    // Areas (Vendoruser)
-    $routes->get('areas',                'Vendoruser\Areas::index');
-    $routes->post('areas/attach',        'Vendoruser\Areas::attach');
-    $routes->post('areas/detach/(:num)', 'Vendoruser\Areas::detach/$1');
+    $routes->post('areas/toggle', 'Vendoruser\Areas::toggle');
+    $routes->get('areas', 'Vendoruser\Areas::index');
+    $routes->get('areas/create', 'Vendoruser\Areas::create');
+    $routes->post('areas/store', 'Vendoruser\Areas::store');
+    $routes->post('areas/delete', 'Vendoruser\Areas::delete');
 
     // Products
     $routes->get('products',                'Vendoruser\Products::index');
@@ -118,7 +117,7 @@ $routes->group('vendoruser', ['filter' => ['session', 'group:vendor']], static f
     $routes->post('products/(:num)/update', 'Vendoruser\Products::update/$1');
     $routes->post('products/(:num)/delete', 'Vendoruser\Products::delete/$1');
 
-    // Leads
+
  // Leads
     $routes->get('leads',                'Vendoruser\Leads::index');
     $routes->get('leads/create',         'Vendoruser\Leads::create');
@@ -127,6 +126,18 @@ $routes->group('vendoruser', ['filter' => ['session', 'group:vendor']], static f
     $routes->get('leads/(:num)/edit',    'Vendoruser\Leads::edit/$1');
     $routes->post('leads/(:num)/update', 'Vendoruser\Leads::update/$1');
     $routes->post('leads/(:num)/delete', 'Vendoruser\Leads::delete/$1');
+
+    // Commissions
+    $routes->get('commissions',                'Vendoruser\Commissions::index');
+    $routes->get('commissions/create',         'Vendoruser\Commissions::create');
+    $routes->post('commissions/store',         'Vendoruser\Commissions::store');
+    $routes->get('commissions/(:num)',         'Vendoruser\Commissions::show/$1');
+    $routes->get('commissions/(:num)/edit',    'Vendoruser\Commissions::edit/$1');
+    $routes->post('commissions/(:num)/update', 'Vendoruser\Commissions::update/$1');
+    $routes->post('commissions/(:num)/delete', 'Vendoruser\Commissions::delete/$1');
+
+    // Activity Logs
+        $routes->get('activity_logs', 'Vendoruser\ActivityLogs::index');
 
     // Notifikasi
     $routes->get('notifications',                 'Vendoruser\Notifications::index');

@@ -286,50 +286,44 @@ $canUpload = isset($canUpload) ? (bool)$canUpload : (($vp['status'] ?? '') === '
   </div>
 </div>
 
+
 <!-- Leads Table -->
-<div class="bg-white rounded-lg shadow overflow-hidden">
+<div class="bg-white rounded-xl shadow overflow-hidden mt-6">
   <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-    <h3 class="text-lg font-medium text-gray-900">
-      <i class="fas fa-bullseye mr-2 text-blue-600"></i>Leads Terbaru
-    </h3>
-    <a href="<?= site_url('vendoruser/leads') ?>"
-       class="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center">
-      <i class="fas fa-eye mr-1"></i> Lihat Semua
+    <h3 class="text-lg font-semibold text-gray-800"><i class="fas fa-bullseye text-blue-600 mr-2"></i>Leads Terbaru</h3>
+    <a href="<?= site_url('vendoruser/leads') ?>" class="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
+      <i class="fas fa-eye"></i> Lihat Semua
     </a>
   </div>
   <div class="overflow-x-auto">
-    <table class="min-w-full divide-y divide-gray-200">
-      <thead class="bg-gray-50">
+    <table class="table-auto w-full border-collapse text-sm text-gray-700">
+      <thead class="bg-blue-600 text-white">
         <tr>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Project</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Masuk</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Diproses</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ditolak</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Closing</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Update</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
+          <?php $headers = ['ID Leads','Layanan','Masuk','Diproses','Ditolak','Closing','Tanggal','Update','Aksi']; ?>
+          <?php foreach($headers as $h): ?>
+          <th class="px-4 py-2 uppercase font-medium border text-center"><?= $h ?></th>
+          <?php endforeach; ?>
         </tr>
       </thead>
-      <tbody class="bg-white divide-y divide-gray-200">
-        <?php if (empty($recentLeads)): ?>
+      <tbody class="divide-y divide-gray-200">
+        <?php if(empty($recentLeads)): ?>
           <tr>
-            <td colspan="9" class="px-6 py-4 text-center text-sm text-gray-500">Belum ada lead.</td>
+            <td colspan="9" class="px-4 py-4 text-center text-gray-500">Belum ada lead.</td>
           </tr>
-        <?php else: foreach ($recentLeads as $lead): ?>
-          <tr class="hover:bg-gray-50">
-            <td class="px-6 py-4"><?= esc($lead['id']) ?></td>
-            <td class="px-6 py-4"><?= esc($lead['project']) ?></td>
-            <td class="px-6 py-4"><?= esc($lead['masuk']) ?></td>
-            <td class="px-6 py-4"><?= esc($lead['diproses']) ?></td>
-            <td class="px-6 py-4"><?= esc($lead['ditolak']) ?></td>
-            <td class="px-6 py-4"><?= esc($lead['closing']) ?></td>
-            <td class="px-6 py-4"><?= esc($lead['tanggal']) ?></td>
-            <td class="px-6 py-4"><?= esc($lead['updated']) ?></td>
-            <td class="px-6 py-4 text-sm">
-              <button type="button" onclick="showLeadDetail(<?= $lead['id'] ?>)" 
-                      class="text-blue-600 hover:text-blue-800">Detail</button>
+        <?php else: foreach($recentLeads as $lead): ?>
+          <tr class="hover:bg-gray-50 transition">
+            <td class="px-4 py-2 border text-center"><?= esc($lead['id']) ?></td>
+            <td class="px-4 py-2 border text-center"><?= esc($lead['project']) ?></td>
+            <td class="px-4 py-2 border text-center"><?= esc($lead['masuk']) ?></td>
+            <td class="px-4 py-2 border text-center"><?= esc($lead['diproses']) ?></td>
+            <td class="px-4 py-2 border text-center"><?= esc($lead['ditolak']) ?></td>
+            <td class="px-4 py-2 border text-center"><?= esc($lead['closing']) ?></td>
+            <td class="px-4 py-2 border text-center"><?= esc($lead['tanggal']) ?></td>
+            <td class="px-4 py-2 border text-center"><?= esc($lead['updated']) ?></td>
+            <td class="px-4 py-2 border text-center">
+              <button class="text-blue-600 font-medium hover:text-blue-800" onclick="showLeadDetail(<?= $lead['id'] ?>)">
+                Detail
+              </button>
             </td>
           </tr>
         <?php endforeach; endif; ?>

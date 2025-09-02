@@ -13,7 +13,7 @@ class CreateCommissionsTable extends Migration
             'id'             => ['type' => 'INT', 'unsigned' => true, 'auto_increment' => true],
             'vendor_id'      => ['type' => 'INT', 'unsigned' => true],
 
-            // Periode komisi (setengah bulan / bulanan — bebas kamu pakai)
+            // Periode komisi (setengah bulan / bulanan)
             'period_start'   => ['type' => 'DATE', 'null' => false],
             'period_end'     => ['type' => 'DATE', 'null' => false],
 
@@ -23,6 +23,9 @@ class CreateCommissionsTable extends Migration
 
             // Status pembayaran
             'status'         => ['type' => 'ENUM', 'constraint' => ['unpaid', 'paid'], 'default' => 'unpaid'],
+
+            // Bukti pembayaran (file)
+            'proof'          => ['type' => 'VARCHAR', 'constraint' => 255, 'null' => true],
 
             // Waktu2
             'paid_at'        => ['type' => 'DATETIME', 'null' => true],
@@ -35,7 +38,7 @@ class CreateCommissionsTable extends Migration
         $this->forge->addUniqueKey(['vendor_id', 'period_start', 'period_end']);
         $this->forge->addKey('vendor_id');
 
-        // Ikuti pola FK lain: referensi ke vendor_profiles.id dengan CASCADE
+        // FK ke vendor_profiles.id
         $this->forge->addForeignKey('vendor_id', 'vendor_profiles', 'id', 'CASCADE', 'CASCADE');
 
         $this->forge->createTable('commissions', true, [

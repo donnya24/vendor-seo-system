@@ -29,7 +29,6 @@ class ServicesSeeder extends Seeder
                 'service_type' => 'vendor_service',
                 'description'  => 'Layanan utama yang ditawarkan oleh ' . $vendor->business_name .
                                    ' milik ' . $vendor->owner_name,
-                'status'       => 'pending', // default menunggu approval Admin/SEO
                 'created_at'   => date('Y-m-d H:i:s'),
             ];
         }

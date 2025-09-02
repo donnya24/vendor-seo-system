@@ -26,8 +26,6 @@ class VendorServicesSeeder extends Seeder
             $data[] = [
                 'vendor_id'       => $service->vendor_id,
                 'service_id'      => $service->id,
-                'approval_status' => 'approved', // bisa juga random kalau mau simulasi
-                'commission_rate' => 10.00,
                 'start_date'      => date('Y-m-d'),
                 'end_date'        => null,
                 'created_at'      => date('Y-m-d H:i:s'),
