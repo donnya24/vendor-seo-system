@@ -1,0 +1,4 @@
+[submodule "writable/wilayah-json/api-wilayah-indonesia"]
+	path = writable/wilayah-json/api-wilayah-indonesia
+	url = https://github.com/emsifa/api-wilayah-indonesia.git
+	branch = gh-pages
