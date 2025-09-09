@@ -1,87 +1,215 @@
-<!-- app/Views/vendoruser/commissions/index.php -->
 <?= $this->include('vendoruser/layouts/header'); ?>
-<?= $this->include('vendoruser/layouts/sidebar'); ?>
 
-<div class="flex-1 md:ml-64 p-4">
-  <div class="bg-white rounded-2xl p-6 shadow">
-    <div class="flex items-center justify-between mb-4">
-      <h2 class="text-xl font-semibold">Rekap Komisi</h2>
-      <!-- Tombol tambah komisi -->
-      <button onclick="openModal('<?= site_url('vendoruser/commissions/create') ?>')" 
-        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-        + Tambah Komisi
-      </button>
+<main class="app-main flex-1 p-4 bg-gray-50">
+  <div class="bg-white rounded-2xl p-5 shadow">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-lg md:text-xl font-semibold">Rekap Komisi</h2>
+      <div class="flex gap-2">
+        <button onclick="openModal('<?= site_url('vendoruser/commissions/create') ?>')" 
+          class="px-3.5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm md:text-base">
+          + Tambah Komisi
+        </button>
+        <button id="deleteSelectedBtn" 
+          class="px-3.5 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 hidden text-sm md:text-base">
+          Hapus Terpilih
+        </button>
+      </div>
     </div>
 
-    <div class="overflow-x-auto">
-      <table class="min-w-full text-sm border border-gray-200 rounded-lg overflow-hidden text-center">
-        <thead>
-          <tr class="bg-blue-600 text-white uppercase text-xs tracking-wide">
-            <th class="p-3">Periode</th>
-            <th class="p-3">Nominal</th>
-            <th class="p-3">Status</th>
-            <th class="p-3">Bukti</th>
-            <th class="p-3">Aksi</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100">
-          <?php if(!empty($items)): ?>
-            <?php foreach($items as $it): ?>
-              <tr class="hover:bg-gray-50">
-                <td class="p-3"><?= esc($it['period_start']); ?> – <?= esc($it['period_end']); ?></td>
-                <td class="p-3 font-medium text-gray-800">Rp <?= number_format((float)$it['amount'],0,',','.'); ?></td>
-                <td class="p-3">
-                  <span class="px-2 py-1 rounded-lg text-xs 
-                    <?= $it['status'] === 'paid' ? 'bg-green-100 text-green-700' : 
-                       ($it['status'] === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'); ?>">
-                    <?= esc(ucfirst($it['status'])); ?>
-                  </span>
-                </td>
-                <td class="p-3">
-                  <?php if(!empty($it['proof']) && file_exists(FCPATH.'uploads/commissions/'.$it['proof'])): ?>
-                    <a href="<?= base_url('uploads/commissions/'.$it['proof']) ?>" target="_blank" class="text-blue-600 hover:underline">
-                      Lihat Bukti
-                    </a>
-                  <?php else: ?>
-                    <span class="text-gray-400">-</span>
-                  <?php endif; ?>
-                </td>
-                <td class="p-3 flex justify-center gap-2">
-                  <button onclick="openModal('<?= site_url('vendoruser/commissions/'.$it['id'].'/edit') ?>')" 
-                    class="px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700">Edit</button>
+    <!-- ========= FILTER & PAGINATION BAR ========= -->
+    <?php
+      $qs = $_GET ?? [];
+      $start_date = $qs['start_date'] ?? '';
+      $end_date   = $qs['end_date']   ?? '';
 
-                  <form method="post" action="<?= site_url('vendoruser/commissions/'.$it['id'].'/delete') ?>" class="inline delete-form">
-                    <?= csrf_field() ?>
-                    <button type="submit" class="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700">Hapus</button>
-                  </form>
-                </td>
-              </tr>
-            <?php endforeach; ?>
-          <?php else: ?>
+      $startDateObj = $start_date ? date_create($start_date) : null;
+      $endDateObj   = $end_date   ? date_create($end_date)   : null;
+
+      $sourceItems = $items ?? [];
+      $filtered    = array_values(array_filter((array)$sourceItems, function($row) use ($startDateObj, $endDateObj) {
+        $s = isset($row['period_start']) ? date_create($row['period_start']) : null;
+        $e = isset($row['period_end'])   ? date_create($row['period_end'])   : null;
+        if (!$s || !$e) return false;
+        $okStart = $startDateObj ? ($e >= $startDateObj) : true;
+        $okEnd   = $endDateObj   ? ($s <= $endDateObj)   : true;
+        return $okStart && $okEnd;
+      }));
+
+      // Pagination 10/hal
+      $perPage     = 10;
+      $total       = count($filtered);
+      $page        = max(1, (int)($qs['page'] ?? 1));
+      $totalPages  = max(1, (int)ceil($total / $perPage));
+      if ($page > $totalPages) { $page = $totalPages; }
+      $offset      = ($page - 1) * $perPage;
+      $rows        = array_slice($filtered, $offset, $perPage);
+      $startNo     = $offset + 1;
+
+      $baseUrl = site_url('vendoruser/commissions');
+      $buildUrl = function(array $extra = []) use ($baseUrl, $qs) {
+        $merged = array_merge($qs, $extra);
+        if (!isset($extra['page'])) unset($merged['page']); // reset page saat klik filter
+        $q = http_build_query($merged);
+        return $q ? $baseUrl.'?'.$q : $baseUrl;
+      };
+
+      $pgStart = max(1, $page - 2);
+      $pgEnd   = min($totalPages, $pgStart + 4);
+      $pgStart = max(1, $pgEnd - 4);
+    ?>
+
+    <div class="mb-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+      <!-- Filter -->
+      <form method="get" action="<?= site_url('vendoruser/commissions'); ?>" class="flex flex-wrap items-end gap-2">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Periode Dari</label>
+          <input type="date" name="start_date" value="<?= esc($start_date) ?>" class="border rounded-lg px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Sampai</label>
+          <input type="date" name="end_date" value="<?= esc($end_date) ?>" class="border rounded-lg px-3 py-2 text-sm">
+        </div>
+        <div class="flex gap-2">
+          <button type="submit" class="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
+            Filter
+          </button>
+          <a href="<?= site_url('vendoruser/commissions'); ?>" class="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm">
+            Reset
+          </a>
+        </div>
+      </form>
+
+      <!-- Pagination (pojok kanan atas) -->
+      <?php if ($totalPages > 1): ?>
+      <nav class="flex items-center">
+        <ul class="inline-flex items-center rounded-md border border-blue-400 overflow-hidden text-sm">
+          <li>
+            <a href="<?= $page>1 ? $buildUrl(['page'=>1]) : 'javascript:void(0)'; ?>"
+               class="px-3 py-1 border-r border-blue-400 text-blue-700 <?= $page==1?'opacity-40 pointer-events-none':'hover:bg-blue-50' ?>">«</a>
+          </li>
+          <li>
+            <a href="<?= $page>1 ? $buildUrl(['page'=>$page-1]) : 'javascript:void(0)'; ?>"
+               class="px-3 py-1 border-r border-blue-400 text-blue-700 <?= $page==1?'opacity-40 pointer-events-none':'hover:bg-blue-50' ?>">‹</a>
+          </li>
+          <?php for ($p=$pgStart; $p<=$pgEnd; $p++): ?>
+          <li>
+            <a href="<?= $buildUrl(['page'=>$p]) ?>"
+               class="px-3.5 py-1 border-r border-blue-400 <?= $p==$page ? 'bg-blue-500 text-white' : 'text-blue-700 hover:bg-blue-50' ?>">
+              <?= $p ?>
+            </a>
+          </li>
+          <?php endfor; ?>
+          <li>
+            <a href="<?= $page<$totalPages ? $buildUrl(['page'=>$page+1]) : 'javascript:void(0)'; ?>"
+               class="px-3 py-1 border-r border-blue-400 text-blue-700 <?= $page==$totalPages?'opacity-40 pointer-events-none':'hover:bg-blue-50' ?>">›</a>
+          </li>
+          <li>
+            <a href="<?= $page<$totalPages ? $buildUrl(['page'=>$totalPages]) : 'javascript:void(0)'; ?>"
+               class="px-3 py-1 text-blue-700 <?= $page==$totalPages?'opacity-40 pointer-events-none':'hover:bg-blue-50' ?>">»</a>
+          </li>
+        </ul>
+      </nav>
+      <?php endif; ?>
+    </div>
+    <!-- ========= /FILTER & PAGINATION BAR ========= -->
+
+    <form id="bulkDeleteForm" method="post" action="<?= site_url('vendoruser/commissions/delete-multiple') ?>">
+      <?= csrf_field() ?>
+
+      <!-- WRAPPER SCROLL -->
+      <div class="max-h-[60vh] overflow-y-auto overflow-x-auto rounded-lg border border-gray-200 mb-3 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100 scrollbar-thumb-rounded-full">
+        <table class="min-w-full text-xs md:text-sm text-center">
+          <thead class="bg-blue-600 text-white uppercase tracking-wide">
             <tr>
-              <td colspan="5" class="p-4 text-center text-gray-500">Belum ada data komisi.</td>
+              <th class="px-2 py-2 sticky top-0 bg-blue-600 z-[1] w-10">No</th>
+              <th class="px-2 py-2 sticky top-0 bg-blue-600 z-[1] w-40">Periode</th>
+              <th class="px-2 py-2 sticky top-0 bg-blue-600 z-[1] w-32">Penghasilan</th>
+              <th class="px-2 py-2 sticky top-0 bg-blue-600 z-[1] w-28">Nominal</th>
+              <th class="px-2 py-2 sticky top-0 bg-blue-600 z-[1] w-24">Status</th>
+              <th class="px-2 py-2 sticky top-0 bg-blue-600 z-[1] w-28">Bukti</th>
+              <th class="px-2 py-2 sticky top-0 bg-blue-600 z-[1] w-20">Aksi</th>
+              <!-- CHECKBOX HEADER DIPINDAH KE SEBELAH KANAN -->
+              <th class="px-2 py-2 sticky top-0 bg-blue-600 z-[1] w-12">
+                <input type="checkbox" id="selectAll" class="w-3.5 h-3.5 mx-auto accent-blue-600 cursor-pointer">
+              </th>
             </tr>
-          <?php endif; ?>
-        </tbody>
-      </table>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            <?php if(!empty($rows)): ?>
+              <?php foreach($rows as $i => $it): ?>
+                <tr class="hover:bg-gray-50">
+                  <td class="px-2 py-2 font-medium"><?= $startNo + $i ?></td>
+                  <td class="px-2 py-2 whitespace-nowrap"><?= esc($it['period_start']); ?> – <?= esc($it['period_end']); ?></td>
+                  <td class="px-2 py-2 font-medium text-gray-800">Rp <?= number_format((float)$it['earning'],0,',','.'); ?></td>
+                  <td class="px-2 py-2 font-medium text-gray-800">Rp <?= number_format((float)$it['amount'],0,',','.'); ?></td>
+                  <td class="px-2 py-2">
+                    <span class="px-2 py-1 rounded-lg text-[11px] md:text-xs 
+                      <?= $it['status'] === 'paid' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'; ?>">
+                      <?= esc(ucfirst($it['status'])); ?>
+                    </span>
+                  </td>
+                  <td class="px-2 py-2">
+                    <?php if(!empty($it['proof']) && file_exists(FCPATH.'uploads/commissions/'.$it['proof'])): ?>
+                      <a href="<?= base_url('uploads/commissions/'.$it['proof']) ?>" target="_blank" class="text-blue-600 hover:underline">
+                        Lihat
+                      </a>
+                    <?php else: ?>
+                      <span class="text-gray-400">-</span>
+                    <?php endif; ?>
+                  </td>
+                  <td class="px-2 py-2">
+                    <button onclick="openModal('<?= site_url('vendoruser/commissions/'.$it['id'].'/edit') ?>')" 
+                      type="button"
+                      class="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-[11px] md:text-xs">
+                      Edit
+                    </button>
+                  </td>
+                  <!-- CHECKBOX ROW DIPINDAH KE SEBELAH KANAN -->
+                  <td class="px-2 py-2">
+                    <input type="checkbox" name="ids[]" value="<?= $it['id'] ?>" 
+                           class="rowCheckbox w-3.5 h-3.5 mx-auto accent-blue-600 cursor-pointer transition-transform duration-200 hover:scale-110">
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+            <?php else: ?>
+              <tr>
+                <td colspan="8" class="p-4 text-center text-gray-500">Belum ada data komisi.</td>
+              </tr>
+            <?php endif; ?>
+          </tbody>
+        </table>
+      </div>
+      <!-- END WRAPPER SCROLL -->
+    </form>
 
-    <!-- Catatan verifikasi pembayaran -->
-    <div class="mt-3 text-sm text-gray-500">
-      Catatan: Pembayaran komisi akan diverifikasi terlebih dahulu oleh Admin/Tim SEO sebelum statusnya menjadi "Paid".
+    <div class="mt-2 text-xs md:text-sm text-gray-500">
+      Menampilkan <span class="font-medium"><?= count($rows) ?></span> dari <span class="font-medium"><?= $total ?></span> data.
     </div>
+
+    <div class="mt-2 text-xs md:text-sm text-gray-500">
+      Catatan: Pembayaran komisi akan diverifikasi terlebih dahulu oleh Admin/Tim SEO sebelum statusnya menjadi "Paid".
     </div>
   </div>
 </div>
+</main>
 
-<!-- Modal untuk create/edit komisi -->
+<!-- Modal -->
 <div id="commissionModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
   <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
     <div id="modalContent">Loading...</div>
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <script>
+const swalMini = { popup:'rounded-md text-sm p-3 shadow', title:'text-sm font-semibold', htmlContainer:'text-sm' };
+
+function getCsrfHeaders() {
+  const header = document.querySelector('meta[name="csrf-header"]')?.content;
+  const token  = document.querySelector('meta[name="csrf-token"]')?.content;
+  return header && token ? { [header]: token } : {};
+}
+
 function openModal(url) {
   const modal = document.getElementById('commissionModal');
   modal.classList.remove('hidden'); modal.classList.add('flex');
@@ -91,55 +219,93 @@ function openModal(url) {
     .then(html => document.getElementById('modalContent').innerHTML = html)
     .catch(() => document.getElementById('modalContent').innerHTML = '<p class="text-red-500">Error loading form.</p>');
 }
+
 function closeModal() {
   const modal = document.getElementById('commissionModal');
   modal.classList.add('hidden'); modal.classList.remove('flex');
 }
 
-// Handle delete dengan SweetAlert2
 document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('.delete-form').forEach(form => {
-    form.addEventListener('submit', function(e) {
-      e.preventDefault();
-      Swal.fire({
-        title: 'Yakin hapus?',
-        text: "Data komisi akan dihapus permanen.",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Ya',
-        cancelButtonText: 'Batal',
-        width: 260,
-        customClass: {popup:'rounded-md text-sm', title:'text-sm font-semibold', htmlContainer:'text-sm'}
-      }).then((result) => {
-        if (result.isConfirmed) form.submit();
-      });
-    });
+  const selectAll = document.getElementById('selectAll');
+  const deleteBtn = document.getElementById('deleteSelectedBtn');
+
+  // Toggle tombol hapus saat ada yang tercentang
+  function toggleDeleteBtn() {
+    const checked = document.querySelectorAll('.rowCheckbox:checked').length;
+    if (checked > 0) {
+      deleteBtn.classList.remove('hidden');
+    } else {
+      deleteBtn.classList.add('hidden');
+    }
+  }
+
+  // Select all
+  selectAll?.addEventListener('change', () => {
+    document.querySelectorAll('.rowCheckbox').forEach(cb => cb.checked = selectAll.checked);
+    toggleDeleteBtn();
   });
 
-  // SweetAlert untuk session flash messages
-  <?php if(session()->getFlashdata('success')): ?>
-    Swal.fire({
-      icon: 'success',
-      title: 'Berhasil',
-      text: '<?= session()->getFlashdata('success') ?>',
-      showConfirmButton: false,
-      timer: 2000,
-      width: 300,
-      customClass: {popup:'rounded-md text-sm', title:'text-sm font-semibold', htmlContainer:'text-sm'}
-    });
-  <?php endif; ?>
+  // Setiap rowCheckbox berubah, cek lagi
+  document.querySelectorAll('.rowCheckbox').forEach(cb => cb.addEventListener('change', toggleDeleteBtn));
 
-  <?php if(session()->getFlashdata('errors')): ?>
+  // Aksi hapus terpilih
+  deleteBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    const ids = Array.from(document.querySelectorAll('.rowCheckbox:checked')).map(cb => cb.value);
+    if (ids.length === 0) return;
+
     Swal.fire({
-      icon: 'error',
-      title: 'Terjadi Kesalahan',
-      html: '<?php foreach(session()->getFlashdata('errors') as $e) { echo esc($e) . "<br>"; } ?>',
+      title: 'Hapus terpilih?',
+      text: `Ada ${ids.length} komisi yang akan dihapus.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#2563eb',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Ya, hapus',
+      cancelButtonText: 'Batal',
       width: 300,
-      customClass: {popup:'rounded-md text-sm', title:'text-sm font-semibold', htmlContainer:'text-sm'}
+      customClass: swalMini
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+
+      fetch("<?= site_url('vendoruser/commissions/delete-multiple') ?>", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          ...getCsrfHeaders()
+        },
+        body: JSON.stringify({ ids })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data?.csrfHash) {
+          const meta = document.querySelector("meta[name='csrf-token']");
+          if (meta) meta.setAttribute("content", data.csrfHash);
+        }
+        if (data?.status === 'success') {
+          Swal.fire({
+            icon: 'success',
+            title: 'Berhasil',
+            text: data.message || 'Data komisi terpilih telah dihapus.',
+            timer: 1800,
+            showConfirmButton: false,
+            width: 300,
+            customClass: swalMini
+          }).then(() => window.location.reload());
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'Gagal',
+            text: data?.message || 'Terjadi kesalahan saat menghapus.',
+            width: 300,
+            customClass: swalMini
+          });
+        }
+      })
+      .catch(() => Swal.fire('Error','Koneksi gagal','error'));
     });
-  <?php endif; ?>
+  });
 });
 </script>
 

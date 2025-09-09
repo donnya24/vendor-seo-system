@@ -1,259 +1,198 @@
 <?= $this->include('vendoruser/layouts/header'); ?>
-<?= $this->include('vendoruser/layouts/sidebar'); ?>
 
-<div class="flex-1 md:ml-64 p-4">
+<?php $hasAreas = !empty($vendorAreas ?? []); ?>
+
+<main class="app-main flex-1 p-4 bg-gray-50">
+  <!-- Toolbar -->
   <div class="flex items-center justify-between mb-4">
     <h2 class="text-xl font-semibold">Area Layanan</h2>
-    <button onclick="openModal('<?= site_url('vendoruser/areas/create') ?>')" 
-      class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-      + Tambah Area
-    </button>
+
+    <div class="flex items-center gap-2">
+      <?php if ($hasAreas): ?>
+        <!-- Sudah ada area: Tambah nonaktif -->
+        <button type="button"
+                class="px-4 py-2 rounded-lg bg-gray-300 text-white opacity-60 cursor-not-allowed"
+                title="Anda sudah menambahkan area. Gunakan Edit Area untuk mengubah."
+                disabled>
+          + Tambah Area
+        </button>
+      <?php else: ?>
+        <!-- Belum ada area: Tambah aktif -->
+        <a href="<?= site_url('vendoruser/areas/create?modal=1') ?>"
+           onclick="return openAreasPopup(this.href)"
+           class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          + Tambah Area
+        </a>
+      <?php endif; ?>
+
+      <?php if ($hasAreas): ?>
+        <!-- Sudah ada area: Edit aktif -->
+        <a href="<?= site_url('vendoruser/areas/edit?modal=1') ?>"
+           onclick="return openAreasPopup(this.href)"
+           class="px-4 py-2 bg-white border border-blue-600 text-blue-700 rounded-lg hover:bg-blue-50">
+          Edit Area
+        </a>
+      <?php else: ?>
+        <!-- Belum ada area: Edit nonaktif -->
+        <button type="button"
+                class="px-4 py-2 bg-white border border-gray-300 text-gray-400 rounded-lg opacity-60 cursor-not-allowed"
+                title="Belum ada area untuk diedit"
+                disabled>
+          Edit Area
+        </button>
+      <?php endif; ?>
+    </div>
   </div>
 
-  <div class="bg-white rounded-xl shadow overflow-x-auto">
-    <table class="w-full text-sm border border-gray-300 border-collapse text-center">
-      <thead class="bg-blue-600 text-white">
-        <tr class="uppercase">
-          <th class="px-4 py-2 text-center border border-gray-300 font-semibold">ID AREA</th>
-          <th class="px-4 py-2 text-center border border-gray-300 font-semibold">NAMA AREA</th>
-          <th class="px-4 py-2 text-center border border-gray-300 font-semibold">TIPE</th>
-          <th class="px-4 py-2 text-center border border-gray-300 font-semibold">TANGGAL DIBUAT</th>
-          <th class="px-4 py-2 text-center border border-gray-300 font-semibold">AKSI</th>
-        </tr>
-      </thead>
-      <tbody>
-        <?php if (!empty($areas)): foreach($areas as $a): ?>
-          <tr class="hover:bg-gray-50 transition">
-            <td class="px-4 py-2 text-center border border-gray-300 font-mono text-sm">
-              <?= esc($a['id']) ?>
-            </td>
-            <td class="px-4 py-2 text-center border border-gray-300">
-              <?= esc($a['name']) ?>
-            </td>
-            <td class="px-4 py-2 text-center border border-gray-300">
-              <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700 capitalize">
-                <?= esc($a['type']) ?>
-              </span>
-            </td>
-            <td class="px-4 py-2 text-sm text-center border border-gray-300">
-              <?= date('d M Y', strtotime($a['created_at'])) ?>
-            </td>
-            <td class="px-4 py-2 text-center border border-gray-300">
-              <?php if(in_array($a['id'],$attachedIds)): ?>
-                <button onclick="deleteArea(<?= $a['id'] ?>)" 
-                  class="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700">
-                  Hapus
-                </button>
-              <?php else: ?>
-                <span class="text-gray-400 text-sm">-</span>
-              <?php endif; ?>
-            </td>
-          </tr>
-        <?php endforeach; else: ?>
-          <tr>
-            <td colspan="5" class="px-4 py-4 text-center border border-gray-300 text-gray-500">
-              Belum ada area layanan.
-            </td>
-          </tr>
-        <?php endif; ?>
-      </tbody>
-    </table>
+  <!-- Ringkasan area vendor -->
+  <div class="mb-4">
+    <div class="border border-gray-200 rounded-lg bg-white p-3">
+      <?php if ($hasAreas): ?>
+        <div class="flex flex-wrap gap-2">
+          <?php foreach ($vendorAreas as $va): ?>
+            <span class="inline-flex items-center gap-2 px-2 py-1 rounded-full
+                         bg-blue-50 border border-blue-200 text-blue-800 text-sm"
+                  title="<?= esc($va['name']) ?>">
+              <?= esc($va['name']) ?>
+            </span>
+          <?php endforeach; ?>
+        </div>
+      <?php else: ?>
+        <span class="text-sm text-gray-500">Belum ada area yang dipilih.</span>
+      <?php endif; ?>
+    </div>
   </div>
+</main>
 
-<!-- Modal -->
-<div id="productModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-  <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
-    <div id="modalContent">Loading...</div>
+<!-- Popup overlay -->
+<div id="areasPopup" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black/60" onclick="closeAreasPopup()" aria-hidden="true"></div>
+
+  <div class="relative z-10 w-full h-full flex items-center justify-center p-4">
+    <div class="modal-card w-full max-w-2xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div class="px-4 py-3 border-b flex items-center justify-between">
+        <h3 class="font-semibold text-gray-800 text-sm md:text-base">Area Layanan</h3>
+        <button type="button" onclick="closeAreasPopup()" class="text-gray-500 hover:text-gray-800 text-xl" aria-label="Tutup">&times;</button>
+      </div>
+
+      <div id="areasPopupBody" class="flex-1 overflow-auto p-4">
+        <div class="h-40 flex items-center justify-center">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
-<!-- SweetAlert2 -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+@keyframes spin{to{transform:rotate(360deg)}}
+.animate-spin{animation:spin 1s linear infinite}
+[x-cloak]{display:none!important}
+</style>
+
 <script>
-// 🔹 Kelas kustom mini dengan teks sedikit lebih besar
+// ====== SweetAlert mini helper (AJAX only; flash handled globally in footer) ======
 const swalMini = {
-  popup: 'rounded-md text-sm p-2',
+  popup: 'rounded-md p-3 text-sm shadow',
   title: 'text-sm font-semibold',
-  htmlContainer: 'text-sm'
+  htmlContainer: 'text-xs'
 };
 
-function openModal(url) {
-  const modal = document.getElementById('productModal');
-  modal.classList.remove('hidden'); 
-  modal.classList.add('flex');
-  document.getElementById('modalContent').innerHTML = "Loading...";
+function showMini(status, message, redirect=null){
+  const fire = () => {
+    const icon  = status === 'success' ? 'success' : (status === 'error' ? 'error' : 'info');
+    const timer = status === 'success' ? 1600 : undefined;
+    Swal.fire({
+      icon,
+      title: status === 'success' ? 'Berhasil' : 'Info',
+      text: message || '',
+      timer,
+      showConfirmButton: !timer,
+      width: 300,
+      customClass: swalMini
+    }).then(() => { if (redirect) window.location.href = redirect; });
+  };
 
-  fetch(url, { 
-    headers: {
-      'X-Requested-With': 'XMLHttpRequest',
-      'X-CSRF-TOKEN': '<?= csrf_hash() ?>'
-    } 
-  })
-  .then(res => res.text())
-  .then(html => {
-    document.getElementById('modalContent').innerHTML = html;
-  })
-  .catch(() => {
-    document.getElementById('modalContent').innerHTML = '<p class="text-red-500">Error loading form.</p>';
-  });
+  if (window.Swal) return fire();
+  // Auto-load SweetAlert2 jika belum tersedia
+  const s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/sweetalert2@11';
+  s.onload = fire;
+  document.head.appendChild(s);
 }
 
-function closeModal() {
-  const modal = document.getElementById('productModal');
-  modal.classList.add('hidden'); 
-  modal.classList.remove('flex');
-}
+// ====== Modal open/close & AJAX loader ======
+function openAreasPopup(url){
+  const modal = document.getElementById('areasPopup');
+  const body  = document.getElementById('areasPopupBody');
+  if(!modal || !body) return true;
 
-// Fungsi untuk menghapus area - DIPERBAIKI DENGAN CSRF TOKEN
-function deleteArea(areaId) {
-  console.log('Attempting to delete area:', areaId);
-  
-  Swal.fire({
-    title: 'Yakin hapus?',
-    text: "Area akan dihapus permanen dari sistem.",
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#d33',
-    cancelButtonColor: '#3085d6',
-    confirmButtonText: 'Ya, Hapus!',
-    cancelButtonText: 'Batal',
-    width: 300,
-    customClass: swalMini
-  }).then((result) => {
-    if (result.isConfirmed) {
-      const btn = document.querySelector(`button[onclick="deleteArea(${areaId})"]`);
-      const oldText = btn.textContent;
-      btn.textContent = 'Menghapus...'; 
-      btn.disabled = true;
+  body.innerHTML = '<div class="h-40 flex items-center justify-center"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>';
+  modal.classList.remove('hidden');
 
-      // PERBAIKAN: Gunakan FormData dengan CSRF token
-      const formData = new FormData();
-      formData.append('area_id', areaId);
-      formData.append('<?= csrf_token() ?>', '<?= csrf_hash() ?>');
-      
-      fetch('<?= site_url('vendoruser/areas/delete') ?>', {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'X-Requested-With': 'XMLHttpRequest'
-        }
-      })
-      .then(response => {
-        console.log('Response status:', response.status);
-        if (!response.ok) {
-          // Jika response tidak ok, coba parsing error message
-          return response.text().then(text => {
-            throw new Error(`Server error: ${response.status} - ${text}`);
-          });
-        }
-        return response.json();
-      })
-      .then(data => {
-        console.log('Response data:', data);
-        if (data.status === 'success') {
-          Swal.fire({
-            icon: 'success',
-            title: 'Berhasil',
-            text: data.message,
-            width: 260,
-            timer: 1800,
-            showConfirmButton: false,
-            customClass: swalMini
-          }).then(() => {
-            window.location.reload();
-          });
-        } else {
-          Swal.fire({
-            icon: 'error',
-            title: 'Gagal',
-            text: data.message || 'Terjadi kesalahan',
-            width: 260,
-            customClass: swalMini
-          });
-          btn.textContent = oldText; 
-          btn.disabled = false;
-        }
-      })
-      .catch(error => {
-        console.error('Error:', error);
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'Terjadi kesalahan: ' + error.message,
-          width: 260,
-          customClass: swalMini
-        });
-        btn.textContent = oldText; 
-        btn.disabled = false;
+  // Lock scroll
+  const prevOverflow = document.documentElement.style.overflow;
+  document.documentElement.dataset.prevOverflow = prevOverflow || '';
+  document.documentElement.style.overflow = 'hidden';
+
+  fetch(url, { headers: { 'X-Requested-With':'XMLHttpRequest' } })
+    .then(r => {
+      const ct = r.headers.get('content-type') || '';
+      if (ct.includes('application/json')) return r.json().then(data => ({kind:'json', data}));
+      return r.text().then(data => ({kind:'html', data}));
+    })
+    .then(result => {
+      if (result.kind === 'json') {
+        // Controller mengembalikan {status, message, redirect?}
+        closeAreasPopup();
+        showMini(result.data.status, result.data.message, result.data.redirect || null);
+        return;
+      }
+
+      // Inject HTML
+      body.innerHTML = result.data;
+
+      // Eksekusi <script> dalam fragment (kecuali Alpine yg sudah ada)
+      const scripts = body.querySelectorAll('script');
+      scripts.forEach(old => {
+        if (old.src && /alpinejs/i.test(old.src) && window.Alpine) return;
+        const s = document.createElement('script');
+        if (old.src) { s.src = old.src; s.defer = !!old.defer; s.async = !!old.async; }
+        else { s.textContent = old.textContent; }
+        document.head.appendChild(s).parentNode.removeChild(s);
       });
-    }
-  });
-}
 
-// 🔹 Handle create via AJAX
-document.addEventListener('submit', function(e) {
-  const form = e.target;
-  // Pastikan form berada dalam modal content
-  if (form.closest('#modalContent')) {
-    e.preventDefault();
-    const btn = form.querySelector('button[type="submit"]');
-    const oldText = btn.textContent;
-    btn.textContent = 'Loading...'; 
-    btn.disabled = true;
-
-    fetch(form.action, {
-      method: form.method,
-      body: new FormData(form),
-      headers: {
-        'X-Requested-With': 'XMLHttpRequest'
-      }
+      // Re-init Alpine jika ada
+      if (window.Alpine?.initTree) window.Alpine.initTree(body);
     })
-    .then(res => {
-      if (!res.ok) {
-        return res.text().then(text => {
-          throw new Error(`Server error: ${res.status} - ${text}`);
-        });
-      }
-      return res.json();
-    })
-    .then(data => {
-      if (data.status === 'success') {
-        Swal.fire({
-          icon: 'success',
-          title: 'Berhasil',
-          text: data.message,
-          width: 260,
-          timer: 1800,
-          showConfirmButton: false,
-          customClass: swalMini
-        }).then(() => {
-          closeModal();
-          window.location.reload();
-        });
-      } else {
-        Swal.fire({
-          icon: 'error',
-          title: 'Gagal',
-          text: data.message || 'Terjadi kesalahan',
-          width: 260,
-          customClass: swalMini
-        });
-        btn.textContent = oldText; 
-        btn.disabled = false;
-      }
-    })
-    .catch(error => {
-      console.error('Error:', error);
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Terjadi kesalahan: ' + error.message,
-        width: 260,
-        customClass: swalMini
-      });
-      btn.textContent = oldText; 
-      btn.disabled = false;
+    .catch(err => {
+      body.innerHTML = `
+        <div class="p-6 text-center">
+          <div class="text-red-600 font-semibold mb-2">Gagal memuat formulir</div>
+          <div class="text-gray-600 text-sm mb-4">${(err && err.message) ? err.message : 'Koneksi gagal'}</div>
+          <button type="button" onclick="closeAreasPopup()" class="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300">Tutup</button>
+        </div>`;
     });
+
+  return false; // cegah <a> lanjut navigasi
+}
+
+function closeAreasPopup(){
+  const modal = document.getElementById('areasPopup');
+  if(!modal) return;
+  modal.classList.add('hidden');
+
+  // Restore scroll
+  const prev = document.documentElement.dataset.prevOverflow ?? '';
+  document.documentElement.style.overflow = prev;
+  delete document.documentElement.dataset.prevOverflow;
+}
+
+// Tutup dengan ESC dan klik backdrop
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const modal = document.getElementById('areasPopup');
+    if (modal && !modal.classList.contains('hidden')) closeAreasPopup();
   }
 });
 </script>

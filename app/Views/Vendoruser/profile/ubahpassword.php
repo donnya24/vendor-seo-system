@@ -1,12 +1,11 @@
 <?php
 $session = session();
 
+// FLASHDATA (password)
 $errorsArr   = $session->getFlashdata('errors') ?? $session->getFlashdata('errors_password') ?? [];
 $successMsg  = $session->getFlashdata('success') ?? $session->getFlashdata('success_password');
 $errorMsg    = $session->getFlashdata('error')   ?? $session->getFlashdata('error_password');
-$firstError  = is_array($errorsArr) && ! empty($errorsArr) ? reset($errorsArr) : null;
 ?>
-
 <div x-show="$store.ui.modal==='passwordEdit'" x-cloak
      class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4">
   <div class="bg-white rounded-lg shadow-xl w-full max-w-md" @click.away="$store.ui.modal=null">
@@ -17,7 +16,7 @@ $firstError  = is_array($errorsArr) && ! empty($errorsArr) ? reset($errorsArr) :
       </button>
     </div>
 
-    <form action="<?= site_url('vendoruser/password/update'); ?>" method="post" class="p-6 space-y-4">
+    <form id="passwordForm" action="<?= site_url('vendoruser/password/update'); ?>" method="post" class="p-6 space-y-4">
       <?= csrf_field() ?>
 
       <?php if (!empty($errorMsg)): ?>
@@ -76,7 +75,7 @@ $firstError  = is_array($errorsArr) && ! empty($errorsArr) ? reset($errorsArr) :
       </div>
 
       <div class="pt-2">
-        <button class="px-4 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors font-medium">
+        <button type="submit" class="px-4 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors font-medium">
           Simpan Password
         </button>
         <button type="button" class="px-4 py-2.5 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 ml-2 transition-colors"
@@ -87,15 +86,84 @@ $firstError  = is_array($errorsArr) && ! empty($errorsArr) ? reset($errorsArr) :
 </div>
 
 <script>
-// munculkan toast otomatis dari flashdata
-document.addEventListener('alpine:init', () => {
-  <?php if (!empty($successMsg)): ?>
-    setTimeout(()=>Alpine.store('toast')?.show(<?= json_encode($successMsg, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT) ?>,'success'),0);
-  <?php endif; ?>
-  <?php if (!empty($firstError)): ?>
-    setTimeout(()=>Alpine.store('toast')?.show(<?= json_encode($firstError, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT) ?>,'error'),0);
-  <?php elseif (!empty($errorMsg)): ?>
-    setTimeout(()=>Alpine.store('toast')?.show(<?= json_encode($errorMsg, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT) ?>,'error'),0);
-  <?php endif; ?>
-});
+  // Helper ambil CSRF dari cookie (sudah disiapkan di footer window.CSRF)
+  function getCsrfFromCookie() {
+    const n = window.CSRF?.cookieName;
+    if (!n) return null;
+    const m = document.cookie.match(new RegExp('(?:^|;\\s*)' + n.replace(/[-[\]{}()*+?.,\\^$|#\\s]/g,'\\$&') + '=([^;]*)'));
+    return m ? decodeURIComponent(m[1]) : null;
+  }
+  function setAllCsrf(hash) {
+    if (!hash) return;
+    document.querySelectorAll('input[name="'+(window.CSRF?.tokenName || '<?= csrf_token() ?>')+'"]').forEach(i => i.value = hash);
+    const meta = document.querySelector('meta[name="csrf-token"]'); if (meta) meta.setAttribute('content', hash);
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('passwordForm');
+    if (!form) return;
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const btn = form.querySelector('button[type="submit"]');
+      btn?.classList.add('opacity-60','cursor-not-allowed');
+      if (btn) btn.disabled = true;
+
+      // siapkan FormData + CSRF
+      const fd = new FormData(form);
+      const csrfName = (window.CSRF && window.CSRF.tokenName) || '<?= csrf_token() ?>';
+      const csrfHash = getCsrfFromCookie() || fd.get(csrfName);
+      if (csrfHash) fd.set(csrfName, csrfHash);
+
+      const headers = { 'X-Requested-With': 'XMLHttpRequest' };
+      const hName = window.CSRF?.headerName;
+      if (csrfHash && hName) headers[hName] = csrfHash;
+
+      try {
+        const res = await fetch(form.action, { method: 'POST', body: fd, headers });
+        const data = await res.json().catch(() => ({}));
+
+        // update CSRF baru dari server
+        if (data?.csrf) setAllCsrf(data.csrf);
+
+        if (res.ok && data?.status === 'success') {
+          await Swal.fire({
+            icon: 'success',
+            title: 'Berhasil',
+            text: data.message || 'Password berhasil diperbarui.',
+            confirmButtonText: 'OK'
+          });
+          // tutup modal setelah OK
+          try { window.Alpine?.store('ui').modal = null; } catch(e){}
+          // reset form
+          form.reset();
+        } else {
+          // kumpulkan pesan error
+          let html = '';
+          if (data?.errors && typeof data.errors === 'object') {
+            html += '<ul style="text-align:left;margin:0;padding-left:1rem">';
+            Object.values(data.errors).forEach(msg => { html += '<li>'+ String(msg) +'</li>'; });
+            html += '</ul>';
+          } else {
+            html = data?.message || 'Gagal memperbarui password.';
+          }
+          await Swal.fire({ icon: 'error', title: 'Gagal', html });
+        }
+      } catch (err) {
+        await Swal.fire({ icon: 'error', title: 'Gagal', text: 'Tidak dapat menghubungi server. Coba lagi.' });
+      } finally {
+        if (btn) { btn.disabled = false; btn.classList.remove('opacity-60','cursor-not-allowed'); }
+      }
+    });
+
+    // Fallback: kalau datang dari non-AJAX (redirect/flashdata), tetap tampilkan popup
+    const PASS_SUCCESS = <?= json_encode($successMsg ?? null, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT) ?>;
+    const PASS_ERROR   = <?= json_encode($errorMsg   ?? null, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT) ?>;
+    const PASS_ERRORS  = <?= json_encode(array_values($errorsArr ?? []), JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT) ?>;
+
+    if (PASS_SUCCESS) Swal.fire({ icon:'success', title:'Berhasil', text: PASS_SUCCESS });
+    if (PASS_ERROR)   Swal.fire({ icon:'error',   title:'Gagal',   text: PASS_ERROR });
+    (PASS_ERRORS || []).forEach(msg => Swal.fire({ icon:'error', title:'Gagal', text: msg }));
+  });
 </script>

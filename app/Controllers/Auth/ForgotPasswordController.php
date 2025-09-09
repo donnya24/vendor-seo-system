@@ -4,16 +4,19 @@ namespace App\Controllers\Auth;
 
 use App\Controllers\BaseController;
 use App\Models\UserModel;
+use App\Models\ActivityLogsModel; // Tambahkan ini
 
 class ForgotPasswordController extends BaseController
 {
     protected $userModel;
     protected $db;
+    protected $activityLogsModel; // Tambahkan property untuk model
 
     public function __construct()
     {
         $this->userModel = new UserModel();
         $this->db = db_connect();
+        $this->activityLogsModel = new ActivityLogsModel(); // Inisialisasi model
     }
 
     // 🔹 Tampilkan form "Forgot Password"
@@ -34,11 +37,23 @@ class ForgotPasswordController extends BaseController
             ->getRow();
 
         if (!$identity) {
+            // Log activity untuk permintaan reset password dengan email tidak ditemukan
+            $this->logActivity(null, null, 'forgot_password', 'failed', 'Permintaan reset password - email tidak ditemukan', [
+                'email' => $email,
+                'ip' => $this->request->getIPAddress()
+            ]);
+            
             return redirect()->back()->with('error', 'Email tidak ditemukan.');
         }
 
         $user = $this->userModel->find($identity->user_id);
         if (!$user) {
+            // Log activity untuk user tidak ditemukan
+            $this->logActivity(null, null, 'forgot_password', 'failed', 'Permintaan reset password - user tidak ditemukan', [
+                'email' => $email,
+                'identity_user_id' => $identity->user_id
+            ]);
+            
             return redirect()->back()->with('error', 'User tidak ditemukan.');
         }
 
@@ -66,15 +81,39 @@ class ForgotPasswordController extends BaseController
             "Klik link berikut untuk reset password: <a href='{$resetLink}'>Reset Password</a>"
         );
         $emailService->setMailType('html');
-        $emailService->send();
+        
+        $emailSent = $emailService->send();
 
-        return redirect()->back()->with('success', 'Link reset password telah dikirim ke email Anda.');
+        if ($emailSent) {
+            // Log activity untuk permintaan reset password berhasil
+            $this->logActivity($user->id, null, 'forgot_password', 'success', 'Permintaan reset password berhasil dikirim', [
+                'email' => $email,
+                'token_created' => date('Y-m-d H:i:s'),
+                'token_expires' => $expires
+            ]);
+            
+            return redirect()->back()->with('success', 'Link reset password telah dikirim ke email Anda.');
+        } else {
+            // Log activity untuk gagal mengirim email reset
+            $this->logActivity($user->id, null, 'forgot_password', 'error', 'Gagal mengirim email reset password', [
+                'email' => $email,
+                'error' => $emailService->printDebugger(['headers'])
+            ]);
+            
+            return redirect()->back()->with('error', 'Gagal mengirim email. Silakan coba lagi.');
+        }
     }
 
     // 🔹 Tampilkan form reset password
     public function showResetForm()
     {
         $token = $this->request->getGet('token');
+        
+        // Log activity untuk mengakses form reset password
+        $this->logActivity(null, null, 'reset_password', 'view', 'Mengakses form reset password', [
+            'token' => $token
+        ]);
+        
         return view('auth/ResetPassword', ['token' => $token]);
     }
 
@@ -86,6 +125,11 @@ class ForgotPasswordController extends BaseController
         $confirm  = $this->request->getPost('password_confirm');
 
         if ($password !== $confirm) {
+            // Log activity untuk password tidak sama
+            $this->logActivity(null, null, 'reset_password', 'failed', 'Reset password gagal - password tidak sama', [
+                'token' => $token
+            ]);
+            
             return redirect()->back()->with('error', 'Password tidak sama.');
         }
 
@@ -97,6 +141,11 @@ class ForgotPasswordController extends BaseController
             ->getRow();
 
         if (!$tokenRecord) {
+            // Log activity untuk token tidak valid atau kadaluarsa
+            $this->logActivity(null, null, 'reset_password', 'failed', 'Reset password gagal - token tidak valid atau kadaluarsa', [
+                'token' => $token
+            ]);
+            
             return redirect()->to('/forgot-password')->with('error', 'Token tidak valid atau kadaluarsa.');
         }
 
@@ -117,6 +166,39 @@ class ForgotPasswordController extends BaseController
             ->where('id', $tokenRecord->id)
             ->delete();
 
+        // Log activity untuk reset password berhasil
+        $this->logActivity($user->id, null, 'reset_password', 'success', 'Reset password berhasil', [
+            'token_used' => $token,
+            'password_updated_at' => date('Y-m-d H:i:s')
+        ]);
+
         return redirect()->to('/login')->with('success', 'Password berhasil direset. Silakan login dengan password baru Anda.');
+    }
+    
+    // ===== LOG ACTIVITY METHOD =====
+    private function logActivity($userId = null, $vendorId = null, $action, $status, $description = null, $additionalData = [])
+    {
+        try {
+            $data = [
+                'user_id'     => $userId,
+                'vendor_id'   => $vendorId,
+                'module'      => 'auth',
+                'action'      => $action,
+                'status'      => $status,
+                'description' => $description,
+                'ip_address'  => $this->request->getIPAddress(),
+                'user_agent'  => $this->request->getUserAgent(),
+                'created_at'  => date('Y-m-d H:i:s'),
+            ];
+            
+            // Gabungkan dengan data tambahan jika ada
+            if (!empty($additionalData)) {
+                $data['additional_data'] = json_encode($additionalData);
+            }
+            
+            $this->activityLogsModel->insert($data);
+        } catch (\Throwable $e) {
+            log_message('error', 'Failed to log activity in ForgotPasswordController: ' . $e->getMessage());
+        }
     }
 }

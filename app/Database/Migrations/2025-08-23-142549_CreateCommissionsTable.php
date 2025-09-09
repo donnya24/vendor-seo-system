@@ -17,8 +17,10 @@ class CreateCommissionsTable extends Migration
             'period_start'   => ['type' => 'DATE', 'null' => false],
             'period_end'     => ['type' => 'DATE', 'null' => false],
 
+            // Kolom baru: penghasilan
+            'earning'        => ['type' => 'DECIMAL', 'constraint' => '12,2', 'default' => '0.00'],
+
             // Ringkasan angka
-            'leads_count'    => ['type' => 'INT', 'unsigned' => true, 'default' => 0],
             'amount'         => ['type' => 'DECIMAL', 'constraint' => '12,2', 'default' => '0.00'],
 
             // Status pembayaran
@@ -34,7 +36,6 @@ class CreateCommissionsTable extends Migration
         ]);
 
         $this->forge->addKey('id', true);
-        // Cegah duplikat komisi untuk vendor & periode yang sama
         $this->forge->addUniqueKey(['vendor_id', 'period_start', 'period_end']);
         $this->forge->addKey('vendor_id');
 

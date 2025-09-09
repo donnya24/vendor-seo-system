@@ -13,6 +13,7 @@ class CommissionsModel extends Model
         'vendor_id',
         'period_start',
         'period_end',
+        'earning',      
         'amount',
         'status',
         'proof',

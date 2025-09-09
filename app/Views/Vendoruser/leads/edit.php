@@ -5,33 +5,13 @@
     <input type="date" name="tanggal" class="w-full border rounded p-2" value="<?= esc($lead['tanggal']) ?>" required>
   </div>
 
-  <div class="mb-3">
-    <label class="block text-sm">Layanan</label>
-    <select name="service_id" class="w-full border rounded p-2" required>
-      <option value="">-- Pilih Layanan --</option>
-      <?php foreach ($services as $s): ?>
-        <option value="<?= $s['id'] ?>" <?= $lead['service_id'] == $s['id'] ? 'selected' : '' ?>>
-          <?= esc($s['name']); ?>
-        </option>
-      <?php endforeach; ?>
-    </select>
-  </div>
-
   <div class="grid grid-cols-2 gap-3">
     <div>
-      <label class="block text-sm">Masuk</label>
+      <label class="block text-sm">Leads Masuk</label>
       <input type="number" name="jumlah_leads_masuk" class="w-full border rounded p-2" value="<?= esc($lead['jumlah_leads_masuk']) ?>" required>
     </div>
     <div>
-      <label class="block text-sm">Diproses</label>
-      <input type="number" name="jumlah_leads_diproses" class="w-full border rounded p-2" value="<?= esc($lead['jumlah_leads_diproses']) ?>" required>
-    </div>
-    <div>
-      <label class="block text-sm">Ditolak</label>
-      <input type="number" name="jumlah_leads_ditolak" class="w-full border rounded p-2" value="<?= esc($lead['jumlah_leads_ditolak']) ?>" required>
-    </div>
-    <div>
-      <label class="block text-sm">Closing</label>
+      <label class="block text-sm">Leads Closing</label>
       <input type="number" name="jumlah_leads_closing" class="w-full border rounded p-2" value="<?= esc($lead['jumlah_leads_closing']) ?>" required>
     </div>
   </div>

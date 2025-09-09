@@ -3,14 +3,17 @@ namespace App\Controllers\Auth;
 
 use CodeIgniter\Controller;
 use CodeIgniter\Shield\Entities\User;
+use App\Models\ActivityLogsModel; // Tambahkan ini
 
 class AuthController extends Controller
 {
     protected $auth;
+    protected $activityLogsModel; // Tambahkan property untuk model
 
     public function __construct()
     {
         $this->auth = service('auth');
+        $this->activityLogsModel = new ActivityLogsModel(); // Inisialisasi model
     }
 
     // ===== LOGIN =====
@@ -52,32 +55,49 @@ class AuthController extends Controller
                     log_message('error', 'force_remember_token failed: ' . $e->getMessage());
                 }
             }
+            
+            // Log activity untuk login berhasil
+            $user = $this->auth->user();
+            $this->logActivity($user->id, null, 'login', 'success', 'Login berhasil ke sistem');
+            
             return $this->redirectByRole($this->auth->user());
         }
 
+        // Log activity untuk login gagal
+        $this->logActivity(null, null, 'login', 'failed', 'Login gagal - kredensial salah', [
+            'email' => $this->request->getPost('email'),
+            'ip' => $this->request->getIPAddress()
+        ]);
+        
         return redirect()->back()->withInput()->with('error', 'Login gagal. Periksa kembali kredensial Anda.');
     }
 
-// Di AuthController.php
-public function logout()
-{
-    // Hapus remember token jika ada
-    helper('auth_remember');
-    try {
-        forget_remember_token_from_cookie();
-    } catch (\Throwable $e) {
-        log_message('error', 'forget_remember_token_from_cookie failed: ' . $e->getMessage());
+    // ===== LOGOUT =====
+    public function logout()
+    {
+        // Log activity sebelum logout
+        if ($this->auth->loggedIn()) {
+            $user = $this->auth->user();
+            $this->logActivity($user->id, null, 'logout', 'success', 'Logout dari sistem');
+        }
+
+        // Hapus remember token jika ada
+        helper('auth_remember');
+        try {
+            forget_remember_token_from_cookie();
+        } catch (\Throwable $e) {
+            log_message('error', 'forget_remember_token_from_cookie failed: ' . $e->getMessage());
+        }
+
+        // Logout menggunakan Shield
+        $this->auth->logout();
+        
+        // Hancurkan session
+        session()->destroy();
+
+        // Redirect ke halaman login dengan pesan sukses
+        return redirect()->to('/login')->with('success', 'Anda telah berhasil keluar.');
     }
-
-    // Logout menggunakan Shield
-    $this->auth->logout();
-    
-    // Hancurkan session
-    session()->destroy();
-
-    // Redirect ke halaman login dengan pesan sukses
-    return redirect()->to('/login')->with('success', 'Anda telah berhasil keluar.');
-}
 
     // ===== REMEMBER STATUS =====
     public function checkRememberStatus()
@@ -127,6 +147,12 @@ public function logout()
         ]);
 
         if (! $validation->withRequest($this->request)->run()) {
+            // Log activity untuk validasi gagal
+            $this->logActivity(null, null, 'register', 'failed', 'Validasi pendaftaran gagal', [
+                'errors' => $validation->getErrors(),
+                'email' => $this->request->getPost('email')
+            ]);
+            
             return redirect()->back()
                 ->withInput()
                 ->with('error', implode('<br>', $validation->getErrors()));
@@ -142,6 +168,11 @@ public function logout()
         try {
             resolve_identity_table();
             if (identity_exists($email)) {
+                // Log activity untuk email sudah terdaftar
+                $this->logActivity(null, null, 'register', 'failed', 'Email sudah terdaftar', [
+                    'email' => $email
+                ]);
+                
                 return redirect()->back()->withInput()->with('error', 'Email sudah digunakan.');
             }
 
@@ -150,9 +181,8 @@ public function logout()
 
             // 1) Buat user Shield
             $username   = make_unique_username($vendorName, $email);
-            $userEntity = new User(['username' => $username]);
-
-            $userId = $users->insert($userEntity, true);
+            $userEntity = new \CodeIgniter\Shield\Entities\User(['username' => $username]);
+            $userId     = $users->insert($userEntity, true);
             if (! $userId) {
                 $errs = method_exists($users, 'errors') ? $users->errors() : [];
                 throw new \RuntimeException('Gagal membuat akun user. ' . implode(', ', (array) $errs));
@@ -162,7 +192,14 @@ public function logout()
             create_email_password_identity((int) $userId, $email, $password);
             assign_user_to_group((int) $userId, 'vendor');
 
-            // 3) Buat profil vendor (adaptif terhadap skema sementara)
+            // **Tambahkan update 'name' di auth_identities**
+            $db->table('auth_identities')
+            ->where('user_id', $userId)
+            ->where('type', 'email_password')
+            ->update(['name' => $vendorName]);
+
+            // 3) Buat profil vendor
+            $vendorProfileId = null;
             if ($db->tableExists('vendor_profiles')) {
                 $hasBusiness = $db->query("SHOW COLUMNS FROM vendor_profiles LIKE 'business_name'")->getNumRows() > 0;
                 $hasOwner    = $db->query("SHOW COLUMNS FROM vendor_profiles LIKE 'owner_name'")->getNumRows() > 0;
@@ -182,7 +219,14 @@ public function logout()
                 if ($hasPhone)    $data['phone']         = '-';
 
                 $db->table('vendor_profiles')->insert($data);
+                $vendorProfileId = $db->insertID(); // ← dapatkan ID profil vendor
             }
+
+            // 4) Catat aktivitas registrasi ke activity_logs
+            $this->logActivity($userId, $vendorProfileId, 'register', 'success', "Vendor '$vendorName' mendaftar ke sistem", [
+                'vendor_name' => $vendorName,
+                'email' => $email
+            ]);
 
             $db->transComplete();
 
@@ -191,6 +235,13 @@ public function logout()
             if ($db->transStatus() !== false) {
                 $db->transRollback();
             }
+            
+            // Log activity untuk error registrasi
+            $this->logActivity(null, null, 'register', 'error', 'Registrasi vendor gagal: ' . $e->getMessage(), [
+                'email' => $email,
+                'vendor_name' => $vendorName
+            ]);
+            
             log_message('error', 'Register vendor failed: ' . $e->getMessage());
 
             $msg = (defined('ENVIRONMENT') && ENVIRONMENT !== 'production')
@@ -200,7 +251,8 @@ public function logout()
             return redirect()->back()->withInput()->with('error', $msg);
         }
     }
-    // app/Controllers/Auth/AuthController.php
+
+    // ===== REDIRECT BY ROLE =====
     private function redirectByRole($user)
     {
         if ($user->inGroup('admin'))   return redirect()->to('/admin/dashboard');
@@ -208,5 +260,31 @@ public function logout()
         if ($user->inGroup('vendor'))  return redirect()->to('/vendoruser/dashboard'); // <- pakai Vendoruser
         return redirect()->to('/');
     }
-
+    
+    // ===== LOG ACTIVITY METHOD =====
+    private function logActivity($userId = null, $vendorId = null, $action, $status, $description = null, $additionalData = [])
+    {
+        try {
+            $data = [
+                'user_id'     => $userId,
+                'vendor_id'   => $vendorId,
+                'module'      => 'auth',
+                'action'      => $action,
+                'status'      => $status,
+                'description' => $description,
+                'ip_address'  => $this->request->getIPAddress(),
+                'user_agent'  => $this->request->getUserAgent(),
+                'created_at'  => date('Y-m-d H:i:s'),
+            ];
+            
+            // Gabungkan dengan data tambahan jika ada
+            if (!empty($additionalData)) {
+                $data['additional_data'] = json_encode($additionalData);
+            }
+            
+            $this->activityLogsModel->insert($data);
+        } catch (\Throwable $e) {
+            log_message('error', 'Failed to log activity: ' . $e->getMessage());
+        }
+    }
 }

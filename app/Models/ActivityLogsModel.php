@@ -10,12 +10,15 @@ class ActivityLogsModel extends Model
     protected $primaryKey    = 'id';
     protected $returnType    = 'array';
     protected $allowedFields = [
-        'user_id', 'action', 'entity_type', 'entity_id',
-        'meta_json', 'ip_address',
-        'created_at', 'updated_at',
+        'user_id',
+        'vendor_id',
+        'module',
+        'action',
+        'description',
+        'ip_address',
+        'user_agent',
+        'created_at',
     ];
 
-    protected $useTimestamps = true;
-    protected $createdField  = 'created_at';
-    protected $updatedField  = 'updated_at';
+    protected $useTimestamps = false; // karena created_at diisi manual saat insert
 }

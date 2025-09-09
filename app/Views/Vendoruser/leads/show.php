@@ -1,6 +1,3 @@
-<?= $this->include('vendoruser/layouts/header'); ?>
-<?= $this->include('vendoruser/layouts/sidebar'); ?>
-
 <div class="flex-1 md:ml-64 p-4">
   <div class="bg-white rounded-xl p-6 shadow max-w-3xl">
     <div class="flex items-center justify-between">
@@ -19,20 +16,8 @@
         <div class="font-medium"><?= esc($lead['tanggal']); ?></div>
       </div>
       <div>
-        <div class="text-gray-500">Layanan</div>
-        <div class="font-medium"><?= esc($lead['service_name'] ?? ''); ?></div>
-      </div>
-      <div>
         <div class="text-gray-500">Leads Masuk</div>
         <div class="font-medium"><?= esc($lead['jumlah_leads_masuk']); ?></div>
-      </div>
-      <div>
-        <div class="text-gray-500">Diproses</div>
-        <div class="font-medium"><?= esc($lead['jumlah_leads_diproses']); ?></div>
-      </div>
-      <div>
-        <div class="text-gray-500">Ditolak</div>
-        <div class="font-medium"><?= esc($lead['jumlah_leads_ditolak']); ?></div>
       </div>
       <div>
         <div class="text-gray-500">Closing</div>
@@ -49,5 +34,3 @@
     </div>
   </div>
 </div>
-
-<?= $this->include('vendoruser/layouts/footer'); ?>

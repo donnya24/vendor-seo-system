@@ -72,19 +72,27 @@ if ($profileImage) {
         <h4 class="text-md font-semibold text-gray-800 mb-3 border-b pb-2">Foto Profil</h4>
         <div class="flex items-center">
           <div class="relative mr-4">
-            <img id="profile-image-preview" src="<?= $profileImagePath ?>" class="w-24 h-24 rounded-full object-cover border-2 border-gray-300" alt="Foto Profil">
+            <?php if (!empty($profileImage)): ?>
+              <img id="profile-image-preview" src="<?= $profileImagePath ?>" class="w-24 h-24 rounded-full object-cover border-2 border-gray-300" alt="Foto Profil">
+            <?php else: ?>
+              <div id="profile-image-preview" class="w-24 h-24 flex items-center justify-center rounded-full bg-gray-200 text-gray-500 border-2 border-gray-300">
+                <i class="fas fa-user text-3xl"></i>
+              </div>
+            <?php endif; ?>
+
             <div class="absolute bottom-0 right-0 bg-white rounded-full p-1 border">
               <label for="profile_image" class="cursor-pointer text-blue-600 hover:text-blue-800">
                 <i class="fas fa-camera text-lg"></i>
                 <input type="file" id="profile_image" name="profile_image" accept="image/*" class="hidden"
-                       onchange="previewImage(this, 'profile-image-preview')">
+                      onchange="previewImage(this, 'profile-image-preview')">
               </label>
             </div>
           </div>
+
           <div class="text-sm text-gray-600">
             <p>Klik ikon kamera untuk mengubah foto profil</p>
             <p class="text-xs mt-1">Format: JPG/PNG/GIF/WEBP, maksimal 2MB</p>
-            <?php if ($profileImage): ?>
+            <?php if (!empty($profileImage)): ?>
               <button type="button" onclick="removeProfileImage()" class="text-red-600 hover:text-red-800 text-xs mt-2 flex items-center">
                 <i class="fas fa-trash mr-1"></i> Hapus foto
               </button>
@@ -133,14 +141,15 @@ if ($profileImage) {
       </div>
 
       <!-- Komisi -->
-      <div class="md:col-span-2 mt-2">
+      <div class="md-:col-span-2 mt-2">
         <h4 class="text-md font-semibold text-gray-800 mb-3 border-b pb-2">Komisi</h4>
       </div>
+
       <?php if ($isVerified): ?>
         <div class="md:col-span-2">
-          <label class="block text-sm font-semibold mb-2">Komisi yang disetujui</label>
-          <input type="text" value="<?= $hasCommissionApproved ? (float)$currentCommission . '%' : '-' ?>" class="w-full border rounded-lg px-3 py-2 bg-green-50 text-green-800" readonly>
-          <p class="text-xs text-gray-500 mt-1">Komisi ditetapkan oleh admin setelah verifikasi.</p>
+          <label class="block text-sm font-semibold mb-2">Komisi yang diajukan vendor</label>
+          <input type="text" value="<?= $requestedCommission ? (float)$requestedCommission . '%' : '-' ?>" class="w-full border rounded-lg px-3 py-2 bg-yellow-50 text-yellow-800" readonly>
+          <p class="text-xs text-gray-500 mt-1">Nilai ini adalah pengajuan awal Anda dan tidak bisa diubah setelah diverifikasi.</p>
         </div>
       <?php else: ?>
         <div class="md:col-span-2">
@@ -163,19 +172,53 @@ if ($profileImage) {
 </div>
 
 <script>
-function previewImage(input, previewId){
-  const preview=document.getElementById(previewId);
-  const file=input.files&&input.files[0]; if(!file) return;
-  if(file.size>2*1024*1024){ alert('Ukuran file terlalu besar. Maks 2MB.'); input.value=''; return; }
-  const ok=['image/jpeg','image/png','image/gif','image/webp'];
-  if(!ok.includes(file.type)){ alert('Format tidak didukung. JPG/PNG/GIF/WEBP'); input.value=''; return; }
-  const r=new FileReader(); r.onload=e=>{ preview.src=e.target.result; document.getElementById('remove_profile_image').value='0'; }; r.readAsDataURL(file);
+function previewImage(input, previewId) {
+  try {
+    let preview = document.getElementById(previewId);
+    const file = input.files && input.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { alert('Ukuran file terlalu besar. Maks 2MB.'); input.value = ''; return; }
+    const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowed.includes(file.type)) { alert('Format tidak didukung. Hanya JPG, PNG, GIF, atau WEBP.'); input.value = ''; return; }
+
+    const reader = new FileReader();
+    reader.onload = e => {
+      if (preview.tagName.toLowerCase() !== 'img') {
+        const img = document.createElement('img');
+        img.id = previewId; img.className = "w-24 h-24 rounded-full object-cover border-2 border-gray-300";
+        preview.replaceWith(img); preview = img;
+      }
+      preview.src = e.target.result;
+      document.getElementById('remove_profile_image').value = '0';
+    };
+    reader.readAsDataURL(file);
+  } catch (err) { console.error('Preview image error:', err); }
 }
-function removeProfileImage(){
-  const def="<?= base_url('assets/img/default-avatar.png') ?>";
-  document.getElementById('profile-image-preview').src=def;
-  const inp=document.getElementById('profile_image'); if(inp) inp.value='';
-  document.getElementById('remove_profile_image').value='1';
-  Alpine.store('toast')?.show('Foto profil akan dihapus setelah Anda menyimpan perubahan.','info');
+
+function removeProfileImage() {
+  try {
+    const preview = document.getElementById('profile-image-preview');
+    const input = document.getElementById('profile_image');
+    const newDiv = document.createElement('div');
+    newDiv.id = 'profile-image-preview';
+    newDiv.className = "w-24 h-24 flex items-center justify-center rounded-full bg-gray-200 text-gray-500 border-2 border-gray-300";
+    newDiv.innerHTML = '<i class="fas fa-user text-3xl"></i>';
+    preview.replaceWith(newDiv);
+    if (input) input.value = '';
+    document.getElementById('remove_profile_image').value = '1';
+  } catch (err) { console.error('Remove profile image error:', err); }
 }
+</script>
+
+<!-- SweetAlert2 toast dari flashdata (PROFIL) -->
+<script>
+  const PROF_SUCCESS = <?= json_encode($successMessage ?? null, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT) ?>;
+  const PROF_ERROR   = <?= json_encode($errorMessage   ?? null, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT) ?>;
+  const PROF_ERRORS  = <?= json_encode(array_values($errors ?? []), JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT) ?>;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (PROF_SUCCESS && window.swalToast) swalToast('success', PROF_SUCCESS);
+    if (PROF_ERROR   && window.swalToast) swalToast('error',   PROF_ERROR);
+    (PROF_ERRORS || []).forEach(msg => { if (window.swalToast) swalToast('error', msg); });
+  });
 </script>

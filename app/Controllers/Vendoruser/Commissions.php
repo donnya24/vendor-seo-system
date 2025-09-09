@@ -4,60 +4,119 @@ namespace App\Controllers\Vendoruser;
 
 use App\Controllers\BaseController;
 use App\Models\CommissionsModel;
-use App\Models\NotificationsModel;
 use App\Models\VendorProfilesModel;
+use App\Models\ActivityLogsModel;
 
 class Commissions extends BaseController
 {
-    private function vendorId(): int {
-        $vp = (new VendorProfilesModel())
-            ->where('user_id', (int)service('auth')->user()->id)
+    private $vendorProfile;
+    private $vendorId;
+    private $isVerified;
+    private $commissionModel;
+
+    public function __construct()
+    {
+        $this->commissionModel = new CommissionsModel();
+    }
+
+    private function initVendor(): bool
+    {
+        $user = service('auth')->user();
+        $this->vendorProfile = (new VendorProfilesModel())
+            ->where('user_id', (int)$user->id)
             ->first();
-        return (int)($vp['id'] ?? 0);
+
+        $this->vendorId   = $this->vendorProfile['id'] ?? 0;
+        $this->isVerified = ($this->vendorProfile['status'] ?? '') === 'verified';
+
+        return (bool)$this->vendorId;
+    }
+
+    private function withVendorData(array $data = []): array
+    {
+        return array_merge($data, [
+            'vp' => $this->vendorProfile,
+            'isVerified' => $this->isVerified,
+        ]);
+    }
+
+    private function logActivity(string $action, string $description = null)
+    {
+        $user = service('auth')->user();
+        (new ActivityLogsModel())->insert([
+            'user_id'    => $user->id,
+            'vendor_id'  => $this->vendorId,
+            'module'     => 'commission',
+            'action'     => $action,
+            'description'=> $description,
+            'ip_address' => $this->request->getIPAddress(),
+            'user_agent' => $this->request->getUserAgent(),
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
     }
 
     public function index()
     {
-        $vid = $this->vendorId();
-        $list = (new CommissionsModel())
-            ->where('vendor_id', $vid)
+        if (! $this->initVendor()) {
+            return redirect()->to(site_url('vendoruser/dashboard'))
+                ->with('error', 'Profil vendor belum ada.');
+        }
+
+        $list = $this->commissionModel
+            ->where('vendor_id', $this->vendorId)
             ->orderBy('period_start', 'DESC')
             ->findAll();
-        return view('vendoruser/commissions/index', [
-            'page'  => 'Komisi',
-            'items' => $list
-        ]);
+
+        $this->logActivity('view', 'Melihat daftar komisi');
+
+        return view('vendoruser/commissions/index', $this->withVendorData([
+            'page' => 'Komisi',
+            'items' => $list,
+        ]));
     }
 
     public function create()
     {
-        return view('vendoruser/commissions/create');
+        if (! $this->initVendor()) {
+            return redirect()->to(site_url('vendoruser/dashboard'))
+                ->with('error', 'Profil vendor belum ada.');
+        }
+
+        $this->logActivity('create_form', 'Membuka form tambah komisi');
+
+        return view('vendoruser/commissions/create', $this->withVendorData([
+            'page' => 'Tambah Komisi',
+        ]));
     }
 
     public function store()
     {
-        $vid = $this->vendorId();
-        $model = new CommissionsModel();
+        if (! $this->initVendor()) {
+            return redirect()->to(site_url('vendoruser/dashboard'))
+                ->with('error', 'Profil vendor belum ada.');
+        }
 
         $rules = [
             'period_start' => 'required|valid_date',
             'period_end'   => 'required|valid_date',
+            'earning'      => 'required|decimal',
             'amount'       => 'required|decimal',
-            'proof'        => 'permit_empty|uploaded[proof]|max_size[proof,10240]|ext_in[proof,pdf,jpg,jpeg,png]'
+            'proof'        => 'permit_empty|max_size[proof,10240]|ext_in[proof,pdf,jpg,jpeg,png]',
         ];
 
-        if (!$this->validate($rules)) {
+        if (! $this->validate($rules)) {
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
 
         $data = [
-            'vendor_id'    => $vid,
+            'vendor_id'    => $this->vendorId,
             'period_start' => $this->request->getPost('period_start'),
             'period_end'   => $this->request->getPost('period_end'),
+            'earning'      => $this->request->getPost('earning'),
             'amount'       => $this->request->getPost('amount'),
             'status'       => 'unpaid',
             'created_at'   => date('Y-m-d H:i:s'),
-            'updated_at'   => date('Y-m-d H:i:s')
+            'updated_at'   => date('Y-m-d H:i:s'),
         ];
 
         if ($file = $this->request->getFile('proof')) {
@@ -68,49 +127,70 @@ class Commissions extends BaseController
             }
         }
 
-        $model->insert($data);
-        return redirect()->to(site_url('vendoruser/commissions'))->with('success', 'Komisi berhasil ditambahkan.');
+        $this->commissionModel->insert($data);
+        $this->logActivity('create', "Menambahkan komisi periode {$data['period_start']} - {$data['period_end']}");
+
+        return redirect()->to(site_url('vendoruser/commissions'))
+            ->with('success', 'Komisi berhasil ditambahkan.');
     }
 
     public function edit($id)
     {
-        $vid = $this->vendorId();
-        $item = (new CommissionsModel())
-            ->where(['id' => $id, 'vendor_id' => $vid])
-            ->first();
-        if (!$item) {
-            return redirect()->to(site_url('vendoruser/commissions'))
-                ->with('errors', ['Komisi tidak ditemukan.']);
+        if (! $this->initVendor()) {
+            return redirect()->to(site_url('vendoruser/dashboard'))
+                ->with('error', 'Profil vendor belum ada.');
         }
-        return view('vendoruser/commissions/edit', ['item' => $item]);
+
+        $item = $this->commissionModel
+            ->where(['id' => $id, 'vendor_id' => $this->vendorId])
+            ->first();
+
+        if (! $item) {
+            return redirect()->to(site_url('vendoruser/commissions'))
+                ->with('error', 'Komisi tidak ditemukan.');
+        }
+
+        $this->logActivity('edit_form', "Membuka form edit komisi ID {$id}");
+
+        return view('vendoruser/commissions/edit', $this->withVendorData([
+            'page' => 'Edit Komisi',
+            'item' => $item,
+        ]));
     }
 
     public function update($id)
     {
-        $vid = $this->vendorId();
-        $model = new CommissionsModel();
-        $item = $model->where(['id' => $id, 'vendor_id' => $vid])->first();
+        if (! $this->initVendor()) {
+            return redirect()->to(site_url('vendoruser/dashboard'))
+                ->with('error', 'Profil vendor belum ada.');
+        }
 
-        if (!$item) {
-            return redirect()->back()->with('errors', ['Komisi tidak ditemukan.']);
+        $item = $this->commissionModel
+            ->where(['id' => $id, 'vendor_id' => $this->vendorId])
+            ->first();
+
+        if (! $item) {
+            return redirect()->back()->with('error', 'Komisi tidak ditemukan.');
         }
 
         $rules = [
             'period_start' => 'required|valid_date',
             'period_end'   => 'required|valid_date',
+            'earning'      => 'required|decimal',
             'amount'       => 'required|decimal',
-            'proof'        => 'permit_empty|uploaded[proof]|max_size[proof,10240]|ext_in[proof,pdf,jpg,jpeg,png]'
+            'proof'        => 'permit_empty|max_size[proof,10240]|ext_in[proof,pdf,jpg,jpeg,png]',
         ];
 
-        if (!$this->validate($rules)) {
+        if (! $this->validate($rules)) {
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
 
         $updateData = [
             'period_start' => $this->request->getPost('period_start'),
             'period_end'   => $this->request->getPost('period_end'),
+            'earning'      => $this->request->getPost('earning'),
             'amount'       => $this->request->getPost('amount'),
-            'updated_at'   => date('Y-m-d H:i:s')
+            'updated_at'   => date('Y-m-d H:i:s'),
         ];
 
         if ($file = $this->request->getFile('proof')) {
@@ -124,23 +204,136 @@ class Commissions extends BaseController
             }
         }
 
-        $model->where(['id' => $id, 'vendor_id' => $vid])->set($updateData)->update();
-        return redirect()->to(site_url('vendoruser/commissions'))->with('success', 'Komisi berhasil diperbarui.');
+        $this->commissionModel->update($id, $updateData);
+        $this->logActivity('update', "Memperbarui komisi ID {$id}");
+
+        return redirect()->to(site_url('vendoruser/commissions'))
+            ->with('success', 'Komisi berhasil diperbarui.');
     }
 
     public function delete($id)
     {
-        $vid = $this->vendorId();
-        $model = new CommissionsModel();
-        $item = $model->where(['id' => $id, 'vendor_id' => $vid])->first();
-
-        if ($item) {
-            if (!empty($item['proof']) && file_exists(FCPATH.'uploads/commissions/'.$item['proof'])) {
-                unlink(FCPATH.'uploads/commissions/'.$item['proof']);
+        if (! $this->initVendor()) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'status'   => 'error',
+                    'message'  => 'Profil vendor belum ada.',
+                    'csrfHash' => csrf_hash(),
+                ]);
             }
-            $model->where(['id' => $id, 'vendor_id' => $vid])->delete();
+            return redirect()->to(site_url('vendoruser/dashboard'))
+                ->with('error', 'Profil vendor belum ada.');
         }
 
-        return redirect()->to(site_url('vendoruser/commissions'))->with('success', 'Komisi berhasil dihapus.');
+        $item = $this->commissionModel
+            ->where(['id' => (int)$id, 'vendor_id' => $this->vendorId])
+            ->first();
+
+        if (! $item) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'status'   => 'error',
+                    'message'  => 'Komisi tidak ditemukan.',
+                    'csrfHash' => csrf_hash(),
+                ]);
+            }
+            return redirect()->to(site_url('vendoruser/commissions'))
+                ->with('error', 'Komisi tidak ditemukan.');
+        }
+
+        if (!empty($item['proof']) && file_exists(FCPATH.'uploads/commissions/'.$item['proof'])) {
+            @unlink(FCPATH.'uploads/commissions/'.$item['proof']);
+        }
+
+        $this->commissionModel->delete((int)$id);
+        $this->logActivity('delete', "Menghapus komisi ID {$id}");
+
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'status'   => 'success',
+                'message'  => 'Komisi berhasil dihapus.',
+                'csrfHash' => csrf_hash(),
+            ]);
+        }
+
+        return redirect()->to(site_url('vendoruser/commissions'))
+            ->with('success', 'Komisi berhasil dihapus.');
     }
+
+    public function deleteMultiple()
+    {
+        if (! $this->initVendor()) {
+            // AJAX → JSON, Non-AJAX → redirect
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'status'   => 'error',
+                    'message'  => 'Profil vendor belum ada.',
+                    'csrfHash' => csrf_hash(),
+                ]);
+            }
+            return redirect()->to(site_url('vendoruser/dashboard'))
+                ->with('error', 'Profil vendor belum ada.');
+        }
+
+        // Ambil IDs dari AJAX JSON body atau POST form
+        $ids = $this->request->isAJAX()
+            ? ($this->request->getJSON(true)['ids'] ?? [])
+            : ($this->request->getPost('ids') ?? []);
+
+        // Normalisasi ke array integer unik
+        $ids = array_values(array_unique(array_map('intval', (array)$ids)));
+
+        if (empty($ids)) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'status'   => 'error',
+                    'message'  => 'Tidak ada komisi yang dipilih.',
+                    'csrfHash' => csrf_hash(),
+                ]);
+            }
+            return redirect()->back()->with('error', 'Tidak ada komisi yang dipilih.');
+        }
+
+        // Ambil item milik vendor saat ini
+        $items = $this->commissionModel
+            ->whereIn('id', $ids)
+            ->where('vendor_id', $this->vendorId)
+            ->findAll();
+
+        if (empty($items)) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'status'   => 'error',
+                    'message'  => 'Data tidak ditemukan atau bukan milik Anda.',
+                    'csrfHash' => csrf_hash(),
+                ]);
+            }
+            return redirect()->back()->with('error', 'Data tidak ditemukan atau bukan milik Anda.');
+        }
+
+        // Hapus file & record
+        $deleted = 0;
+        foreach ($items as $item) {
+            if (!empty($item['proof']) && file_exists(FCPATH.'uploads/commissions/'.$item['proof'])) {
+                @unlink(FCPATH.'uploads/commissions/'.$item['proof']);
+            }
+            $this->commissionModel->delete((int)$item['id']);
+            $this->logActivity('delete', "Menghapus komisi ID {$item['id']}");
+            $deleted++;
+        }
+
+        $msg = "Berhasil menghapus {$deleted} data.";
+
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'status'   => 'success',
+                'message'  => $msg,
+                'csrfHash' => csrf_hash(), // refresh token untuk request berikutnya
+            ]);
+        }
+
+        return redirect()->to(site_url('vendoruser/commissions'))
+            ->with('success', $msg);
+    }
+
 }

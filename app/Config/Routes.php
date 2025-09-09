@@ -82,71 +82,76 @@ $routes->get('seoteam/dashboard', static fn () => redirect()->to('/seo/dashboard
 $routes->get('seo_team/dashboard', static fn () => redirect()->to('/seo/dashboard'));
 
 // ==================== VENDORUSER ====================
-$routes->group('vendoruser', ['filter' => ['session', 'group:vendor']], static function ($routes) {
+$routes->group('vendoruser', [
+    'filter'    => ['session', 'group:vendor'],
+    'namespace' => 'App\Controllers\Vendoruser'
+], static function ($routes) {
     // Dashboard
-    $routes->get('dashboard', 'Vendoruser\Dashboard::index');
+    $routes->get('dashboard', 'Dashboard::index');
 
-    // Profile (COCOKKAN dgn controller yang ada)
-    $routes->get('profile',          'Vendoruser\Profile::edit');        // ← tadinya ::index
-    $routes->post('profile/update',  'Vendoruser\Profile::update');
+    // Profile
+    $routes->get('profile',         'Profile::edit');
+    $routes->post('profile/update', 'Profile::update');
 
     // Password
-    $routes->get('password',         'Vendoruser\Profile::password');
-    $routes->post('password/update', 'Vendoruser\Profile::passwordUpdate');
+    $routes->get('password',         'Profile::password');
+    $routes->post('password/update', 'Profile::passwordUpdate');
 
-    // Services
-    $routes->get('services',                'Vendoruser\Services::index');
-    $routes->get('services/create',         'Vendoruser\Services::create');
-    $routes->post('services/store',         'Vendoruser\Services::store');
-    $routes->get('services/(:num)/edit',    'Vendoruser\Services::edit/$1');
-    $routes->post('services/(:num)/update', 'Vendoruser\Services::update/$1');
-    $routes->post('services/(:num)/delete', 'Vendoruser\Services::delete/$1');
+    // Areas
+    $routes->group('areas', static function ($routes) {
+        $routes->get('/',       'Areas::index');
+        $routes->get('create',  'Areas::create');
+        $routes->get('edit',    'Areas::edit');
+        $routes->get('search',  'Areas::search');
+        $routes->post('attach', 'Areas::attach');
+        $routes->post('delete', 'Areas::delete');
+    });
 
-    // areas
-    $routes->post('areas/toggle', 'Vendoruser\Areas::toggle');
-    $routes->get('areas', 'Vendoruser\Areas::index');
-    $routes->get('areas/create', 'Vendoruser\Areas::create');
-    $routes->post('areas/store', 'Vendoruser\Areas::store');
-    $routes->post('areas/delete', 'Vendoruser\Areas::delete');
+    // Leads
+    $routes->get('leads',                 'Leads::index');
+    $routes->get('leads/create',          'Leads::create');
+    $routes->post('leads/store',          'Leads::store');
+    $routes->get('leads/(:num)',          'Leads::show/$1');
+    $routes->get('leads/(:num)/edit',     'Leads::edit/$1');
+    $routes->post('leads/(:num)/update',  'Leads::update/$1');
+    $routes->post('leads/(:num)/delete',  'Leads::delete/$1');
+    $routes->post('leads/delete-multiple','Leads::deleteMultiple');
 
-    // Products
-    $routes->get('products',                'Vendoruser\Products::index');
-    $routes->get('products/create',         'Vendoruser\Products::create');
-    $routes->post('products/store',         'Vendoruser\Products::store');
-    $routes->get('products/(:num)/edit',    'Vendoruser\Products::edit/$1');
-    $routes->post('products/(:num)/update', 'Vendoruser\Products::update/$1');
-    $routes->post('products/(:num)/delete', 'Vendoruser\Products::delete/$1');
-
-
- // Leads
-    $routes->get('leads',                'Vendoruser\Leads::index');
-    $routes->get('leads/create',         'Vendoruser\Leads::create');
-    $routes->post('leads/store',         'Vendoruser\Leads::store');
-    $routes->get('leads/(:num)',         'Vendoruser\Leads::show/$1');  // TAMBAHKAN INI
-    $routes->get('leads/(:num)/edit',    'Vendoruser\Leads::edit/$1');
-    $routes->post('leads/(:num)/update', 'Vendoruser\Leads::update/$1');
-    $routes->post('leads/(:num)/delete', 'Vendoruser\Leads::delete/$1');
+    // ServicesProducts
+    $routes->get( 'services-products',              'ServicesProducts::index',        ['as' => 'sp_index']);
+    $routes->get( 'services-products/create',       'ServicesProducts::createGroup',  ['as' => 'sp_create_group']);
+    $routes->post('services-products/store',        'ServicesProducts::store',        ['as' => 'sp_store']);
+    $routes->get( 'services-products/edit-group',   'ServicesProducts::editGroup',    ['as' => 'sp_edit_group']);
+    $routes->post('services-products/update-group', 'ServicesProducts::updateGroup',  ['as' => 'sp_update_group']);
+    $routes->get( 'services-products/delete/(:num)','ServicesProducts::delete/$1',    ['as' => 'sp_delete']);
+    $routes->post('services-products/delete-multiple','ServicesProducts::deleteMultiple', ['as' => 'sp_delete_multiple']);
 
     // Commissions
-    $routes->get('commissions',                'Vendoruser\Commissions::index');
-    $routes->get('commissions/create',         'Vendoruser\Commissions::create');
-    $routes->post('commissions/store',         'Vendoruser\Commissions::store');
-    $routes->get('commissions/(:num)',         'Vendoruser\Commissions::show/$1');
-    $routes->get('commissions/(:num)/edit',    'Vendoruser\Commissions::edit/$1');
-    $routes->post('commissions/(:num)/update', 'Vendoruser\Commissions::update/$1');
-    $routes->post('commissions/(:num)/delete', 'Vendoruser\Commissions::delete/$1');
+    $routes->group('commissions', static function($routes) {
+        $routes->get('/',               'Commissions::index');
+        $routes->get('create',          'Commissions::create');
+        $routes->post('store',          'Commissions::store');
+        $routes->get('(:num)/edit',     'Commissions::edit/$1');
+        $routes->post('(:num)/update',  'Commissions::update/$1');
+        $routes->post('(:num)/delete',  'Commissions::delete/$1');
+        $routes->post('delete-multiple','Commissions::deleteMultiple');
+    });
 
     // Activity Logs
-        $routes->get('activity_logs', 'Vendoruser\ActivityLogs::index');
+    $routes->get('activity_logs', 'ActivityLogs::index');
 
-    // Notifikasi
-    $routes->get('notifications',                 'Vendoruser\Notifications::index');
-    $routes->post('notifications/(:num)/read',    'Vendoruser\Notifications::markRead/$1');
-    $routes->post('notifications/mark/(:num)',    'Vendoruser\Notifications::markRead/$1'); // alias lama
-    $routes->post('notifications/mark-all',       'Vendoruser\Notifications::markAllRead');
-    $routes->get('notifications/mark-all',        'Vendoruser\Notifications::markAllRead'); // compat utk AJAX GET
-    $routes->post('notifications/(:num)/delete',  'Vendoruser\Notifications::delete/$1');
-    $routes->post('notifications/delete/(:num)',  'Vendoruser\Notifications::delete/$1');   // alias lama
-    $routes->post('notifications/delete-all',     'Vendoruser\Notifications::deleteAll');
+    // Notifications (rapi, dukung AJAX GET utk mark-all)
+    $routes->group('notifications', static function ($routes) {
+        $routes->get('/',                      'Notifications::index',        ['as' => 'vendor_notif_index']);
+        $routes->post('(:num)/read',           'Notifications::markRead/$1',  ['as' => 'vendor_notif_read']);
+        $routes->post('(:num)/delete',         'Notifications::delete/$1',    ['as' => 'vendor_notif_delete']);
+        $routes->post('delete-all',            'Notifications::deleteAll',    ['as' => 'vendor_notif_delete_all']);
+        $routes->post('mark-all',              'Notifications::markAllRead',  ['as' => 'vendor_notif_mark_all']);
+        $routes->get('mark-all',               'Notifications::markAllRead'); // AJAX GET compat
+        // Alias lama (opsional, boleh dihapus kalau tak dipakai):
+        $routes->post('mark/(:num)',           'Notifications::markRead/$1');
+        $routes->post('delete/(:num)',         'Notifications::delete/$1');
+    });
 });
+
 $routes->get('vendor/dashboard', static fn () => redirect()->to('/vendoruser/dashboard'));

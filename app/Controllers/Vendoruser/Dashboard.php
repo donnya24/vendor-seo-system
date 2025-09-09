@@ -5,17 +5,24 @@ use App\Controllers\BaseController;
 use App\Models\VendorProfilesModel;
 use App\Models\LeadsModel;
 use App\Models\ServicesModel;
+use App\Models\ActivityLogsModel;
 
 class Dashboard extends BaseController
 {
+    private $activityLogsModel;
+
+    public function __construct()
+    {
+        $this->activityLogsModel = new ActivityLogsModel();
+    }
+
     private function requireVendorId(): int
     {
         $auth = service('auth');
         $user = $auth->user();
 
         $vp = (new VendorProfilesModel())
-            ->select('id')
-            ->where('user_id', (int) $user->id)
+            ->where('user_id', (int)$user->id)
             ->first();
 
         if (! $vp || empty($vp['id'])) {
@@ -35,22 +42,36 @@ class Dashboard extends BaseController
         $authUser = service('auth')->user();
         $db       = db_connect();
 
-        // ===== KARTU STAT =====
-        $leadsModel = new LeadsModel();
+        // Log activity untuk mengakses dashboard
+        $this->logActivity($authUser->id, $vendorId, 'view_dashboard', 'success', 'Mengakses dashboard vendor');
 
-        // total leads masuk
+        $leadsModel = new LeadsModel();
+        $today = date('Y-m-d');
+
+        // Statistik Leads
         $leadsNew = (clone $leadsModel)
             ->selectSum('jumlah_leads_masuk')
             ->where('vendor_id', $vendorId)
             ->get()->getRow('jumlah_leads_masuk') ?? 0;
 
-        // total leads diproses
-        $leadsInProgress = (clone $leadsModel)
-            ->selectSum('jumlah_leads_diproses')
+        $leadsClosing = (clone $leadsModel)
+            ->selectSum('jumlah_leads_closing')
             ->where('vendor_id', $vendorId)
-            ->get()->getRow('jumlah_leads_diproses') ?? 0;
+            ->get()->getRow('jumlah_leads_closing') ?? 0;
 
-        // Jumlah keyword: dari seo_keyword_targets
+        $leadsToday = (clone $leadsModel)
+            ->selectSum('jumlah_leads_masuk')
+            ->where('vendor_id', $vendorId)
+            ->where('DATE(tanggal)', $today)
+            ->get()->getRow('jumlah_leads_masuk') ?? 0;
+
+        $leadsClosingToday = (clone $leadsModel)
+            ->selectSum('jumlah_leads_closing')
+            ->where('vendor_id', $vendorId)
+            ->where('DATE(tanggal)', $today)
+            ->get()->getRow('jumlah_leads_closing') ?? 0;
+
+        // Jumlah keyword
         $keywordsTotal = 0;
         if ($db->tableExists('seo_keyword_targets')) {
             $keywordsTotal = (int) $db->table('seo_keyword_targets')
@@ -58,7 +79,7 @@ class Dashboard extends BaseController
                 ->countAllResults();
         }
 
-        // ===== TOP KEYWORDS =====
+        // Top Keywords
         $topKeywords = [];
         if ($db->tableExists('seo_reports')) {
             $topKeywords = $db->table('seo_reports')
@@ -67,53 +88,27 @@ class Dashboard extends BaseController
                 ->orderBy('position', 'ASC')
                 ->limit(6)
                 ->get()->getResultArray();
-        } elseif ($db->tableExists('seo_keyword_targets')) {
-            $rows = $db->table('seo_keyword_targets')
-                ->select('id, keyword AS text, project')
-                ->where('vendor_id', $vendorId)
-                ->orderBy('id', 'DESC')
-                ->limit(6)
-                ->get()->getResultArray();
-            $topKeywords = array_map(fn($r)=> $r + ['position'=>null,'change'=>null], $rows);
         }
 
-        // ===== LEADS TERBARU =====
+        // Leads terbaru
         $recentRows = (clone $leadsModel)
             ->where(['vendor_id' => $vendorId, 'reported_by_vendor' => 1])
             ->orderBy('id', 'DESC')
             ->limit(10)
             ->findAll();
 
-        // Map service name
-        $serviceNames = [];
-        if ($recentRows) {
-            $serviceIds = array_unique(array_filter(array_column($recentRows, 'service_id')));
-            if ($serviceIds) {
-                $svcRows = (new ServicesModel())
-                    ->select('id, name')
-                    ->whereIn('id', $serviceIds)
-                    ->findAll();
-                foreach ($svcRows as $r) {
-                    $serviceNames[(int) $r['id']] = $r['name'];
-                }
-            }
-        }
-
-        // Mapping leads agar sesuai dengan tabel leads
-        $recentLeads = array_map(function ($l) use ($serviceNames) {
+        $recentLeads = array_map(function ($l) {
             return [
-                'id'       => (int) ($l['id'] ?? 0),
-                'project'  => $serviceNames[(int) ($l['service_id'] ?? 0)] ?? '-',
-                'masuk'    => (int) ($l['jumlah_leads_masuk'] ?? 0),
-                'diproses' => (int) ($l['jumlah_leads_diproses'] ?? 0),
-                'ditolak'  => (int) ($l['jumlah_leads_ditolak'] ?? 0),
-                'closing'  => (int) ($l['jumlah_leads_closing'] ?? 0),
-                'tanggal'  => !empty($l['tanggal']) ? date('Y-m-d', strtotime($l['tanggal'])) : '-',
-                'updated'  => !empty($l['updated_at']) ? date('Y-m-d H:i', strtotime($l['updated_at'])) : '-',
+                'id'      => (int) ($l['id'] ?? 0),
+                'project' => '-',
+                'masuk'   => (int) ($l['jumlah_leads_masuk'] ?? 0),
+                'closing' => (int) ($l['jumlah_leads_closing'] ?? 0),
+                'tanggal' => !empty($l['tanggal']) ? date('Y-m-d', strtotime($l['tanggal'])) : '-',
+                'updated' => !empty($l['updated_at']) ? date('Y-m-d H:i', strtotime($l['updated_at'])) : '-',
             ];
         }, $recentRows ?? []);
 
-        // ===== NOTIFIKASI =====
+        // Notifikasi
         $notifications = [];
         $unreadNotif   = 0;
         if ($db->tableExists('notifications')) {
@@ -145,20 +140,62 @@ class Dashboard extends BaseController
             ->first();
 
         $profileImage = $vp['profile_image'] ?? '';
+        $isVerified   = ($vp['status'] ?? '') === 'verified';
+
+        // --- Ambil Activity Logs ---
+        $activityLogs = [];
+        if ($db->tableExists('activity_logs')) {
+            $activityLogs = (new ActivityLogsModel())
+                ->where('vendor_id', $vendorId)
+                ->orderBy('created_at', 'DESC')
+                ->limit(10)
+                ->findAll();
+        }
 
         return view('vendoruser/dashboard', [
             'page'          => 'Dashboard',
             'stats'         => [
-                'leads_new'        => (int)$leadsNew,
-                'leads_inprogress' => (int)$leadsInProgress,
-                'keywords_total'   => (int)$keywordsTotal,
-                'unread'           => (int)$unreadNotif,
+                'leads_new'           => (int)$leadsNew,
+                'leads_closing'       => (int)$leadsClosing,
+                'leads_today'         => (int)$leadsToday,
+                'leads_closing_today' => (int)$leadsClosingToday,
+                'keywords_total'      => (int)$keywordsTotal,
+                'unread'              => (int)$unreadNotif,
             ],
             'recentLeads'   => $recentLeads,
             'topKeywords'   => $topKeywords,
             'notifications' => $notifications,
             'vp'            => $vp,
             'profileImage'  => $profileImage,
+            'isVerified'    => $isVerified,
+            'activityLogs'  => $activityLogs, // dikirim ke view
         ]);
+    }
+
+    // ===== LOG ACTIVITY METHOD =====
+    private function logActivity($userId = null, $vendorId = null, $action, $status, $description = null, $additionalData = [])
+    {
+        try {
+            $data = [
+                'user_id'     => $userId,
+                'vendor_id'   => $vendorId,
+                'module'      => 'dashboard',
+                'action'      => $action,
+                'status'      => $status,
+                'description' => $description,
+                'ip_address'  => $this->request->getIPAddress(),
+                'user_agent'  => $this->request->getUserAgent(),
+                'created_at'  => date('Y-m-d H:i:s'),
+            ];
+            
+            // Gabungkan dengan data tambahan jika ada
+            if (!empty($additionalData)) {
+                $data['additional_data'] = json_encode($additionalData);
+            }
+            
+            $this->activityLogsModel->insert($data);
+        } catch (\Throwable $e) {
+            log_message('error', 'Failed to log activity in Dashboard: ' . $e->getMessage());
+        }
     }
 }

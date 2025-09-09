@@ -1,4 +1,3 @@
-<!-- app/Views/vendoruser/commissions/edit.php -->
 <div class="w-full">
   <h2 class="text-lg font-semibold mb-4">Edit Komisi</h2>
   <form method="post" action="<?= site_url('vendoruser/commissions/'.$item['id'].'/update'); ?>" 
@@ -20,7 +19,14 @@
     </div>
 
     <div>
-      <label class="text-sm font-semibold mb-1 block">Nominal (Rp) *</label>
+      <label class="text-sm font-semibold mb-1 block">Penghasilan (Rp) *</label>
+      <input type="number" name="earning" min="0" 
+             value="<?= old('earning', esc($item['earning'])) ?>" required
+             class="w-full border rounded-lg px-3 py-2">
+    </div>
+
+    <div>
+      <label class="text-sm font-semibold mb-1 block">Nominal Total (Rp) *</label>
       <input type="number" name="amount" min="0" 
              value="<?= old('amount', esc($item['amount'])) ?>" required
              class="w-full border rounded-lg px-3 py-2">
@@ -58,13 +64,14 @@
 function validateForm(form) {
   let start = form.querySelector('[name="period_start"]').value;
   let end = form.querySelector('[name="period_end"]').value;
+  let earning = form.querySelector('[name="earning"]').value;
   let amount = form.querySelector('[name="amount"]').value;
 
-  if (!start || !end || amount < 0) {
+  if (!start || !end || earning < 0 || amount < 0) {
     Swal.fire({
       icon: 'warning',
       title: 'Kolom wajib diisi',
-      text: 'Periode dan nominal harus diisi dengan benar!',
+      text: 'Periode, penghasilan, dan nominal harus diisi dengan benar!',
       width: 350,
       customClass: { popup: 'rounded-lg text-sm' }
     });
