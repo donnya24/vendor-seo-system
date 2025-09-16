@@ -33,9 +33,6 @@ class ActivityLogs extends BaseController
         ]);
     }
 
-    /**
-     * Tampilkan semua activity logs untuk vendor saat ini
-     */
     public function index()
     {
         if (! $this->initVendor()) {
@@ -50,9 +47,15 @@ class ActivityLogs extends BaseController
             ->orderBy('created_at', 'DESC')
             ->findAll();
 
-        return view('vendoruser/activity_logs/index', $this->withVendorData([
-            'page' => 'Activity Logs',
-            'logs' => $logs,
+        // Render via layout master
+        return view('vendoruser/layouts/vendor_master', $this->withVendorData([
+            'title'        => 'Activity Logs',
+            'content_view' => 'vendoruser/activity_logs/index',
+            'content_data' => [
+                'page' => 'Activity Logs',
+                'logs' => $logs,
+            ],
         ]));
     }
+
 }

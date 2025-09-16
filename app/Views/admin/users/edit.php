@@ -116,6 +116,11 @@ $pageKey   = $uid . '-' . $modalType;
      :class="(sidebarOpen && (typeof isDesktop==='undefined' || isDesktop)) ? 'md:ml-64' : 'ml-0'"
      x-data="editUsersPage('<?= esc($modalType) ?>','<?= esc($pageKey) ?>')">
 
+  <!-- ===== BACKGROUND VIEWER (halaman Management Users di belakang popup) ===== -->
+  <div class="absolute inset-0 z-0">
+    <iframe src="<?= $backUrl ?>" class="w-full h-full border-0 bg-gray-50"></iframe>
+  </div>
+
   <!-- ================= MODAL: EDIT SEO (Form 1) ================= -->
   <div class="fixed inset-0 z-[999] flex items-start justify-center p-3 sm:p-4"
        x-show="open && modalType==='seo'" x-transition.opacity
@@ -264,7 +269,7 @@ $pageKey   = $uid . '-' . $modalType;
             <label class="block text-sm font-semibold text-gray-700 mb-1">Email</label>
             <div class="relative">
               <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><i class="fa-regular fa-envelope"></i></span>
-              <input type="email" name="email" value="<?= esc($venEmail) ?>" placeholder="email@contoh.com"
+              <input type="email" name="email" value <?= esc($venEmail) ?>(<?= ' value="'.esc($venEmail).'" ' ?>) placeholder="email@contoh.com"
                      class="w-full pl-10 pr-3 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
             </div>
           </div>
@@ -352,13 +357,45 @@ function editUsersPage(initialType, pageKey) {
     showResetVEN: false, showPassVEN: false,
 
     close(){
-      if (history.length > 1) history.back();
-      else location.href = "<?= $backUrl ?>";
+      // Tutup popup + pulihkan scroll…
+      this.open = false;
+      document.body.style.overflow = '';
+      // …lalu kembali ke halaman Management Users (tanpa halaman putih).
+      // Back dulu untuk konsisten dengan gesture pengguna
+      setTimeout(() => {
+        // Jika kembali tidak mengubah URL (karena masuk langsung), jaga fallback:
+        const to = "<?= $backUrl ?>";
+        try { history.back(); } catch(e) { window.location.replace(to); return; }
+        // Safety fallback jika masih di halaman ini 150ms kemudian:
+        setTimeout(() => {
+          if (location.pathname.indexOf('/admin/users') === -1) window.location.replace(to);
+        }, 150);
+      }, 100);
     },
+
     init(){
-      // Pastikan modalType mengikuti hasil server (mengatasi cache Turbo)
+      // Pastikan modalType mengikuti hasil server (atasi cache)
       this.$nextTick(() => { this.modalType = <?= json_encode($modalType) ?>; this.open = true; });
+
+      // Kunci scroll saat terbuka
       this.$watch('open', v => document.body.style.overflow = v ? 'hidden' : '');
+
+      // Setup riwayat agar tombol BACK menutup modal (seperti di video)
+      const marker = '#modal';
+      if (!location.hash.includes('modal')) {
+        // Simpan state saat ini, lalu tambahkan hash marker sehingga BACK menutup
+        history.replaceState({ modalSeed: true }, '', location.href);
+        history.pushState({ modalOpen: true }, '', location.href + marker);
+      }
+
+      window.addEventListener('popstate', () => {
+        // Jika BACK ditekan dari keadaan modal terbuka → tutup & alihkan ke list
+        if (this.open) {
+          this.open = false;
+          document.body.style.overflow = '';
+          setTimeout(() => window.location.replace("<?= $backUrl ?>"), 80);
+        }
+      }, { once: true });
     }
   }
 }

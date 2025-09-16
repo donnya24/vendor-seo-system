@@ -57,26 +57,36 @@ class Leads extends BaseController
 
         $m = new LeadsModel();
 
-        $start = $this->request->getGet('start_date');
-        $end   = $this->request->getGet('end_date');
+        $start = (string) $this->request->getGet('start_date');
+        $end   = (string) $this->request->getGet('end_date');
 
         $m->where('vendor_id', $this->vendorId);
 
-        if ($start && $end) {
+        if ($start !== '' && $end !== '') {
             $m->where('tanggal >=', $start)
-              ->where('tanggal <=', $end);
+            ->where('tanggal <=', $end);
         }
 
         $m->orderBy('tanggal', 'DESC');
 
         $this->logActivity('view', 'Melihat daftar leads');
 
-        return view('vendoruser/leads/index', $this->withVendorData([
-            'page'       => 'Laporan Leads',
-            'leads'      => $m->findAll(),
-            'start_date' => $start,
-            'end_date'   => $end,
-        ]));
+        // ⬇️ gunakan layout master
+        return view('vendoruser/layouts/vendor_master', [
+            'title'        => 'Laporan Leads',
+            // data yang dibutuhkan layout (header/sidebar)
+            'vp'           => $this->vendorProfile,
+            'isVerified'   => $this->isVerified,
+
+            // view konten utama & datanya
+            'content_view' => 'vendoruser/leads/index',
+            'content_data' => [
+                'page'       => 'Laporan Leads',
+                'leads'      => $m->findAll(),
+                'start_date' => $start,
+                'end_date'   => $end,
+            ],
+        ]);
     }
 
     public function create()

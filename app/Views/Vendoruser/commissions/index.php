@@ -1,5 +1,3 @@
-<?= $this->include('vendoruser/layouts/header'); ?>
-
 <main class="app-main flex-1 p-4 bg-gray-50">
   <div class="bg-white rounded-2xl p-5 shadow">
     <div class="flex items-center justify-between mb-3">
@@ -308,5 +306,3 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 </script>
-
-<?= $this->include('vendoruser/layouts/footer'); ?>

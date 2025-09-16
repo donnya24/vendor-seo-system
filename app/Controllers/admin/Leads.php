@@ -4,8 +4,10 @@ namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
 use App\Models\LeadsModel;
+use App\Models\LeadEvidencesModel;
 use App\Models\VendorProfilesModel;
 use App\Models\ServicesModel;
+use App\Models\AreasModel;
 
 class Leads extends BaseController
 {
@@ -13,103 +15,82 @@ class Leads extends BaseController
     {
         $m = new LeadsModel();
 
-        // Filter GET
-        $vendorId  = $this->request->getGet('vendor_id');
-        $serviceId = $this->request->getGet('service_id');
-        $from      = $this->request->getGet('from');
-        $to        = $this->request->getGet('to');
+        // Filter (GET)
+        $status   = $this->request->getGet('status');
+        $vendorId = $this->request->getGet('vendor_id');
+        $serviceId= $this->request->getGet('service_id');
+        $areaId   = $this->request->getGet('area_id');
+        $source   = $this->request->getGet('source');
+        $from     = $this->request->getGet('from');
+        $to       = $this->request->getGet('to');
 
-        if ($vendorId)  $m->where('leads.vendor_id', $vendorId);
-        if ($serviceId) $m->where('leads.service_id', $serviceId);
-        if ($from)      $m->where('leads.tanggal >=', $from);
-        if ($to)        $m->where('leads.tanggal <=', $to);
+        if ($status)    $m->where('status', $status);
+        if ($vendorId)  $m->where('vendor_id', $vendorId);
+        if ($serviceId) $m->where('service_id', $serviceId);
+        if ($areaId)    $m->where('area_id', $areaId);
+        if ($source)    $m->where('source', $source);
+        if ($from)      $m->where('DATE(created_at) >=', $from);
+        if ($to)        $m->where('DATE(created_at) <=', $to);
 
-        // Join biar tampil vendor & service name
-        $m->select('leads.*, vendor_profiles.business_name, services.name as service_name')
-          ->join('vendor_profiles', 'vendor_profiles.id = leads.vendor_id', 'left')
-          ->join('services', 'services.id = leads.service_id', 'left')
-          ->orderBy('leads.tanggal','DESC');
-
-        $leads = $m->findAll();
+        $leads = $m->orderBy('id','DESC')->findAll();
 
         return view('admin/leads/index', [
-            'page'     => 'Laporan Leads',
+            'page'     => 'Leads',
             'leads'    => $leads,
             'vendors'  => (new VendorProfilesModel())->findAll(),
             'services' => (new ServicesModel())->findAll(),
-            'filters'  => compact('vendorId','serviceId','from','to')
+            'areas'    => (new AreasModel())->findAll(),
+            'filters'  => compact('status','vendorId','serviceId','areaId','source','from','to')
         ]);
     }
 
-    // Export CSV
+
+
+    // Export dummy (CSV)
     public function exportCsv()
     {
-        $rows = (new LeadsModel())
-            ->select('leads.*, vendor_profiles.business_name, services.name as service_name')
-            ->join('vendor_profiles', 'vendor_profiles.id = leads.vendor_id', 'left')
-            ->join('services', 'services.id = leads.service_id', 'left')
-            ->orderBy('leads.id','DESC')->findAll();
-
+        $rows = (new LeadsModel())->orderBy('id','DESC')->findAll();
         $out  = fopen('php://output', 'w');
         $filename = 'leads_' . date('Ymd_His') . '.csv';
         header('Content-Type: text/csv');
         header('Content-Disposition: attachment; filename="'.$filename.'"');
 
-        fputcsv($out, [
-            'ID','Vendor','Tanggal','Service',
-            'Leads Masuk','Diproses','Ditolak','Closing',
-            'Reported By','Assigned At','Updated At'
-        ]);
+        fputcsv($out, ['ID','Customer','Vendor','Service','Area','Status','Source','Created At']);
         foreach ($rows as $r) {
             fputcsv($out, [
-                $r['id'],
-                $r['business_name'] ?? '',
-                $r['tanggal'],
-                $r['service_name'] ?? '',
-                $r['jumlah_leads_masuk'],
-                $r['jumlah_leads_diproses'],
-                $r['jumlah_leads_ditolak'],
-                $r['jumlah_leads_closing'],
-                $r['reported_by_vendor'],
-                $r['assigned_at'],
-                $r['updated_at'],
+                $r['id'] ?? $r->id ?? '',
+                $r['customer_name'] ?? '',
+                $r['vendor_id'] ?? '',
+                $r['service_id'] ?? '',
+                $r['area_id'] ?? '',
+                $r['status'] ?? '',
+                $r['source'] ?? '',
+                $r['created_at'] ?? '',
             ]);
         }
         fclose($out); exit;
     }
 
-    // Export XLSX (masih CSV tapi header beda)
+    // Export dummy (XLSX) → untuk cepat, kirim CSV juga tapi ubah header
     public function exportXlsx()
     {
-        $rows = (new LeadsModel())
-            ->select('leads.*, vendor_profiles.business_name, services.name as service_name')
-            ->join('vendor_profiles', 'vendor_profiles.id = leads.vendor_id', 'left')
-            ->join('services', 'services.id = leads.service_id', 'left')
-            ->orderBy('leads.id','DESC')->findAll();
-
+        $rows = (new LeadsModel())->orderBy('id','DESC')->findAll();
         $out  = fopen('php://output', 'w');
         $filename = 'leads_' . date('Ymd_His') . '.xlsx';
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment; filename="'.$filename.'"');
 
-        fputcsv($out, [
-            'ID','Vendor','Tanggal','Service',
-            'Leads Masuk','Diproses','Ditolak','Closing',
-            'Reported By','Assigned At','Updated At'
-        ]);
+        fputcsv($out, ['ID','Customer','Vendor','Service','Area','Status','Source','Created At']);
         foreach ($rows as $r) {
             fputcsv($out, [
-                $r['id'],
-                $r['business_name'] ?? '',
-                $r['tanggal'],
-                $r['service_name'] ?? '',
-                $r['jumlah_leads_masuk'],
-                $r['jumlah_leads_diproses'],
-                $r['jumlah_leads_ditolak'],
-                $r['jumlah_leads_closing'],
-                $r['reported_by_vendor'],
-                $r['assigned_at'],
-                $r['updated_at'],
+                $r['id'] ?? '',
+                $r['customer_name'] ?? '',
+                $r['vendor_id'] ?? '',
+                $r['service_id'] ?? '',
+                $r['area_id'] ?? '',
+                $r['status'] ?? '',
+                $r['source'] ?? '',
+                $r['created_at'] ?? '',
             ]);
         }
         fclose($out); exit;

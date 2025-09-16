@@ -305,12 +305,6 @@
           <p class="mt-2 text-gray-600">Ya, leads dan laporan komisi dapat diekspor sesuai kebutuhan.</p>
         </details>
       </div>
-
-      <div class="text-center mt-10" data-reveal data-reveal-delay="150">
-        <a href="<?= site_url('register'); ?>" class="inline-block bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition transform hover:scale-105">
-          Daftar Sekarang
-        </a>
-      </div>
     </div>
   </section>
 

@@ -1,5 +1,3 @@
-<?= $this->include('vendoruser/layouts/header'); ?>
-
 <?php $hasAreas = !empty($vendorAreas ?? []); ?>
 
 <main class="app-main flex-1 p-4 bg-gray-50">
@@ -196,5 +194,3 @@ document.addEventListener('keydown', (e) => {
   }
 });
 </script>
-
-<?= $this->include('vendoruser/layouts/footer'); ?>

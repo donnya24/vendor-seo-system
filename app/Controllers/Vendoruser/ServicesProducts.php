@@ -92,9 +92,13 @@ class ServicesProducts extends BaseController
 
         $this->logActivity('view', 'Melihat daftar layanan dan produk');
 
-        return view('vendoruser/services_products/index', $this->withVendorData([
-            'page'             => 'Layanan & Produk',
-            'servicesProducts' => $list,
+        return view('vendoruser/layouts/vendor_master', $this->withVendorData([
+            'title'        => 'Layanan & Produk',
+            'content_view' => 'vendoruser/services_products/index',
+            'content_data' => [
+                'page'             => 'Layanan & Produk',
+                'servicesProducts' => $list,
+            ],
         ]));
     }
 

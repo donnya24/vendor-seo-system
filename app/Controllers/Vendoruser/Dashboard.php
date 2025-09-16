@@ -108,33 +108,7 @@ class Dashboard extends BaseController
             ];
         }, $recentRows ?? []);
 
-        // Notifikasi
-        $notifications = [];
-        $unreadNotif   = 0;
-        if ($db->tableExists('notifications')) {
-            $rows = $db->table('notifications')
-                ->where('user_id', (int)$authUser->id)
-                ->orderBy('created_at', 'DESC')
-                ->limit(20)
-                ->get()->getResultArray();
-
-            foreach ($rows as $r) {
-                $notifications[] = [
-                    'id'      => (int)$r['id'],
-                    'title'   => (string)$r['title'],
-                    'message' => (string)$r['message'],
-                    'is_read' => (bool)($r['is_read'] ?? 0),
-                    'date'    => !empty($r['created_at']) ? date('Y-m-d H:i', strtotime($r['created_at'])) : '-',
-                ];
-            }
-
-            $unreadNotif = (int)$db->table('notifications')
-                ->where('user_id', (int)$authUser->id)
-                ->where('is_read', 0)
-                ->countAllResults();
-        }
-
-        // Profil vendor
+        // Profil vendor (untuk header/sidebar)
         $vp = (new VendorProfilesModel())
             ->where('user_id', (int)$authUser->id)
             ->first();
@@ -142,7 +116,7 @@ class Dashboard extends BaseController
         $profileImage = $vp['profile_image'] ?? '';
         $isVerified   = ($vp['status'] ?? '') === 'verified';
 
-        // --- Ambil Activity Logs ---
+        // Activity logs ringkas
         $activityLogs = [];
         if ($db->tableExists('activity_logs')) {
             $activityLogs = (new ActivityLogsModel())
@@ -152,23 +126,27 @@ class Dashboard extends BaseController
                 ->findAll();
         }
 
-        return view('vendoruser/dashboard', [
-            'page'          => 'Dashboard',
-            'stats'         => [
-                'leads_new'           => (int)$leadsNew,
-                'leads_closing'       => (int)$leadsClosing,
-                'leads_today'         => (int)$leadsToday,
-                'leads_closing_today' => (int)$leadsClosingToday,
-                'keywords_total'      => (int)$keywordsTotal,
-                'unread'              => (int)$unreadNotif,
+        // ⬇️ Render via layout master. Tidak kirim notifikasi/modals di sini.
+        return view('vendoruser/layouts/vendor_master', [
+            'title'        => 'Dashboard',
+            'vp'           => $vp,
+            'isVerified'   => $isVerified,
+            'profileImage' => $profileImage,
+
+            'content_view' => 'vendoruser/dashboard',
+            'content_data' => [
+                'page'          => 'Dashboard',
+                'stats'         => [
+                    'leads_new'           => (int)$leadsNew,
+                    'leads_closing'       => (int)$leadsClosing,
+                    'leads_today'         => (int)$leadsToday,
+                    'leads_closing_today' => (int)$leadsClosingToday,
+                    'keywords_total'      => (int)$keywordsTotal,
+                ],
+                'recentLeads'   => $recentLeads,
+                'topKeywords'   => $topKeywords,
+                'activityLogs'  => $activityLogs,
             ],
-            'recentLeads'   => $recentLeads,
-            'topKeywords'   => $topKeywords,
-            'notifications' => $notifications,
-            'vp'            => $vp,
-            'profileImage'  => $profileImage,
-            'isVerified'    => $isVerified,
-            'activityLogs'  => $activityLogs, // dikirim ke view
         ]);
     }
 

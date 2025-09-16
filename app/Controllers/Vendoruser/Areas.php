@@ -93,7 +93,7 @@ class Areas extends BaseController
                 ->with('error', 'Profil vendor belum ada. Lengkapi profil terlebih dulu.');
         }
 
-        // LEFT JOIN + filter null
+        // LEFT JOIN + filter null (biarkan sesuai punyamu)
         $vendorAreas = (new VendorAreasModel())
             ->select('areas.id, areas.name, areas.type')
             ->join('areas', 'areas.id = vendor_areas.area_id', 'left')
@@ -114,9 +114,15 @@ class Areas extends BaseController
             ));
         }
 
-        return view('vendoruser/areas/index', $this->withVendorData([
-            'page'        => 'Area',
-            'vendorAreas' => $vendorAreas,
+        // ⬇️ HANYA BAGIAN INI YANG DIUBAH: render lewat layout master
+        return view('vendoruser/layouts/vendor_master', $this->withVendorData([
+            'title'        => 'Area Layanan',                 // dipakai di <title> & header
+            'content_view' => 'vendoruser/areas/index',       // view konten utama
+            'content_data' => [                               // data khusus untuk view konten
+                'page'         => 'Area',
+                'vendorAreas'  => $vendorAreas,
+                'hasAll'       => $hasAll,
+            ],
         ]));
     }
 

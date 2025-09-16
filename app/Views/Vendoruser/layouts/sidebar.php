@@ -17,7 +17,7 @@ if (!function_exists('isActive')) {
   }
 }
 
-// helper: render nav item (font diperkecil)
+// helper: render nav item
 if (!function_exists('navItem')) {
   function navItem($canAccess, $url, $icon, $label, $active=false, $badge=null){
     $href  = $canAccess ? site_url($url) : 'javascript:void(0)';
@@ -30,11 +30,12 @@ if (!function_exists('navItem')) {
       ? '<span class="ml-auto bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full min-w-[1.25rem] text-center">'.$badge.'</span>'
       : '';
 
-    return '<a href="'.$href.'" class="'.$class.'"'.$title.'>'
-         . '<i class="'.$icon.' w-5 mr-3 text-center flex-shrink-0"></i>'
-         . '<span class="flex-1 font-medium">'.$label.'</span>'
-         . $badgeHtml
-         . '</a>';
+    return '<a href="'.$href.'" class="'.$class.'"'.$title.'
+              @click="$store.ui.loading = true; setTimeout(() => { window.location.href=\''.$href.'\' }, 150)">
+              <i class="'.$icon.' w-5 mr-3 text-center flex-shrink-0"></i>
+              <span class="flex-1 font-medium">'.$label.'</span>'
+           . $badgeHtml
+           . '</a>';
   }
 }
 ?>

@@ -1,5 +1,3 @@
-<?= $this->include('vendoruser/layouts/header'); ?> 
-
 <main class="app-main flex-1 p-4 bg-gray-50">
   <div class="flex items-center justify-between mb-3">
     <h2 class="text-lg md:text-xl font-semibold">Daftar Laporan Leads</h2>
@@ -361,5 +359,3 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 </script>
-
-<?= $this->include('vendoruser/layouts/footer'); ?>

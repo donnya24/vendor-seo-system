@@ -1,8 +1,3 @@
-<?php
-// Selalu include header (berisi Topbar & modal profil/password)
-include_once(APPPATH . 'Views/vendoruser/layouts/header.php');
-?>
-
 <main class="app-main flex-1 p-2 md:p-4 bg-gray-50">
   <!-- Cards -->
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 mb-4 md:mb-6 mt-4 md:mt-6">
@@ -270,5 +265,3 @@ document.getElementById('leadDetailModal').addEventListener('touchend', e => {
   }
 });
 </script>
-
-<?php include_once(APPPATH . 'Views/vendoruser/layouts/footer.php'); ?>

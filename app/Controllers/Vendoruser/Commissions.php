@@ -69,9 +69,14 @@ class Commissions extends BaseController
 
         $this->logActivity('view', 'Melihat daftar komisi');
 
-        return view('vendoruser/commissions/index', $this->withVendorData([
-            'page' => 'Komisi',
-            'items' => $list,
+        // ⬇️ Pakai layout master
+        return view('vendoruser/layouts/vendor_master', $this->withVendorData([
+            'title'        => 'Komisi',
+            'content_view' => 'vendoruser/commissions/index',
+            'content_data' => [
+                'page'  => 'Komisi',
+                'items' => $list,
+            ],
         ]));
     }
 

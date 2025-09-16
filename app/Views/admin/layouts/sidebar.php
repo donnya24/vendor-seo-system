@@ -12,6 +12,15 @@
   /* FIX: pastikan brand title selalu putih */
   #adminSidebar h1,
   #adminSidebar h1 span { color:#fff !important; }
+
+  /* Sidebar: paling atas layar (sejajar header), halus anti hairline */
+  #adminSidebar{
+    top: 0 !important;
+    height: 100vh !important;
+    backface-visibility:hidden;
+    will-change: transform;
+    z-index: 40; /* header nanti digeser, jadi tidak saling tumpuk */
+  }
 </style>
 
 <script>
@@ -19,7 +28,6 @@
   document.addEventListener('alpine:init', () => {
     const mq = () => window.matchMedia('(min-width: 768px)').matches;
 
-    // Store layout: kendali sidebar & media query
     Alpine.store('layout', {
       sidebarOpen: mq(),       // desktop = open, mobile = closed
       isDesktop: mq(),
@@ -28,7 +36,6 @@
       toggle(){ this.sidebarOpen = !this.sidebarOpen },
       _updateMQ(){
         const d = mq();
-        // hanya ubah isDesktop; buka otomatis saat jadi desktop
         if (d !== this.isDesktop) {
           this.isDesktop = d;
           if (d) this.sidebarOpen = true; // auto open on desktop
@@ -36,7 +43,6 @@
       }
     });
 
-    // Store ui: kendali logout modal
     if (!Alpine.store('ui')) Alpine.store('ui', {});
     Alpine.store('ui').showLogoutModal = false;
   });
@@ -52,20 +58,18 @@
   // Hook tombol header: cukup beri atribut data-toggle-sidebar pada tombolnya
   function _wireHeaderToggle(){
     const toggle = (e)=>{ e.preventDefault?.(); try { Alpine.store('layout').toggle(); } catch(e){} };
-    // cari semua pemicu
     const selectors = ['[data-toggle-sidebar]','#sidebarToggle','#btnSidebarToggle','#headerMenuBtn'];
-    const nodes = document.querySelectorAll(selectors.join(','));
-    nodes.forEach(el => el.addEventListener('click', toggle));
+    document.querySelectorAll(selectors.join(',')).forEach(el => el.addEventListener('click', toggle));
   }
   document.addEventListener('DOMContentLoaded', _wireHeaderToggle);
 
-  // Reset modal logout (JANGAN set attribute hidden agar x-show bisa bekerja)
+  // Reset modal logout
   function resetLogoutModal(){
     try{
       if(window.Alpine && Alpine.store('ui')) Alpine.store('ui').showLogoutModal = false;
       document.documentElement.classList.remove('overflow-hidden','error','error-theme','with-sidebar-fallback');
       const m=document.getElementById('logoutModal');
-      if(m) m.removeAttribute('hidden'); // pastikan tidak tersangkut 'hidden'
+      if(m) m.removeAttribute('hidden');
     }catch(e){}
   }
   document.addEventListener('DOMContentLoaded', resetLogoutModal);
@@ -77,7 +81,7 @@
 <div
   id="adminSidebar"
   data-turbo-permanent
-  class="sidebar z-40 text-white w-60 fixed inset-y-0 left-0 p-3 flex flex-col
+  class="sidebar z-40 text-white w-60 fixed inset-y-0 left-0 pt-0 pr-3 pb-3 pl-3 flex flex-col
          bg-gradient-to-b from-blue-800 via-blue-700 to-blue-900
          transform transition-transform duration-300 ease-in-out no-scrollbar"
   :class="$store.layout.sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
@@ -87,13 +91,13 @@
   :aria-hidden="$store.layout.sidebarOpen ? 'false' : 'true'"
   @click.outside="if (!$store.layout.isDesktop) $store.layout.sidebarOpen = false"
   x-data="{
-    activeMenu: '<?= url_is('admin/dashboard*') ? 'dashboard' : (url_is('admin/users*') ? 'users' : (url_is('admin/vendors*') ? 'vendors' : (url_is('admin/services*') ? 'services' : (url_is('admin/areas*') ? 'areas' : (url_is('admin/leads*') ? 'leads' : (url_is('admin/announcements*') ? 'announcements' : (url_is('admin/audit-logs*') ? 'audit-logs' : ''))))))) ?>',
+    activeMenu: '<?= url_is('admin/dashboard*') ? 'dashboard' : (url_is('admin/users*') ? 'users' : (url_is('admin/vendors*') ? 'vendors' : (url_is('admin/services*') ? 'services' : (url_is('admin/areas*') ? 'areas' : (url_is('admin/leads*') ? 'leads' : (url_is('admin/announcements*') ? 'announcements' : (url_is('admin/activity-logs*') ? 'activity-logs' : ''))))))) ?>',
     setActiveMenu(menu){ this.activeMenu = menu; sessionStorage.setItem('activeMenu', menu); },
     init(){ const s=sessionStorage.getItem('activeMenu'); if(s) this.activeMenu=s; }
   }"
 >
-  <!-- Brand + Close (mobile) -->
-  <div class="flex items-center justify-between mb-4">
+  <!-- Brand (sejajar header) + Close (mobile) -->
+  <div class="h-14 flex items-center justify-between mb-4">
     <h1 class="text-xl font-semibold text-white">
       <span class="hidden md:inline">Admin Imersa</span>
       <span class="md:hidden">Imersa</span>
@@ -182,13 +186,13 @@
           <span class="text-sm">Announcements</span>
         </a>
 
-        <a href="<?= site_url('admin/audit-logs'); ?>"
+        <a href="<?= site_url('admin/activity-logs'); ?>"
            class="block py-2 px-2 rounded-md mb-1 flex items-center transition-colors duration-200 hover:bg-blue-700/70
                   text-white/90 visited:text-white/90"
-           :class="{'bg-blue-600 text-white': activeMenu === 'audit-logs', 'text-white/90': activeMenu !== 'audit-logs'}"
-           @click="if (!$store.layout.isDesktop) $store.layout.sidebarOpen = false; setActiveMenu('audit-logs')">
+           :class="{'bg-blue-600 text-white': activeMenu === 'activity-logs', 'text-white/90': activeMenu !== 'activity-logs'}"
+           @click="if (!$store.layout.isDesktop) $store.layout.sidebarOpen = false; setActiveMenu('activity-logs')">
           <i class="fas fa-history mr-2 w-4 text-center text-xs"></i>
-          <span class="text-sm">Audit Logs</span>
+          <span class="text-sm">Activity Logs</span>
         </a>
       </div>
     </div>
@@ -213,7 +217,7 @@
   </div>
 </div>
 
-<!-- ===== Logout Modal ===== -->
+<!-- ===== Logout Modal & init menu aktif (tidak diubah) ===== -->
 <div
   id="logoutModal"
   x-show="$store.ui.showLogoutModal"
@@ -225,55 +229,35 @@
   x-cloak
   x-init="$watch(()=>$store.ui.showLogoutModal, v => { if(v) $el.removeAttribute('hidden'); document.documentElement.classList.toggle('overflow-hidden', v) })"
 >
-  <!-- Backdrop -->
   <div class="absolute inset-0 bg-black/50"
        @click="$store.ui.showLogoutModal = false; document.documentElement.classList.remove('overflow-hidden');"></div>
-
-  <!-- Dialog -->
   <div
     class="relative bg-white text-gray-800 w-full max-w-sm mx-4 rounded-lg shadow-xl p-5"
     @click.outside="$store.ui.showLogoutModal = false; document.documentElement.classList.remove('overflow-hidden');"
   >
     <div class="flex items-start gap-3">
-      <div class="shrink-0 mt-0.5">
-        <i class="fas fa-sign-out-alt text-red-600"></i>
-      </div>
+      <div class="shrink-0 mt-0.5"><i class="fas fa-sign-out-alt text-red-600"></i></div>
       <div class="flex-1">
         <h3 class="text-base font-semibold mb-1">Konfirmasi Logout</h3>
         <p class="text-sm text-gray-600">Anda yakin ingin keluar dari sesi saat ini?</p>
       </div>
     </div>
-
     <div class="mt-5 flex justify-end gap-2">
-      <button
-        type="button"
-        class="px-3 py-2 text-sm rounded-md border border-gray-300 hover:bg-gray-100"
-        @click="$store.ui.showLogoutModal = false; document.documentElement.classList.remove('overflow-hidden');"
-      >Batal</button>
-
+      <button type="button" class="px-3 py-2 text-sm rounded-md border border-gray-300 hover:bg-gray-100"
+              @click="$store.ui.showLogoutModal = false; document.documentElement.classList.remove('overflow-hidden');">Batal</button>
       <form method="post" action="<?= site_url('logout'); ?>" data-turbo="false"
             @submit="$store.ui.showLogoutModal = false; document.documentElement.classList.remove('overflow-hidden');">
         <?= csrf_field() ?>
-        <button
-          type="submit"
-          class="px-3 py-2 text-sm rounded-md bg-red-600 text-white hover:bg-red-700"
-        >Keluar</button>
+        <button type="submit" class="px-3 py-2 text-sm rounded-md bg-red-600 text-white hover:bg-red-700">Keluar</button>
       </form>
     </div>
-
-    <button
-      type="button"
-      class="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
-      @click="$store.ui.showLogoutModal = false; document.documentElement.classList.remove('overflow-hidden');"
-      aria-label="Tutup"
-    >
-      <i class="fas fa-times"></i>
-    </button>
+    <button type="button" class="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
+            @click="$store.ui.showLogoutModal = false; document.documentElement.classList.remove('overflow-hidden');"
+            aria-label="Tutup"><i class="fas fa-times"></i></button>
   </div>
 </div>
 
 <script>
-  // Inisialisasi menu aktif dari URL
   function setInitialActiveMenu(){
     const p=window.location.pathname; let m='';
     if(p.includes('/admin/dashboard')) m='dashboard';
@@ -283,7 +267,7 @@
     else if(p.includes('/admin/areas')) m='areas';
     else if(p.includes('/admin/leads')) m='leads';
     else if(p.includes('/admin/announcements')) m='announcements';
-    else if(p.includes('/admin/audit-logs')) m='audit-logs';
+    else if(p.includes('/admin/activity-logs')) m='activity-logs';
     if(m) sessionStorage.setItem('activeMenu', m);
     return m;
   }

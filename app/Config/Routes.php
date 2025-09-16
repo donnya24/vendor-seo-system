@@ -13,19 +13,19 @@ $routes->setAutoRoute(true);
 $routes->get('/', 'Landpage\Landpage::index');
 
 // Auth
-$routes->get('login', 'Auth\AuthController::login');
+$routes->get('login',  'Auth\AuthController::login');
 $routes->post('login', 'Auth\AuthController::attemptLogin');
-$routes->post('logout', 'Auth\AuthController::logout');
+$routes->post('logout','Auth\AuthController::logout');
 
 // Register (vendor)
-$routes->get('register', 'Auth\AuthController::registerForm');
+$routes->get('register',  'Auth\AuthController::registerForm');
 $routes->post('register', 'Auth\AuthController::registerProcess');
 
 // Forgot / Reset Password
-$routes->get('forgot-password', 'Auth\ForgotPasswordController::showForgotForm');
+$routes->get('forgot-password',  'Auth\ForgotPasswordController::showForgotForm');
 $routes->post('forgot-password', 'Auth\ForgotPasswordController::sendResetLink');
-$routes->get('reset-password', 'Auth\ForgotPasswordController::showResetForm');
-$routes->post('reset-password', 'Auth\ForgotPasswordController::resetPassword');
+$routes->get('reset-password',   'Auth\ForgotPasswordController::showResetForm');
+$routes->post('reset-password',  'Auth\ForgotPasswordController::resetPassword');
 
 // Util
 $routes->get('auth/remember-status', 'Auth\AuthController::checkRememberStatus');
@@ -33,6 +33,7 @@ $routes->get('auth/remember-status', 'Auth\AuthController::checkRememberStatus')
 // ==================== ADMIN ====================
 $routes->group('admin', ['filter' => ['session', 'group:admin']], static function ($routes) {
     $routes->get('dashboard', 'Admin\Dashboard::index');
+    $routes->get('api/stats', 'Admin\Dashboard::stats');
 
     // Users
     $routes->get('users',                 'Admin\Users::index');
@@ -74,12 +75,69 @@ $routes->group('admin', ['filter' => ['session', 'group:admin']], static functio
 });
 $routes->get('admin/dashboard/index', static fn () => redirect()->to('/admin/dashboard'));
 
-// ==================== SEO ====================
-$routes->group('seo', ['filter' => ['session', 'group:seoteam']], static function ($routes) {
-    $routes->get('dashboard', 'Seo\Dashboard::index');
+// ---------- SEO ----------
+$routes->group('seo', [
+    'namespace' => 'App\Controllers\Seo',
+    'filter'    => ['session', 'group:seoteam']
+], static function ($routes) {
+
+    // Dashboard
+    $routes->get('dashboard', 'Dashboard::index');
+
+    // Profile
+    $routes->get('profile', 'Profile::index');
+    $routes->get('profile/edit', 'Profile::edit');
+    $routes->post('profile/update', 'Profile::update');
+    
+    // Password
+    $routes->get('password', 'Profile::password');
+    $routes->post('password/update', 'Profile::passwordUpdate');
+
+    // Keyword Targets
+    $routes->get('targets', 'Targets::index');
+    $routes->get('targets/create', 'Targets::create');
+    $routes->post('targets/store', 'Targets::store');
+    $routes->get('targets/edit/(:num)', 'Targets::edit/$1');
+    $routes->post('targets/update/(:num)', 'Targets::update/$1');
+    $routes->post('targets/delete/(:num)', 'Targets::delete/$1');
+
+    // Reports
+    $routes->get('reports', 'Reports::index');
+    $routes->get('reports/create', 'Reports::create');
+    $routes->post('reports/store', 'Reports::store');
+    $routes->get('reports/edit/(:num)', 'Reports::edit/$1');
+    $routes->post('reports/update/(:num)', 'Reports::update/$1');
+    $routes->post('reports/delete/(:num)', 'Reports::delete/$1');
+
+    // Commissions (✅ tidak pakai group seo di dalam seo)
+    $routes->get('commissions', 'Commissions::index');
+    $routes->post('commissions/approve/(:num)', 'Commissions::approve/$1');
+    $routes->post('commissions/reject/(:num)', 'Commissions::reject/$1');
+    $routes->post('commissions/mark-paid/(:num)', 'Commissions::markAsPaid/$1');
+    $routes->delete('commissions/delete/(:num)', 'Commissions::delete/$1');
+
+    // Pantau Leads - SEO
+    $routes->get('leads', 'Leads::index'); 
+    $routes->get('leads/export', 'Leads::export'); 
+
+    // Approve Vendor
+    $routes->get('vendor', 'Vendor_verify::index');
+    $routes->get('vendor/approve/(:num)', 'Vendor_verify::approve/$1');
+
+    // Log Activity
+    $routes->get('logs', 'Logs::index');
+    
+    // Notifications
+    $routes->group('notif', static function ($routes) {
+        $routes->get('/', 'Notifications::index', ['as' => 'seo_notif_index']);
+        $routes->post('(:num)/read', 'Notifications::markRead/$1', ['as' => 'seo_notif_read']);
+        $routes->post('(:num)/delete', 'Notifications::delete/$1', ['as' => 'seo_notif_delete']);
+        $routes->post('delete-all', 'Notifications::deleteAll', ['as' => 'seo_notif_delete_all']);
+        $routes->post('mark-all', 'Notifications::markAllRead', ['as' => 'seo_notif_mark_all']);
+    });
+
 });
-$routes->get('seoteam/dashboard', static fn () => redirect()->to('/seo/dashboard'));
-$routes->get('seo_team/dashboard', static fn () => redirect()->to('/seo/dashboard'));
+
 
 // ==================== VENDORUSER ====================
 $routes->group('vendoruser', [
@@ -108,23 +166,23 @@ $routes->group('vendoruser', [
     });
 
     // Leads
-    $routes->get('leads',                 'Leads::index');
-    $routes->get('leads/create',          'Leads::create');
-    $routes->post('leads/store',          'Leads::store');
-    $routes->get('leads/(:num)',          'Leads::show/$1');
-    $routes->get('leads/(:num)/edit',     'Leads::edit/$1');
-    $routes->post('leads/(:num)/update',  'Leads::update/$1');
-    $routes->post('leads/(:num)/delete',  'Leads::delete/$1');
-    $routes->post('leads/delete-multiple','Leads::deleteMultiple');
+    $routes->get('leads',                  'Leads::index');
+    $routes->get('leads/create',           'Leads::create');
+    $routes->post('leads/store',           'Leads::store');
+    $routes->get('leads/(:num)',           'Leads::show/$1');
+    $routes->get('leads/(:num)/edit',      'Leads::edit/$1');
+    $routes->post('leads/(:num)/update',   'Leads::update/$1');
+    $routes->post('leads/(:num)/delete',   'Leads::delete/$1');
+    $routes->post('leads/delete-multiple', 'Leads::deleteMultiple');
 
     // ServicesProducts
-    $routes->get( 'services-products',              'ServicesProducts::index',        ['as' => 'sp_index']);
-    $routes->get( 'services-products/create',       'ServicesProducts::createGroup',  ['as' => 'sp_create_group']);
-    $routes->post('services-products/store',        'ServicesProducts::store',        ['as' => 'sp_store']);
-    $routes->get( 'services-products/edit-group',   'ServicesProducts::editGroup',    ['as' => 'sp_edit_group']);
-    $routes->post('services-products/update-group', 'ServicesProducts::updateGroup',  ['as' => 'sp_update_group']);
-    $routes->get( 'services-products/delete/(:num)','ServicesProducts::delete/$1',    ['as' => 'sp_delete']);
-    $routes->post('services-products/delete-multiple','ServicesProducts::deleteMultiple', ['as' => 'sp_delete_multiple']);
+    $routes->get( 'services-products',                'ServicesProducts::index',        ['as' => 'sp_index']);
+    $routes->get( 'services-products/create',         'ServicesProducts::createGroup',  ['as' => 'sp_create_group']);
+    $routes->post('services-products/store',          'ServicesProducts::store',        ['as' => 'sp_store']);
+    $routes->get( 'services-products/edit-group',     'ServicesProducts::editGroup',    ['as' => 'sp_edit_group']);
+    $routes->post('services-products/update-group',   'ServicesProducts::updateGroup',  ['as' => 'sp_update_group']);
+    $routes->get( 'services-products/delete/(:num)',  'ServicesProducts::delete/$1',    ['as' => 'sp_delete']);
+    $routes->post('services-products/delete-multiple','ServicesProducts::deleteMultiple',['as' => 'sp_delete_multiple']);
 
     // Commissions
     $routes->group('commissions', static function($routes) {
@@ -140,17 +198,14 @@ $routes->group('vendoruser', [
     // Activity Logs
     $routes->get('activity_logs', 'ActivityLogs::index');
 
-    // Notifications (rapi, dukung AJAX GET utk mark-all)
+    // Notifications (FIX: hilangkan nested 'vendoruser' ganda)
     $routes->group('notifications', static function ($routes) {
-        $routes->get('/',                      'Notifications::index',        ['as' => 'vendor_notif_index']);
-        $routes->post('(:num)/read',           'Notifications::markRead/$1',  ['as' => 'vendor_notif_read']);
-        $routes->post('(:num)/delete',         'Notifications::delete/$1',    ['as' => 'vendor_notif_delete']);
-        $routes->post('delete-all',            'Notifications::deleteAll',    ['as' => 'vendor_notif_delete_all']);
-        $routes->post('mark-all',              'Notifications::markAllRead',  ['as' => 'vendor_notif_mark_all']);
-        $routes->get('mark-all',               'Notifications::markAllRead'); // AJAX GET compat
-        // Alias lama (opsional, boleh dihapus kalau tak dipakai):
-        $routes->post('mark/(:num)',           'Notifications::markRead/$1');
-        $routes->post('delete/(:num)',         'Notifications::delete/$1');
+        $routes->get('/',               'Notifications::index',       ['as' => 'vendor_notif_index']);
+        $routes->post('(:num)/read',    'Notifications::markRead/$1', ['as' => 'vendor_notif_read']);
+        $routes->post('(:num)/delete',  'Notifications::delete/$1',   ['as' => 'vendor_notif_delete']);
+        $routes->post('delete-all',     'Notifications::deleteAll',   ['as' => 'vendor_notif_delete_all']);
+        $routes->post('mark-all',       'Notifications::markAllRead', ['as' => 'vendor_notif_mark_all']);
+        $routes->get('mark-all',        'Notifications::markAllRead'); // opsional (AJAX GET)
     });
 });
 

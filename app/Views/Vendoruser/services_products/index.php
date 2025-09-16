@@ -1,6 +1,3 @@
-<!-- header + sidebar -->
-<?= $this->include('vendoruser/layouts/header'); ?>
-
 <main class="app-main flex-1 p-4 sm:p-6 lg:p-8 bg-gray-50">
 
   <!-- Wrapper untuk konsistensi lebar & spasi vertikal -->
@@ -649,5 +646,3 @@ document.addEventListener("DOMContentLoaded", function(){
 window.openModal=openModal; window.closeModal=closeModal;
 window.showDescription=showDescription; window.closeDescriptionModal=closeDescriptionModal;
 </script>
-
-<?= $this->include('vendoruser/layouts/footer'); ?>

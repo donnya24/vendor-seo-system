@@ -5,79 +5,95 @@ namespace App\Controllers\Admin;
 use App\Controllers\BaseController;
 use App\Models\VendorProfilesModel;
 use App\Models\LeadsModel;
-use CodeIgniter\Database\Exceptions\DatabaseException;
 
 class Dashboard extends BaseController
 {
     public function index()
     {
-        $leadsModel = new LeadsModel();
+        $vendors   = (new VendorProfilesModel())->countAllResults();
 
-        // === Stats ringkas ===
-        $vendors = (new VendorProfilesModel())->countAllResults();
+        $leads     = new LeadsModel();
+        $today     = date('Y-m-d');   // hindari DATE(tanggal) di WHERE; kolom tanggal = tipe DATE
+        $monthFrom = date('Y-m-01');
+        $monthTo   = date('Y-m-t');
 
-        $todayLeadsRow = $leadsModel
-            ->selectSum('jumlah_leads_masuk')
-            ->where('tanggal', date('Y-m-d'))
-            ->first();
-        $todayLeads = $todayLeadsRow['jumlah_leads_masuk'] ?? 0;
+        // === METRIK ===
+        // 1) Total leads MASUK hari ini (jumlah, bukan jumlah baris)
+        $todayLeads = $leads->where('tanggal', $today)
+                            ->selectSum('jumlah_leads_masuk', 'total_masuk')
+                            ->first()['total_masuk'] ?? 0;
 
-        $monthlyDealsRow = $leadsModel
-            ->selectSum('jumlah_leads_closing')
-            ->where('MONTH(tanggal)', date('m'))
-            ->where('YEAR(tanggal)', date('Y'))
-            ->first();
-        $monthlyDeals = $monthlyDealsRow['jumlah_leads_closing'] ?? 0;
+        // 2) Total CLOSING bulan berjalan (jumlah, bukan jumlah baris)
+        $monthlyDeals = $leads->where('tanggal >=', $monthFrom)
+                              ->where('tanggal <=', $monthTo)
+                              ->selectSum('jumlah_leads_closing', 'total_close')
+                              ->first()['total_close'] ?? 0;
 
-        // === Ambil 5 leads terakhir dengan join vendor & service ===
-        try {
-            $db = db_connect();
-            $recentLeads = $db->table('leads l')
-                ->select('l.*, v.business_name AS vendor_name, s.name AS service_name')
-                ->join('vendor_profiles v', 'v.id = l.vendor_id', 'left')
-                ->join('services s', 's.id = l.service_id', 'left')
-                ->orderBy('l.tanggal', 'DESC')
-                ->limit(5)
-                ->get()
-                ->getResultArray();
-        } catch (DatabaseException $e) {
-            $recentLeads = [];
-        }
+        // 3) Placeholder top keywords (belum ada tabel keywords di dump)
+        $topKeywords = 0;
 
         return view('admin/dashboard', [
-            'page'        => 'Dashboard',
-            'stats'       => [
+            'page'  => 'Dashboard',
+            'stats' => [
                 'totalVendors' => (int) $vendors,
                 'todayLeads'   => (int) $todayLeads,
                 'monthlyDeals' => (int) $monthlyDeals,
-                'topKeywords'  => 0,
+                'topKeywords'  => (int) $topKeywords,
             ],
-            'recentLeads' => $recentLeads,
+            // Jika mau aktifkan data asli untuk "Leads Terbaru" di view, tinggal buka baris di bawah:
+            // 'recentLeads' => $this->fetchRecentLeads(),
         ]);
     }
 
     public function stats()
     {
-        $leadsModel = new LeadsModel();
+        $vendors   = (new VendorProfilesModel())->countAllResults();
 
-        $todayLeadsRow = $leadsModel
-            ->selectSum('jumlah_leads_masuk')
-            ->where('tanggal', date('Y-m-d'))
-            ->first();
-        $todayLeads = $todayLeadsRow['jumlah_leads_masuk'] ?? 0;
+        $leads     = new LeadsModel();
+        $today     = date('Y-m-d');
+        $monthFrom = date('Y-m-01');
+        $monthTo   = date('Y-m-t');
 
-        $monthlyDealsRow = $leadsModel
-            ->selectSum('jumlah_leads_closing')
-            ->where('MONTH(tanggal)', date('m'))
-            ->where('YEAR(tanggal)', date('Y'))
-            ->first();
-        $monthlyDeals = $monthlyDealsRow['jumlah_leads_closing'] ?? 0;
+        $todayLeads = $leads->where('tanggal', $today)
+                            ->selectSum('jumlah_leads_masuk', 'total_masuk')
+                            ->first()['total_masuk'] ?? 0;
+
+        $monthlyDeals = $leads->where('tanggal >=', $monthFrom)
+                              ->where('tanggal <=', $monthTo)
+                              ->selectSum('jumlah_leads_closing', 'total_close')
+                              ->first()['total_close'] ?? 0;
 
         return $this->response->setJSON([
-            'totalVendors' => (new VendorProfilesModel())->countAllResults(),
+            'totalVendors' => (int) $vendors,
             'todayLeads'   => (int) $todayLeads,
             'monthlyDeals' => (int) $monthlyDeals,
             'topKeywords'  => 0,
         ]);
+    }
+
+    /**
+     * Opsional: Isi "Leads Terbaru" dari DB dan mapping ke struktur yang dipakai view.
+     * Aktifkan di index() jika ingin dipakai.
+     */
+    private function fetchRecentLeads(): array
+    {
+        $rows = (new LeadsModel())
+            ->orderBy('id', 'DESC')
+            ->limit(10)
+            ->find();
+
+        return array_map(static function($r){
+            return [
+                'id_leads'   => (string)($r['id'] ?? '-'),
+                'layanan'    => '-', // tidak ada kolom layanan di tabel leads pada dump
+                'masuk'      => (int)($r['jumlah_leads_masuk'] ?? 0),
+                'diproses'   => 0,    // kolom ini tidak ada di dump
+                'ditolak'    => 0,    // kolom ini tidak ada di dump
+                'closing'    => (int)($r['jumlah_leads_closing'] ?? 0),
+                'tanggal'    => $r['tanggal'] ?? '-',
+                'updated_at' => $r['updated_at'] ?? '-',
+                'detail_url' => site_url('admin/leads/'.($r['id'] ?? '')),
+            ];
+        }, $rows ?? []);
     }
 }

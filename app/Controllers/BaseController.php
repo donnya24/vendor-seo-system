@@ -54,6 +54,12 @@ abstract class BaseController extends Controller
         }
     }
 
+    /** User aktif (kalau perlu di controller lain) */
+    protected function currentUser(): ?\CodeIgniter\Shield\Entities\User
+    {
+        return $this->user;
+    }
+
     protected function q(): string
     {
         return trim((string) ($this->request->getGet('q') ?? ''));
@@ -90,5 +96,83 @@ abstract class BaseController extends Controller
             'isVendor' => $this->isVendor,
         ];
         return view($view, $globals + $data);
+    }
+
+    /**
+     * Inject data notifikasi & unread ke header di SEMUA halaman.
+     * Bisa dipakai langsung: array_merge($this->headerDataForUser(), [...])
+     *
+     * @param int|null   $userId
+     * @param array|null $notificationsOverride  (opsional) daftar notifikasi yang sudah ada (biar tidak query ulang)
+     * @param int|null   $unreadOverride         (opsional) unread count kalau sudah dihitung
+     */
+    // app/Controllers/BaseController.php
+
+protected function headerDataForUser(int $userId, ?array $items = null, ?int $unread = null): array
+{
+    $db = db_connect();
+
+    if ($items === null) {
+        $rows = $db->table('notifications')
+            ->where('user_id', $userId)
+            ->orderBy('created_at', 'DESC')
+            ->limit(20)
+            ->get()->getResultArray();
+    } else {
+        $rows = $items;
+    }
+
+    $normalized = [];
+    $u = 0;
+
+    foreach ($rows as $r) {
+        $isRead = (int)($r['is_read'] ?? 0);
+        $normalized[] = [
+            'id'      => (int)($r['id'] ?? 0),
+            'title'   => (string)($r['title'] ?? ''),
+            'message' => (string)($r['message'] ?? ''),
+            'is_read' => $isRead,
+            // selalu sediakan 'date'
+            'date'    => !empty($r['date'])
+                ? $r['date']
+                : (!empty($r['created_at']) ? date('Y-m-d H:i', strtotime($r['created_at'])) : '-'),
+        ];
+        if ($isRead === 0) $u++;
+    }
+
+    if ($unread !== null) {
+        $u = (int)$unread;
+    }
+
+    $stats['unread'] = $u;
+
+    return [
+        'notifications' => $normalized,
+        'stats'         => $stats,
+    ];
+}
+
+    protected function viewVendorMaster(array $data = [], ?int $userId = null)
+    {
+        $layoutData = array_merge(
+            $this->headerDataForUser($userId),
+            $data,
+            [
+                // jaga-jaga nilai default agar layout tidak error
+                'title'        => $data['title']        ?? 'Vendor Dashboard',
+                'content_view' => $data['content_view'] ?? '',
+                'content_data' => $data['content_data'] ?? [],
+            ]
+        );
+
+        // flag global untuk header/sidebar
+        $layoutData += [
+            'authUser' => $this->user,
+            'isAdmin'  => $this->isAdmin,
+            'isSeo'    => $this->isSeo,
+            'isVendor' => $this->isVendor,
+        ];
+
+        return view('vendoruser/layouts/vendor_master', $layoutData);
     }
 }

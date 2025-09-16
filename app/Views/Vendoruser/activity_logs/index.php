@@ -1,5 +1,3 @@
-<?= $this->include('vendoruser/layouts/header'); ?>
-
 <?php
   
   $currentPage = isset($page) ? max(1, (int)$page) : max(1, (int)($_GET['page'] ?? 1));
@@ -98,5 +96,3 @@
   .max-h-\[70vh\].overflow-y-auto::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; } /* slate-300 */
   .max-h-\[70vh\].overflow-y-auto::-webkit-scrollbar-track { background: #f1f5f9; } /* slate-100 */
 </style>
-
-<?= $this->include('vendoruser/layouts/footer'); ?>
