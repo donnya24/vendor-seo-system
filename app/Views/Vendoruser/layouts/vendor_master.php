@@ -1,16 +1,13 @@
 <?php
 /**
- * Master layout Vendor:
- * - Auto load vendor profile
- * - Auto load notifications + unread (private / vendor-wide / global)
- * - Render header, konten halaman, global modals, dan footer
+ * Master layout Vendor
  */
 
 $auth = service('auth');
 $user = $auth ? $auth->user() : null;
 $uid  = (int) ($user->id ?? 0);
 
-/** ===== Vendor profile untuk header/sidebar ===== */
+/** ===== Vendor profile ===== */
 if (!isset($vp)) {
     try {
         $vp = $uid
@@ -22,26 +19,21 @@ if (!isset($vp)) {
 }
 $isVerified = $isVerified ?? ((($vp['status'] ?? '') === 'verified'));
 
-/** ===== Notifications loader (SELALU load di sini untuk header) ===== */
-$notifications     = [];            // selalu sediakan
-$stats             = $stats ?? [];  // field lain biarkan, 'unread' diisi di bawah
+/** ===== Notifications ===== */
+$notifications     = [];
+$stats             = $stats ?? [];
 $stats['unread']   = 0;
-$openNotifModal    = !empty($openNotifModal);   // flag dari controller
-$suppress_content  = !empty($suppress_content); // opsi jika controller mau halaman kosong (popup only)
+$openNotifModal    = !empty($openNotifModal);
+$suppress_content  = !empty($suppress_content);
 
 if ($uid > 0) {
     try {
         $db = db_connect();
-
         if ($db->tableExists('notifications')) {
             $vendorId = (int) ($vp['id'] ?? 0);
             $hasState = $db->tableExists('notification_user_state');
-
             $b = $db->table('notifications n');
 
-            // Normalisasi is_read:
-            // - private (n.user_id = uid)         -> n.is_read
-            // - vendor/global (n.user_id IS NULL) -> nus.is_read per user (default 0)
             $select = "
                 n.id, n.user_id, n.vendor_id, n.type, n.title, n.message,
                 n.created_at AS date
@@ -59,10 +51,6 @@ if ($uid > 0) {
 
             $b->select($select, false);
 
-            // Scope:
-            //  a) Private              : n.user_id = uid
-            //  b) Vendor-wide          : n.user_id IS NULL AND n.vendor_id = current vendor id
-            //  c) Global announcement  : n.user_id IS NULL AND n.vendor_id IS NULL AND n.type='announcement'
             $b->groupStart()
                   ->where('n.user_id', $uid)
                   ->orGroupStart()
@@ -76,7 +64,6 @@ if ($uid > 0) {
                   ->groupEnd()
               ->groupEnd();
 
-            // Exclude hidden per-user bila tabel state ada
             if ($hasState) {
                 $b->groupStart()
                       ->where('nus.hidden', 0)
@@ -88,7 +75,6 @@ if ($uid > 0) {
                       ->limit(20)
                       ->get()->getResultArray();
 
-            // Normalisasi tanggal + hitung unread
             $unread = 0;
             foreach ($rows as &$r) {
                 $r['date']    = !empty($r['date']) ? date('Y-m-d H:i', strtotime($r['date'])) : '-';
@@ -101,10 +87,7 @@ if ($uid > 0) {
             $stats['unread'] = $unread;
         }
     } catch (\Throwable $e) {
-        // kalau DB error, biarkan notifikasi kosong agar header tetap aman
-        log_message('error', 'Failed loading notifications in vendor_master: '.$e->getMessage());
-        $notifications   = [];
-        $stats['unread'] = $stats['unread'] ?? 0;
+        log_message('error', 'Failed loading notifications: '.$e->getMessage());
     }
 }
 
@@ -113,33 +96,97 @@ $title        = $title        ?? 'Vendor Dashboard';
 $content_view = $content_view ?? '';
 $content_data = $content_data ?? [];
 
-/** ===== Render header (sidebar + topbar di dalamnya) ===== */
+/** ===== Render header ===== */
 echo view('vendoruser/layouts/header', get_defined_vars());
 ?>
 
 <!-- ====== PAGE CONTENT ====== -->
-<div class="w-full min-h-[calc(100vh-3.5rem)]">
+<div id="page-wrapper"
+     x-data
+     x-transition:enter="transform transition ease-out duration-400"
+     x-transition:enter-start="translate-y-10 translate-x-5 opacity-0"
+     x-transition:enter-end="translate-y-0 translate-x-0 opacity-100"
+     class="w-full min-h-[calc(100vh-3.5rem)]">
+
   <?php if ($suppress_content || $openNotifModal): ?>
-    <!-- Sengaja kosong: halaman ini hanya memicu modal notifikasi -->
+    <!-- kosong -->
   <?php elseif (!empty($content_html)): ?>
     <?= $content_html ?>
   <?php elseif (!empty($content_view)): ?>
     <?= view($content_view, $content_data ?? []) ?>
   <?php else: ?>
-    <div class="p-4 text-sm text-gray-500">Tidak ada konten (content_view belum diisi).</div>
+    <div class="p-4 text-sm text-gray-500">Tidak ada konten.</div>
   <?php endif; ?>
 </div>
 
-<div x-show="$store.ui.loading"
-     x-transition.opacity.duration.200ms
-     class="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-[100]"
-     style="display:none;">
-</div>
+<!-- Loading Bar -->
+<div x-data="loadingBar()" 
+     x-init="init()"
+     x-show="active"
+     class="fixed top-0 left-0 h-1 bg-blue-500 z-[100] transition-all duration-300"
+     :style="`width:${width}%; opacity:${active?1:0}`"></div>
+
+<script>
+function loadingBar() {
+  return {
+    width: 0,
+    active: false,
+
+    init() {
+      // Browser events
+      document.addEventListener('DOMContentLoaded', () => this.to(30));
+      window.addEventListener('load', () => this.finish());
+
+      // SPA custom events
+      window.addEventListener('spa-loading-start', () => this.start());
+      window.addEventListener('spa-loading-done', () => this.finish());
+
+      // Tangkap semua klik <a> internal
+      document.addEventListener('click', e => {
+        const a = e.target.closest('a');
+        if (!a) return;
+        const url = a.getAttribute('href') || '';
+        // abaikan link eksternal / #hash
+        if (url.startsWith('http') && !url.includes(location.host)) return;
+        if (url.startsWith('#')) return;
+
+        // Trigger bar langsung
+        window.dispatchEvent(new Event('spa-loading-start'));
+      });
+    },
+
+    start() {
+      this.active = true;
+      this.width = 0;
+      this.grow();
+    },
+
+    grow() {
+      if (!this.active) return;
+      this.width += (100 - this.width) * 0.08;
+      if (this.width < 98) {
+        requestAnimationFrame(() => this.grow());
+      }
+    },
+
+    to(val) {
+      this.width = Math.max(this.width, val);
+    },
+
+    finish() {
+      this.width = 100;
+      setTimeout(() => this.active = false, 400);
+    }
+  }
+}
+</script>
+
 
 <?php
-// ===== Global Modals (bisa dibuka dari header di halaman mana pun) =====
+// ===== Global Modals =====
 echo view('vendoruser/profile/edit', ['vp' => $vp ?? []]);
 echo view('vendoruser/profile/ubahpassword');
 
-// ===== Footer (script global, CSRF sync, dll) =====
+// ===== Footer =====
 echo view('vendoruser/layouts/footer', get_defined_vars());
+?>

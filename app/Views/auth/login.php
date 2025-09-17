@@ -8,7 +8,8 @@
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet" />
   <style>
-    html,body{height:100%}body{font-family:'Montserrat',system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial}
+    html,body{height:100%}
+    body{font-family:'Montserrat',system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial}
   </style>
 </head>
 <body class="bg-gray-50">
@@ -23,6 +24,7 @@
            email: '<?= esc(old('email') ?? '') ?>',
            password: '',
            show: false,
+           loading: false,
            get validPw(){ return this.password.length >= 8 }
          }">
 
@@ -34,7 +36,12 @@
         <p class="text-gray-500 text-xs sm:text-sm mt-1">Vendor Partnership & SEO Performance</p>
       </div>
 
-      <form action="<?= site_url('login') ?>" method="post" class="px-6 py-6 sm:py-7 space-y-5" novalidate>
+      <!-- FORM LOGIN -->
+      <form action="<?= site_url('login') ?>" method="post" 
+            class="px-6 py-6 sm:py-7 space-y-5" 
+            novalidate
+            @submit="loading = true">
+
         <?= csrf_field() ?>
 
         <?php if (session()->getFlashdata('error')): ?>
@@ -75,10 +82,18 @@
           <a href="<?= site_url('forgot-password') ?>" class="text-blue-600 font-semibold hover:underline text-sm">Lupa password?</a>
         </div>
 
+        <!-- Tombol Login -->
         <button type="submit"
-                class="w-full py-3 rounded-lg bg-blue-600 hover:bg-blue-700 transition font-semibold text-white shadow disabled:opacity-60 disabled:cursor-not-allowed"
-                :disabled="!validPw">
-          Masuk
+                class="w-full py-3 rounded-lg bg-blue-600 hover:bg-blue-700 transition font-semibold text-white shadow disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center"
+                :disabled="!validPw || loading">
+          <span x-show="!loading">Masuk</span>
+          <span x-show="loading" class="flex items-center gap-2">
+            <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+            </svg>
+            Memproses...
+          </span>
         </button>
 
         <p class="text-center text-sm text-gray-600">
