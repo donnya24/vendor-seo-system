@@ -179,14 +179,10 @@ class AuthController extends Controller
             $db->transException(true);
             $db->transStart();
 
-            // 1) Buat user Shield
+           // 1) Buat user Shield
             $username   = make_unique_username($vendorName, $email);
-            $userEntity = new \CodeIgniter\Shield\Entities\User(['username' => $username]);
+            $userEntity = new User(['username' => $username]); // cukup pakai alias
             $userId     = $users->insert($userEntity, true);
-            if (! $userId) {
-                $errs = method_exists($users, 'errors') ? $users->errors() : [];
-                throw new \RuntimeException('Gagal membuat akun user. ' . implode(', ', (array) $errs));
-            }
 
             // 2) Identitas email+password & grup vendor
             create_email_password_identity((int) $userId, $email, $password);

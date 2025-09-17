@@ -233,7 +233,7 @@ class Notifications extends BaseController
 
         return $this->request->isAJAX()
             ? $this->response->setJSON(['success' => true])
-            : redirect()->back()->with('success', 'Notifikasi disembunyikan.');
+            : redirect()->back()->with('success', 'Notifikasi berhasil dihapus.');
     }
 
     /** Hide semua (per-user) */

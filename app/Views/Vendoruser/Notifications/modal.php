@@ -10,6 +10,7 @@
      x-transition:leave="transition ease-in duration-150"
      x-transition:leave-start="opacity-100"
      x-transition:leave-end="opacity-0">
+
   <div class="bg-white rounded-lg shadow-lg w-full max-w-lg mx-4"
        @click.stop
        x-transition:enter="transition ease-out duration-200"
@@ -18,6 +19,7 @@
        x-transition:leave="transition ease-in duration-150"
        x-transition:leave-start="opacity-100 scale-100 translate-y-0"
        x-transition:leave-end="opacity-0 scale-95 translate-y-1">
+
     <!-- Header -->
     <div class="flex items-center justify-between px-4 py-3 border-b">
       <h3 class="text-lg font-semibold text-gray-900">Semua Notifikasi</h3>
@@ -34,8 +36,9 @@
         <div class="p-4 text-center text-sm text-gray-500">Tidak ada notifikasi.</div>
       <?php else: ?>
         <?php foreach ($notifications as $n): ?>
-          <div class="p-4 flex justify-between items-start hover:bg-gray-50">
-            <div>
+          <div class="p-4 flex justify-between items-center hover:bg-gray-50">
+            <!-- Info Notifikasi -->
+            <div class="flex-1 pr-4">
               <p class="text-sm font-semibold text-gray-900">
                 <?= esc($n['title']) ?>
                 <?php if (! $n['is_read']): ?>
@@ -45,7 +48,9 @@
               <p class="text-xs text-gray-600"><?= esc($n['message']) ?></p>
               <p class="text-xs text-gray-400 mt-1"><?= esc($n['date']) ?></p>
             </div>
-            <div class="flex flex-col gap-1 ml-2">
+
+            <!-- Aksi -->
+            <div class="flex items-center gap-2 shrink-0">
               <?php if (! $n['is_read']): ?>
                 <form method="post" action="<?= route_to('vendor_notif_read', $n['id']) ?>">
                   <?= csrf_field() ?>

@@ -9,48 +9,78 @@ class AuthGroups extends ShieldAuthGroups
 {
     public string $defaultGroup = 'vendor';
 
+    /**
+     * Grup user yang ada di sistem
+     */
     public array $groups = [
         'admin' => [
             'title'       => 'Administrator',
-            'description' => 'Full access to manage the system.',
+            'description' => 'Full access untuk mengelola sistem.',
         ],
         'seoteam' => [
-            'title'       => 'Admin SEO Team',
-            'description' => 'SEO Team administrator with SEO access.',
+            'title'       => 'SEO Team',
+            'description' => 'Tim SEO untuk monitoring, laporan, dan komisi.',
         ],
         'vendor' => [
             'title'       => 'Vendor',
-            'description' => 'Vendors who use the system with limited access.',
+            'description' => 'Vendor yang menggunakan sistem dengan akses terbatas.',
         ],
     ];
 
+    /**
+     * Daftar permission yang tersedia
+     */
     public array $permissions = [
-        // Admin
-        'admin.access'    => 'Can access the admin area',
-        'admin.settings'  => 'Can manage system settings',
-        'users.manage'    => 'Can manage all users',
+        // --- Admin ---
+        'verify_vendor'      => 'Verifikasi / Tolak vendor',
+        'manage_users'       => 'Kelola akun user (Admin/SEO/Vendor)',
+        'master_data_read'   => 'Lihat master data layanan & area (read-only)',
+        'leads_audit'        => 'Pantau & audit leads (read/export)',
+        'commission_manage'  => 'Pantau & verifikasi komisi',
+        'announcement_crud'  => 'CRUD pengumuman',
+        'activity_log'       => 'Lihat activity log',
 
-        // SEO Team
-        'seo.access'      => 'Can access SEO features',
-        'seo.manage'      => 'Can manage SEO configurations',
+        // --- SEO Team ---
+        'approve_vendor'     => 'Approve vendor (opsional)',
+        'leads_view'         => 'Pantau leads (read-only)',
+        'commission_verify'  => 'Verifikasi pembayaran komisi',
+        'reports_manage'     => 'Kelola laporan SEO & target keyword',
 
-        // Vendor
-        'vendor.access'   => 'Can access vendor dashboard',
+        // --- Vendor ---
+        'profile_manage'     => 'Lengkapi & kelola profil vendor',
+        'products_manage'    => 'CRUD layanan, produk & area',
+        'commission_request' => 'Ajukan persentase komisi',
+        'leads_crud'         => 'Kelola leads sendiri (CRUD)',
+        'reports_payment'    => 'Input laporan bulanan & pembayaran komisi',
     ];
 
+    /**
+     * Mapping grup ke permission
+     */
     public array $matrix = [
         'admin' => [
-            'admin.*',
-            'users.*',
-            'seo.*',
-            'vendor.*',
+            'verify_vendor',
+            'manage_users',
+            'master_data_read',
+            'leads_audit',
+            'commission_manage',
+            'announcement_crud',
+            'activity_log',
         ],
+
         'seoteam' => [
-            'seo.access',
-            'seo.manage',
+            'approve_vendor',
+            'leads_view',
+            'commission_verify',
+            'reports_manage',
         ],
+
         'vendor' => [
-            'vendor.access',
+            'profile_manage',
+            'products_manage',
+            'commission_request',
+            'leads_crud',
+            'reports_payment',
         ],
     ];
 }
