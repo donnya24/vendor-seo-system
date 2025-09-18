@@ -51,10 +51,6 @@ $routes->group('admin', ['filter' => ['session', 'group:admin']], static functio
     $routes->post('vendors/(:num)/unverify',  'Admin\Vendors::unverify/$1');
     $routes->post('vendors/(:num)/commission','Admin\Vendors::setCommission/$1');
 
-    // Master Data (read only)
-    $routes->get('services', 'Admin\Services::index');
-    $routes->get('areas',    'Admin\Areas::index');
-
     // Leads (read only)
     $routes->get('leads',            'Admin\Leads::index');
     $routes->get('leads/(:num)',     'Admin\Leads::show/$1');

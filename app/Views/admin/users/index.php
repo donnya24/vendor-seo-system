@@ -41,7 +41,7 @@ if (!function_exists('full_name_of')) {
   }
 }
 function row_key($role, $u, $index) {
-  $parts = [strtolower($role),(string)(user_id($u)??''),strtolower((string)($u['username']??'')),strtolower((string)($u['email']??'')),strtolower((string)($u['phone']??($u['no_telp']??''))),strtolower((string)($u['fullname']??($u['name']??''))),(string)$index];
+  $parts = [strtolower($role),(string)(user_id($u)??''),strtolower((string)($u['username']??'')),strtolower((string)($u['email']??'')),strtolower((string)($u['phone']??($u['no_tlp']??''))),strtolower((string)($u['fullname']??($u['name']??''))),(string)$index];
   return substr(sha1(implode('|',$parts)),0,24);
 }
 
@@ -102,9 +102,28 @@ try {
   }
 } catch (\Throwable $e) {}
 
-$hasUsers = isset($users) && is_array($users) && !empty($users);
-$usersSeo = $hasUsers ? array_values(array_filter($users, fn($u)=> in_groups($u, ['seoteam','seo','seo_team','team_seo']))) : [];
-$usersVendor = $hasUsers ? array_values(array_filter($users, fn($u)=> in_groups($u, ['vendor']))) : [];
+// Inisialisasi variabel untuk menghindari error
+$users = $users ?? [];
+$usersSeo = [];
+$usersVendor = [];
+$currentTab = $currentTab ?? 'seo';
+
+// Filter users based on groups
+if (!empty($users)) {
+    foreach ($users as $user) {
+        $groups = $user['groups'] ?? [];
+        
+        if (in_array('seoteam', $groups, true) || 
+            in_array('seo', $groups, true) || 
+            in_array('seo_team', $groups, true)) {
+            $usersSeo[] = $user;
+        }
+        
+        if (in_array('vendor', $groups, true)) {
+            $usersVendor[] = $user;
+        }
+    }
+}
 ?>
 
 <style>
@@ -115,6 +134,12 @@ $usersVendor = $hasUsers ? array_values(array_filter($users, fn($u)=> in_groups(
     .fade-up{ opacity:0; transform:translate3d(0,18px,0); animation:fadeUp var(--dur,.55s) cubic-bezier(.22,.9,.24,1) forwards; animation-delay:var(--delay,0s); }
     .fade-up-soft{ opacity:0; transform:translate3d(0,12px,0); animation:fadeUp var(--dur,.45s) ease-out forwards; animation-delay:var(--delay,0s); }
     @keyframes fadeUp{ to{opacity:1; transform:none} }
+  }
+  
+  /* Tab styling */
+  .tab-active {
+    background-color: #2563eb;
+    color: white;
   }
 </style>
 <script>document.addEventListener('DOMContentLoaded',()=>{document.documentElement.classList.remove('error','error-theme','with-sidebar-fallback');});</script>
@@ -128,17 +153,32 @@ $usersVendor = $hasUsers ? array_values(array_filter($users, fn($u)=> in_groups(
         <p class="text-xs md:text-sm text-gray-500 mt-0.5">Kelola akun Tim SEO dan Vendor</p>
       </div>
       <div class="flex items-center gap-2 sm:gap-3">
-        <a href="<?= site_url('admin/users/create'); ?>" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs md:text-sm px-3 md:px-4 py-2 rounded-lg shadow-sm">
+        <?php if ($currentTab == 'seo'): ?>
+        <a href="<?= site_url('admin/users/create?role=seo_team'); ?>" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs md:text-sm px-3 md:px-4 py-2 rounded-lg shadow-sm">
           <i class="fa fa-plus text-[11px]"></i> Add Tim SEO
         </a>
+        <?php endif; ?>
       </div>
     </div>
   </div>
 
   <!-- Main -->
   <main id="pageMain" class="flex-1 px-3 md:px-6 pb-6 mt-3 space-y-6 max-w-screen-xl mx-auto w-full fade-up" style="--dur:.60s; --delay:.06s">
+    
+    <!-- Tabs Navigation -->
+    <div class="flex border-b border-gray-200 fade-up" style="--delay:.08s">
+      <button class="py-2 px-4 text-sm font-medium rounded-t-lg transition-colors duration-200 <?= $currentTab == 'seo' ? 'tab-active' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50' ?>" 
+              onclick="window.location.href='<?= site_url('admin/users?tab=seo'); ?>'">
+        <i class="fas fa-users mr-2"></i> User Tim SEO
+      </button>
+      <button class="py-2 px-4 text-sm font-medium rounded-t-lg transition-colors duration-200 <?= $currentTab == 'vendor' ? 'tab-active' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50' ?>" 
+              onclick="window.location.href='<?= site_url('admin/users?tab=vendor'); ?>'">
+        <i class="fas fa-store mr-2"></i> User Vendor
+      </button>
+    </div>
 
     <!-- User Tim SEO -->
+    <?php if ($currentTab == 'seo'): ?>
     <section class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 fade-up" style="--delay:.12s">
       <div class="px-3 py-2 md:px-4 md:py-3 border-b border-gray-100 flex items-center justify-between">
         <h2 class="text-sm font-semibold text-gray-800 flex items-center gap-2">
@@ -160,7 +200,7 @@ $usersVendor = $hasUsers ? array_values(array_filter($users, fn($u)=> in_groups(
           <tbody id="tbody-seo" class="divide-y divide-gray-100">
             <?php if (!empty($usersSeo)): ?>
               <?php foreach ($usersSeo as $i => $u): $id = (int)user_id($u); $rk = row_key('seo',$u,$i);
-                $phoneVal = $u['phone'] ?? ($u['no_telp'] ?? '-');
+                $phoneVal = $u['phone'] ?? ($u['no_tlp'] ?? '-');
                 $emailVal = $emailById[$id] ?? ($u['email'] ?? '-');
               ?>
                 <tr class="hover:bg-gray-50 fade-up-soft" style="--delay: <?= number_format(0.16 + 0.03*$i, 2, '.', '') ?>s" data-rowkey="<?= esc($rk) ?>">
@@ -197,9 +237,11 @@ $usersVendor = $hasUsers ? array_values(array_filter($users, fn($u)=> in_groups(
         </table>
       </div>
     </section>
+    <?php endif; ?>
 
     <!-- User Vendor -->
-    <section class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 fade-up" style="--delay:.18s">
+    <?php if ($currentTab == 'vendor'): ?>
+    <section class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 fade-up" style="--delay:.12s">
       <div class="px-3 py-2 md:px-4 md:py-3 border-b border-gray-100 flex items-center justify-between">
         <h2 class="text-sm font-semibold text-gray-800 flex items-center gap-2">
           <i class="fa-solid fa-store text-blue-600"></i> User Vendor
@@ -226,7 +268,7 @@ $usersVendor = $hasUsers ? array_values(array_filter($users, fn($u)=> in_groups(
                 $sIcon = $isSus ? 'fa-regular fa-circle-play' : 'fa-regular fa-circle-pause';
 
                 // Phone: dari users(phone/no_telp) -> vendor_profiles -> '-'
-                $phoneVal = $u['phone'] ?? ($u['no_telp'] ?? ($vendorPhoneById[$id] ?? '-'));
+                $phoneVal = $u['phone'] ?? ($u['no_tlp'] ?? ($vendorPhoneById[$id] ?? '-'));
                 // Email: dari auth_identities
                 $emailVal = $emailById[$id] ?? ($u['email'] ?? '-');
               ?>
@@ -269,6 +311,7 @@ $usersVendor = $hasUsers ? array_values(array_filter($users, fn($u)=> in_groups(
         </table>
       </div>
     </section>
+    <?php endif; ?>
 
   </main>
 </div>
@@ -330,7 +373,7 @@ window.UMDel = (function () {
   let targetRow = null;
   let lastCloseTs = 0;
 
-  function state(){ try{ const s = JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}'); return (s&&typeof s==='object')?s:{seo:{},vendor:{}}; }catch{return {seo:{},vendor:{}};} }
+  function state(){ try{ const s = JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}'); return (s&&typeof s==='object')?s:{seo:{},vendor:{}};}catch{return {seo:{},vendor:{}};} }
   function save(s){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }catch{} }
   function roleOf(row){ const r=row.closest('table')?.getAttribute('data-table-role')||'seo'; return r==='vendor'?'vendor':'seo'; }
   function ensureEmpty(tbody,title,subtitle){

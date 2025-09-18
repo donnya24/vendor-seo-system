@@ -20,6 +20,9 @@ class Users extends BaseController
     // ========== LIST ==========
     public function index()
     {
+        // Get current tab from URL parameter
+        $currentTab = $this->request->getGet('tab') ?? 'seo';
+        
         // ✅ Ambil sebagai array agar $u['id'] valid
         $list = $this->users->asArray()->orderBy('id', 'DESC')->findAll();
 
@@ -38,13 +41,36 @@ class Users extends BaseController
             return $u;
         }, $list);
 
-        return view('admin/users/index', ['page' => 'Users', 'users' => $users]);
+        // Filter users based on tab
+        $usersSeo = array_filter($users, function($user) {
+            return in_array('seoteam', $user['groups'], true) || 
+                   in_array('seo', $user['groups'], true) || 
+                   in_array('seo_team', $user['groups'], true);
+        });
+        
+        $usersVendor = array_filter($users, function($user) {
+            return in_array('vendor', $user['groups'], true);
+        });
+
+        return view('admin/users/index', [
+            'page' => 'Users', 
+            'users' => $users,
+            'usersSeo' => $usersSeo,
+            'usersVendor' => $usersVendor,
+            'currentTab' => $currentTab
+        ]);
     }
 
     // ========== CREATE ==========
     public function create()
     {
-        return view('admin/users/create', ['page' => 'Users']);
+        // Get role from URL parameter
+        $role = $this->request->getGet('role') ?? 'seo_team';
+        
+        return view('admin/users/create', [
+            'page' => 'Users',
+            'role' => $role
+        ]);
     }
 
     public function store()
@@ -96,12 +122,17 @@ class Users extends BaseController
             }
         }
 
-        return redirect()->to(site_url('admin/users'))->with('success', 'User created.');
+        // Redirect to appropriate tab based on role
+        $tab = ($role === 'vendor') ? 'vendor' : 'seo';
+        return redirect()->to(site_url('admin/users?tab=' . $tab))->with('success', 'User created.');
     }
 
     // ========== EDIT/UPDATE ==========
     public function edit($id)
     {
+        // Get role from URL parameter
+        $role = $this->request->getGet('role') ?? 'seo_team';
+        
         // ✅ Ambil sebagai array agar view mudah pakai $user['username']
         $user = $this->users->asArray()->find($id);
         if (! $user) {
@@ -109,7 +140,12 @@ class Users extends BaseController
         }
 
         $groups = $this->getUserGroups((int) $id);
-        return view('admin/users/edit', ['page' => 'Users', 'user' => $user, 'groups' => $groups]);
+        return view('admin/users/edit', [
+            'page' => 'Users', 
+            'user' => $user, 
+            'groups' => $groups,
+            'role' => $role
+        ]);
     }
 
     public function update($id)
@@ -129,12 +165,18 @@ class Users extends BaseController
             $this->resetPasswordByEmailIdentity((int) $id, $newPass);
         }
 
-        return redirect()->to(site_url('admin/users'))->with('success', 'User updated.');
+        // Redirect to appropriate tab based on role
+        $tab = ($role === 'vendor') ? 'vendor' : 'seo';
+        return redirect()->to(site_url('admin/users?tab=' . $tab))->with('success', 'User updated.');
     }
 
     // ========== DELETE ==========
     public function delete($id)
     {
+        // Get user groups before deletion
+        $groups = $this->getUserGroups((int) $id);
+        $isVendor = in_array('vendor', $groups, true);
+        
         // Hapus mapping group
         if ($this->db->tableExists('auth_groups_users')) {
             $this->db->table('auth_groups_users')->where('user_id', (int) $id)->delete();
@@ -149,11 +191,13 @@ class Users extends BaseController
         $this->users->delete($id);
 
         // Opsional: hapus profil vendor
-        if ($this->db->tableExists('vendor_profiles')) {
+        if ($isVendor && $this->db->tableExists('vendor_profiles')) {
             (new VendorProfilesModel())->where('user_id', (int) $id)->delete();
         }
 
-        return redirect()->to(site_url('admin/users'))->with('success', 'User deleted.');
+        // Redirect to appropriate tab
+        $tab = $isVendor ? 'vendor' : 'seo';
+        return redirect()->to(site_url('admin/users?tab=' . $tab))->with('success', 'User deleted.');
     }
 
     // ========== SUSPEND/UNSUSPEND VENDOR ==========

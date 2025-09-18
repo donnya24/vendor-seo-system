@@ -1,82 +1,3 @@
-<!-- ===== Utility x-cloak & Guard Sidebar Colors ===== -->
-<style>
-  [x-cloak]{display:none!important}
-
-  /* Kunci warna elemen di dalam sidebar */
-  #adminSidebar a{color:rgba(255,255,255,.9)!important}
-  #adminSidebar a:hover{color:#fff!important}
-  #adminSidebar a[aria-current="page"]{color:#fff!important}
-  #adminSidebar p.text-blue-200{color:rgb(191 219 254 / 1)!important}
-  #adminSidebar i{color:inherit!important}
-
-  /* FIX: pastikan brand title selalu putih */
-  #adminSidebar h1,
-  #adminSidebar h1 span { color:#fff !important; }
-
-  /* Sidebar: paling atas layar (sejajar header), halus anti hairline */
-  #adminSidebar{
-    top: 0 !important;
-    height: 100vh !important;
-    backface-visibility:hidden;
-    will-change: transform;
-    z-index: 40; /* header nanti digeser, jadi tidak saling tumpuk */
-  }
-</style>
-
-<script>
-  // ===== Global Alpine Store untuk Layout (sidebar) & UI (logout modal) =====
-  document.addEventListener('alpine:init', () => {
-    const mq = () => window.matchMedia('(min-width: 768px)').matches;
-
-    Alpine.store('layout', {
-      sidebarOpen: mq(),       // desktop = open, mobile = closed
-      isDesktop: mq(),
-      open(){ this.sidebarOpen = true },
-      close(){ this.sidebarOpen = false },
-      toggle(){ this.sidebarOpen = !this.sidebarOpen },
-      _updateMQ(){
-        const d = mq();
-        if (d !== this.isDesktop) {
-          this.isDesktop = d;
-          if (d) this.sidebarOpen = true; // auto open on desktop
-        }
-      }
-    });
-
-    if (!Alpine.store('ui')) Alpine.store('ui', {});
-    Alpine.store('ui').showLogoutModal = false;
-  });
-
-  // Sinkronkan perubahan viewport
-  function _bindSidebarMQ(){
-    const onResize = () => { try { Alpine.store('layout')._updateMQ(); } catch(e){} };
-    window.addEventListener('resize', onResize);
-    window.addEventListener('orientationchange', onResize);
-  }
-  document.addEventListener('DOMContentLoaded', _bindSidebarMQ);
-
-  // Hook tombol header: cukup beri atribut data-toggle-sidebar pada tombolnya
-  function _wireHeaderToggle(){
-    const toggle = (e)=>{ e.preventDefault?.(); try { Alpine.store('layout').toggle(); } catch(e){} };
-    const selectors = ['[data-toggle-sidebar]','#sidebarToggle','#btnSidebarToggle','#headerMenuBtn'];
-    document.querySelectorAll(selectors.join(',')).forEach(el => el.addEventListener('click', toggle));
-  }
-  document.addEventListener('DOMContentLoaded', _wireHeaderToggle);
-
-  // Reset modal logout
-  function resetLogoutModal(){
-    try{
-      if(window.Alpine && Alpine.store('ui')) Alpine.store('ui').showLogoutModal = false;
-      document.documentElement.classList.remove('overflow-hidden','error','error-theme','with-sidebar-fallback');
-      const m=document.getElementById('logoutModal');
-      if(m) m.removeAttribute('hidden');
-    }catch(e){}
-  }
-  document.addEventListener('DOMContentLoaded', resetLogoutModal);
-  document.addEventListener('turbo:load', resetLogoutModal);
-  document.addEventListener('turbo:before-cache', resetLogoutModal);
-</script>
-
 <!-- ===== Sidebar ===== -->
 <div
   id="adminSidebar"
@@ -92,8 +13,28 @@
   @click.outside="if (!$store.layout.isDesktop) $store.layout.sidebarOpen = false"
   x-data="{
     activeMenu: '<?= url_is('admin/dashboard*') ? 'dashboard' : (url_is('admin/users*') ? 'users' : (url_is('admin/vendors*') ? 'vendors' : (url_is('admin/services*') ? 'services' : (url_is('admin/areas*') ? 'areas' : (url_is('admin/leads*') ? 'leads' : (url_is('admin/announcements*') ? 'announcements' : (url_is('admin/activity-logs*') ? 'activity-logs' : ''))))))) ?>',
-    setActiveMenu(menu){ this.activeMenu = menu; sessionStorage.setItem('activeMenu', menu); },
-    init(){ const s=sessionStorage.getItem('activeMenu'); if(s) this.activeMenu=s; }
+    userSubmenu: false,
+    setActiveMenu(menu){ 
+      this.activeMenu = menu; 
+      sessionStorage.setItem('activeMenu', menu);
+      if(menu !== 'users') this.userSubmenu = false;
+    },
+    toggleUserSubmenu() {
+      this.userSubmenu = !this.userSubmenu;
+      if(this.userSubmenu) {
+        this.activeMenu = 'users';
+        sessionStorage.setItem('activeMenu', 'users');
+      }
+    },
+    init(){ 
+      const s=sessionStorage.getItem('activeMenu'); 
+      if(s) this.activeMenu=s;
+      const path = window.location.pathname;
+      if(path.includes('/admin/users') || path.includes('/admin/user')) {
+        this.activeMenu = 'users';
+        this.userSubmenu = true;
+      }
+    }
   }"
 >
   <!-- Brand (sejajar header) + Close (mobile) -->
@@ -129,14 +70,49 @@
         <span class="text-sm">Dashboard</span>
       </a>
 
-      <a href="<?= site_url('admin/users'); ?>"
-         class="block py-2 px-2 rounded-md mb-1 flex items-center transition-colors duration-200 hover:bg-blue-700/70
-                text-white/90 visited:text-white/90"
-         :class="{'bg-blue-600 text-white': activeMenu === 'users', 'text-white/90': activeMenu !== 'users'}"
-         @click="if (!$store.layout.isDesktop) $store.layout.sidebarOpen = false; setActiveMenu('users')">
-        <i class="fas fa-user-shield mr-2 w-4 text-center text-xs"></i>
-        <span class="text-sm">Management Users</span>
-      </a>
+      <!-- Management Users with Dropdown -->
+      <div class="mb-1">
+        <button 
+          @click="toggleUserSubmenu()"
+          class="w-full py-2 px-2 rounded-md flex items-center justify-between transition-colors duration-200 hover:bg-blue-700/70
+                text-white/90"
+          :class="{'bg-blue-600 text-white': activeMenu === 'users', 'text-white/90': activeMenu !== 'users'}"
+          aria-expanded="userSubmenu"
+          aria-controls="user-submenu"
+        >
+          <div class="flex items-center">
+            <i class="fas fa-user-shield mr-2 w-4 text-center text-xs"></i>
+            <span class="text-sm">Management Users</span>
+          </div>
+          <i class="fas fa-chevron-down text-xs transition-transform duration-200" 
+             :class="{'rotate-180': userSubmenu}"></i>
+        </button>
+        
+        <div 
+          id="user-submenu" 
+          x-show="userSubmenu" 
+          x-collapse
+          class="pl-6 mt-1 space-y-1"
+        >
+          <a href="<?= site_url('admin/users?tab=seo'); ?>"
+             class="block py-1.5 px-2 rounded-md flex items-center transition-colors duration-200 hover:bg-blue-700/70
+                    text-white/90 visited:text-white/90 text-xs"
+             :class="{'bg-blue-500/50 text-white': window.location.search.includes('tab=seo') || (window.location.pathname.includes('/admin/users') && !window.location.search.includes('tab=vendor'))}"
+             @click="if (!$store.layout.isDesktop) $store.layout.sidebarOpen = false;">
+            <i class="fas fa-users mr-2 w-3 text-center"></i>
+            <span>User Tim SEO</span>
+          </a>
+          
+          <a href="<?= site_url('admin/users?tab=vendor'); ?>"
+             class="block py-1.5 px-2 rounded-md flex items-center transition-colors duration-200 hover:bg-blue-700/70
+                    text-white/90 visited:text-white/90 text-xs"
+             :class="{'bg-blue-500/50 text-white': window.location.search.includes('tab=vendor')}"
+             @click="if (!$store.layout.isDesktop) $store.layout.sidebarOpen = false;">
+            <i class="fas fa-store mr-2 w-3 text-center"></i>
+            <span>User Vendor</span>
+          </a>
+        </div>
+      </div>
 
       <a href="<?= site_url('admin/vendors'); ?>"
          class="block py-2 px-2 rounded-md mb-1 flex items-center transition-colors duration-200 hover:bg-blue-700/70
@@ -200,77 +176,64 @@
 
   <!-- Bottom -->
   <div class="mt-auto border-t border-blue-700/60 pt-3">
-    <button
-      type="button"
-      class="block w-full text-left py-2 px-2 rounded-md flex items-center transition-colors duration-200 hover:bg-blue-700/70 text-white/90"
-      @click="$store.ui.showLogoutModal = true; if (!$store.layout.isDesktop) $store.layout.sidebarOpen = false; document.documentElement.classList.add('overflow-hidden');"
-      aria-haspopup="dialog"
-      aria-controls="logoutModal"
-    >
-      <i class="fas fa-sign-out-alt mr-2 w-4 text-center text-xs"></i>
-      <span class="text-sm">Logout</span>
-    </button>
+    <!-- ======= HANYA BAGIAN LOGOUT YANG DIUBAH (teleport modal) ======= -->
+    <div x-data="{ showConfirm: false }">
+      <!-- tombol utama memunculkan popup -->
+      <button
+        type="button"
+        class="block w-full text-left py-2 px-2 rounded-md flex items-center transition-colors duration-200 hover:bg-blue-700/70 text-white/90"
+        @click="showConfirm = true; if (!$store.layout?.isDesktop) $store.layout.sidebarOpen = false"
+        aria-haspopup="dialog"
+        aria-controls="logoutModal"
+      >
+        <i class="fas fa-sign-out-alt mr-2 w-4 text-center text-xs"></i>
+        <span class="text-sm">Log out</span>
+      </button>
+
+      <!-- Popup konfirmasi dipindah ke <body> -->
+      <template x-teleport="body">
+        <div
+          id="logoutModal"
+          x-show="showConfirm"
+          x-transition.opacity
+          @keydown.escape.window="showConfirm = false"
+          class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
+          role="dialog"
+          aria-modal="true"
+        >
+          <!-- klik overlay menutup -->
+          <div
+            class="absolute inset-0"
+            @click="showConfirm = false"
+          ></div>
+
+          <div class="relative bg-white rounded-lg shadow-lg p-6 w-full max-w-sm text-gray-800"
+               x-transition.scale.origin.center>
+            <h2 class="text-lg font-semibold mb-3">Konfirmasi</h2>
+            <p class="mb-5">Apakah anda yakin ingin log out?</p>
+            <div class="flex justify-end gap-3">
+              <button
+                type="button"
+                class="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300"
+                @click="showConfirm = false"
+              >Batal</button>
+
+              <form method="post" action="<?= site_url('logout'); ?>">
+                <?= csrf_field() ?>
+                <button
+                  type="submit"
+                  class="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
+                >Iya</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+    <!-- ======= END BAGIAN LOGOUT ======= -->
 
     <p class="text-[10px] text-blue-200 mt-4 text-center opacity-80">
       &copy; <?= date('Y'); ?> Imersa. All rights reserved.
     </p>
   </div>
 </div>
-
-<!-- ===== Logout Modal & init menu aktif (tidak diubah) ===== -->
-<div
-  id="logoutModal"
-  x-show="$store.ui.showLogoutModal"
-  x-transition.opacity
-  class="fixed inset-0 z-50 flex items-center justify-center"
-  aria-modal="true"
-  role="dialog"
-  @keydown.escape.window="$store.ui.showLogoutModal = false; document.documentElement.classList.remove('overflow-hidden');"
-  x-cloak
-  x-init="$watch(()=>$store.ui.showLogoutModal, v => { if(v) $el.removeAttribute('hidden'); document.documentElement.classList.toggle('overflow-hidden', v) })"
->
-  <div class="absolute inset-0 bg-black/50"
-       @click="$store.ui.showLogoutModal = false; document.documentElement.classList.remove('overflow-hidden');"></div>
-  <div
-    class="relative bg-white text-gray-800 w-full max-w-sm mx-4 rounded-lg shadow-xl p-5"
-    @click.outside="$store.ui.showLogoutModal = false; document.documentElement.classList.remove('overflow-hidden');"
-  >
-    <div class="flex items-start gap-3">
-      <div class="shrink-0 mt-0.5"><i class="fas fa-sign-out-alt text-red-600"></i></div>
-      <div class="flex-1">
-        <h3 class="text-base font-semibold mb-1">Konfirmasi Logout</h3>
-        <p class="text-sm text-gray-600">Anda yakin ingin keluar dari sesi saat ini?</p>
-      </div>
-    </div>
-    <div class="mt-5 flex justify-end gap-2">
-      <button type="button" class="px-3 py-2 text-sm rounded-md border border-gray-300 hover:bg-gray-100"
-              @click="$store.ui.showLogoutModal = false; document.documentElement.classList.remove('overflow-hidden');">Batal</button>
-      <form method="post" action="<?= site_url('logout'); ?>" data-turbo="false"
-            @submit="$store.ui.showLogoutModal = false; document.documentElement.classList.remove('overflow-hidden');">
-        <?= csrf_field() ?>
-        <button type="submit" class="px-3 py-2 text-sm rounded-md bg-red-600 text-white hover:bg-red-700">Keluar</button>
-      </form>
-    </div>
-    <button type="button" class="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
-            @click="$store.ui.showLogoutModal = false; document.documentElement.classList.remove('overflow-hidden');"
-            aria-label="Tutup"><i class="fas fa-times"></i></button>
-  </div>
-</div>
-
-<script>
-  function setInitialActiveMenu(){
-    const p=window.location.pathname; let m='';
-    if(p.includes('/admin/dashboard')) m='dashboard';
-    else if(p.includes('/admin/users')) m='users';
-    else if(p.includes('/admin/vendors')) m='vendors';
-    else if(p.includes('/admin/services')) m='services';
-    else if(p.includes('/admin/areas')) m='areas';
-    else if(p.includes('/admin/leads')) m='leads';
-    else if(p.includes('/admin/announcements')) m='announcements';
-    else if(p.includes('/admin/activity-logs')) m='activity-logs';
-    if(m) sessionStorage.setItem('activeMenu', m);
-    return m;
-  }
-  document.addEventListener('DOMContentLoaded', setInitialActiveMenu);
-  window.addEventListener('popstate', setInitialActiveMenu);
-</script>
