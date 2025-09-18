@@ -68,6 +68,13 @@ $routes->group('admin', ['filter' => ['session', 'group:admin']], static functio
     $routes->get('announcements/(:num)/edit',     'Admin\Announcements::edit/$1');
     $routes->post('announcements/(:num)/update',  'Admin\Announcements::update/$1');
     $routes->post('announcements/(:num)/delete',  'Admin\Announcements::delete/$1');
+
+    // Services
+    $routes->get('services', 'Admin\Services::index');
+
+    // Areas
+    $routes->get('areas', 'Admin\Areas::index');
+
 });
 $routes->get('admin/dashboard/index', static fn () => redirect()->to('/admin/dashboard'));
 
@@ -124,12 +131,12 @@ $routes->group('seo', [
     $routes->get('logs', 'Logs::index');
     
     // Notifications
-    $routes->group('notif', static function ($routes) {
-        $routes->get('/', 'Notifications::index', ['as' => 'seo_notif_index']);
-        $routes->post('(:num)/read', 'Notifications::markRead/$1', ['as' => 'seo_notif_read']);
-        $routes->post('(:num)/delete', 'Notifications::delete/$1', ['as' => 'seo_notif_delete']);
-        $routes->post('delete-all', 'Notifications::deleteAll', ['as' => 'seo_notif_delete_all']);
-        $routes->post('mark-all', 'Notifications::markAllRead', ['as' => 'seo_notif_mark_all']);
+        $routes->group('notif', static function ($routes) {
+        $routes->get('/', 'Notifications::index');
+        $routes->post('mark-read/(:num)', 'Notifications::markRead/$1');
+        $routes->post('mark-all-read', 'Notifications::markAllRead');
+        $routes->post('delete/(:num)', 'Notifications::delete/$1');
+        $routes->post('delete-all', 'Notifications::deleteAll');
     });
 
 });

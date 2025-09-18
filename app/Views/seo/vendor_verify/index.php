@@ -59,7 +59,7 @@
                   <a href="<?= site_url('seo/vendor/approve/'.$vendor['id']) ?>"
                     class="px-3 py-1 rounded bg-green-600 text-white hover:bg-green-700"
                     onclick="return confirm('Yakin menyetujui vendor ini?')">
-                    Approve SEO
+                    Approve Vendor
                   </a>
                 <?php else: ?>
                   <span class="px-3 py-1 rounded bg-gray-300 text-gray-700">Sudah Disetujui</span>

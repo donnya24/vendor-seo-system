@@ -6,7 +6,7 @@ use App\Controllers\BaseController;
 use App\Models\LeadsModel;
 use App\Models\LeadEvidencesModel;
 use App\Models\VendorProfilesModel;
-use App\Models\ServicesModel;
+use App\Models\VendorServicesProductsModel;
 use App\Models\AreasModel;
 
 class Leads extends BaseController
@@ -38,7 +38,7 @@ class Leads extends BaseController
             'page'     => 'Leads',
             'leads'    => $leads,
             'vendors'  => (new VendorProfilesModel())->findAll(),
-            'services' => (new ServicesModel())->findAll(),
+            'services' => (new VendorServicesProductsModel())->findAll(),
             'areas'    => (new AreasModel())->findAll(),
             'filters'  => compact('status','vendorId','serviceId','areaId','source','from','to')
         ]);
