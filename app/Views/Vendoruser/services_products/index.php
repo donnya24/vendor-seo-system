@@ -195,7 +195,7 @@
                       <!-- Lampiran -->
                       <td class="px-4 py-3 align-top text-center">
                         <?php if ($product['attachment']): ?>
-                          <a href="<?= base_url('uploads/'.trim((string)$product['attachment'])); ?>" target="_blank"
+                          <a href="<?= base_url('uploads/vendor_products/'.trim((string)$product['attachment'])); ?>" target="_blank"
                              class="inline-flex items-center justify-center px-2.5 py-1.5 rounded border border-blue-200 bg-blue-50 text-blue-700 text-xs hover:bg-blue-100">
                             Lihat
                           </a>
@@ -339,6 +339,25 @@ function nextProductIndex(){
     });
   return max + 1;
 }
+
+document.querySelectorAll('.attachment-link').forEach(a => {
+  a.addEventListener('click', function(e){
+    e.preventDefault();
+    const url = this.href;
+
+    fetch(url, { method: 'HEAD' })
+      .then(res => {
+        if (!res.ok) {
+          notify('error','Lampiran tidak tersedia', `File tidak ditemukan: ${url}`);
+        } else {
+          window.open(url, '_blank');
+        }
+      })
+      .catch(() => {
+        notify('error','Lampiran tidak dapat diakses', `File tidak dapat diakses: ${url}`);
+      });
+  });
+});
 
 /* ---------- Modal Deskripsi (tetap) ---------- */
 function showDescription(name, description, type){
