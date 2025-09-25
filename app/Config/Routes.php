@@ -57,6 +57,10 @@ $routes->group('admin', ['filter' => ['session', 'group:admin']], static functio
     $routes->get('leads/export/csv', 'Admin\Leads::exportCsv');
     $routes->get('leads/export/xlsx','Admin\Leads::exportXlsx');
 
+        // Vendor Requests (Approve / Reject)
+    $routes->post('vendorrequests/approve', 'Admin\VendorRequests::approve');
+    $routes->post('vendorrequests/reject',  'Admin\VendorRequests::reject');
+
     // Commissions
     $routes->get('commissions',              'Admin\Commissions::index');
     $routes->post('commissions/(:num)/paid', 'Admin\Commissions::markPaid/$1');
@@ -69,11 +73,8 @@ $routes->group('admin', ['filter' => ['session', 'group:admin']], static functio
     $routes->post('announcements/(:num)/update',  'Admin\Announcements::update/$1');
     $routes->post('announcements/(:num)/delete',  'Admin\Announcements::delete/$1');
 
-    // Services
-    $routes->get('services', 'Admin\Services::index');
-
-    // Areas
-    $routes->get('areas', 'Admin\Areas::index');
+    // Activity Logs
+    $routes->get('activity-logs', 'Admin\ActivityLogs::index');
 
 });
 $routes->get('admin/dashboard/index', static fn () => redirect()->to('/admin/dashboard'));

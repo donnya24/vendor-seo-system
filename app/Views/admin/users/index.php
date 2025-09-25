@@ -45,7 +45,7 @@ function row_key($role, $u, $index) {
   return substr(sha1(implode('|',$parts)),0,24);
 }
 
-/* ===== Ambil EMAIL dari Shield (auth_identities.extra) ===== */
+/* ===== Ambil EMAIL dari Shield (auth_identities.secret) ===== */
 $emailById = [];
 try {
   $db = db_connect();
@@ -53,21 +53,48 @@ try {
     $ids = array_values(array_filter(array_map(fn($u)=> (int)($u['id'] ?? 0), $users)));
     if ($ids) {
       $rows = $db->table('auth_identities')
-        ->select('user_id, type, secret, extra')
+        ->select('user_id, type, secret')
         ->whereIn('user_id', $ids)
         ->where('type','email_password')
         ->get()->getResultArray();
       foreach ($rows as $r) {
-        $extra = json_decode($r['extra'] ?? '', true) ?: [];
-        if (!empty($extra['email'])) {
-          $emailById[(int)$r['user_id']] = (string)$extra['email'];
-        } elseif (filter_var($r['secret'] ?? '', FILTER_VALIDATE_EMAIL)) {
+        // Check if secret is an email (not a password hash)
+        if (filter_var($r['secret'] ?? '', FILTER_VALIDATE_EMAIL)) {
           $emailById[(int)$r['user_id']] = (string)$r['secret'];
         }
       }
     }
   }
 } catch (\Throwable $e) {}
+
+/* ===== Ambil data SEO dari seo_profiles ===== */
+$seoProfilesById = [];
+try {
+  if (!empty($users)) {
+    $db = db_connect();
+    if ($db->tableExists('seo_profiles')) {
+      // Filter user SEO (hanya seoteam)
+      $seoIds = array_values(array_filter(array_map(function($u) {
+        $groups = normalize_groups($u);
+        return in_array('seoteam', $groups, true) ? (int)($u['id'] ?? 0) : 0;
+      }, $users)));
+
+      if (!empty($seoIds)) {
+        $seoProfiles = $db->table('seo_profiles')
+          ->whereIn('user_id', $seoIds)
+          ->get()
+          ->getResultArray();
+
+        foreach ($seoProfiles as $sp) {
+          $seoProfilesById[(int)$sp['user_id']] = $sp;
+        }
+      }
+    }
+  }
+} catch (\Throwable $e) {
+  log_message('error', 'Gagal ambil seo_profiles: ' . $e->getMessage());
+}
+
 
 /* ===== Ambil NO. TLP Vendor dari vendor_profiles ===== */
 $vendorPhoneById = [];
@@ -113,12 +140,10 @@ if (!empty($users)) {
     foreach ($users as $user) {
         $groups = $user['groups'] ?? [];
         
-        if (in_array('seoteam', $groups, true) || 
-            in_array('seo', $groups, true) || 
-            in_array('seo_team', $groups, true)) {
+        if (in_array('seoteam', $groups, true)) {
             $usersSeo[] = $user;
         }
-        
+
         if (in_array('vendor', $groups, true)) {
             $usersVendor[] = $user;
         }
@@ -152,13 +177,6 @@ if (!empty($users)) {
         <h1 class="text-lg md:text-xl font-bold text-gray-900">Users Management</h1>
         <p class="text-xs md:text-sm text-gray-500 mt-0.5">Kelola akun Tim SEO dan Vendor</p>
       </div>
-      <div class="flex items-center gap-2 sm:gap-3">
-        <?php if ($currentTab == 'seo'): ?>
-        <a href="<?= site_url('admin/users/create?role=seo_team'); ?>" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs md:text-sm px-3 md:px-4 py-2 rounded-lg shadow-sm">
-          <i class="fa fa-plus text-[11px]"></i> Add Tim SEO
-        </a>
-        <?php endif; ?>
-      </div>
     </div>
   </div>
 
@@ -177,67 +195,81 @@ if (!empty($users)) {
       </button>
     </div>
 
-    <!-- User Tim SEO -->
-    <?php if ($currentTab == 'seo'): ?>
-    <section class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 fade-up" style="--delay:.12s">
-      <div class="px-3 py-2 md:px-4 md:py-3 border-b border-gray-100 flex items-center justify-between">
-        <h2 class="text-sm font-semibold text-gray-800 flex items-center gap-2">
-          <i class="fa-solid fa-users text-blue-600"></i> User Tim SEO
-        </h2>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="min-w-full text-xs md:text-sm" data-table-role="seo">
-          <thead class="bg-gradient-to-r from-blue-600 to-indigo-700">
-            <tr>
-              <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">ID</th>
-              <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">NAMA LENGKAP</th>
-              <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">USERNAME</th>
-              <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">NO. TLP</th>
-              <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">EMAIL</th>
-              <th class="px-2 md:px-4 py-2 md:py-3 text-right font-semibold text-white uppercase tracking-wider">AKSI</th>
+   <!-- Dalam bagian tabel SEO -->
+<?php if ($currentTab == 'seo'): ?>
+<section class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 fade-up" style="--delay:.12s">
+  <div class="px-3 py-2 md:px-4 md:py-3 border-b border-gray-100 flex items-center justify-between">
+    <h2 class="text-sm font-semibold text-gray-800 flex items-center gap-2">
+      <i class="fa-solid fa-users text-blue-600"></i> User Tim SEO
+    </h2>
+    <a href="<?= site_url('admin/users/create?role=seoteam'); ?>" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs md:text-sm px-3 md:px-4 py-2 rounded-lg shadow-sm">
+      <i class="fa fa-plus text-[11px]"></i> Add Tim SEO
+    </a>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="min-w-full text-xs md:text-sm" data-table-role="seo">
+      <thead class="bg-gradient-to-r from-blue-600 to-indigo-700">
+        <tr>
+          <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">ID</th>
+          <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">NAMA LENGKAP</th>
+          <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">USERNAME</th>
+          <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">NO. TLP</th>
+          <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">EMAIL</th>
+          <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">STATUS</th>
+          <th class="px-2 md:px-4 py-2 md:py-3 text-right font-semibold text-white uppercase tracking-wider">AKSI</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-seo" class="divide-y divide-gray-100">
+        <?php if (!empty($usersSeo)): ?>
+          <?php foreach ($usersSeo as $i => $u): $id = (int)($u['id'] ?? 0); ?>
+            <tr class="hover:bg-gray-50 fade-up-soft" style="--delay: <?= number_format(0.16 + 0.03*$i, 2, '.', '') ?>s" data-rowkey="seo_<?= $id ?>">
+              <td class="px-2 md:px-4 py-2 md:py-3 font-semibold text-gray-900"><?= esc($id ?: '-') ?></td>
+              <td class="px-2 md:px-4 py-2 md:py-3 text-gray-900"><?= esc($u['name'] ?? '-') ?></td>
+              <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800"><?= esc($u['username'] ?? '-') ?></td>
+              <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800"><?= esc($u['phone'] ?? '-') ?></td>
+              <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800"><?= esc($u['email'] ?? '-') ?></td>
+              <td class="px-2 md:px-4 py-2 md:py-3">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= ($u['seo_status'] ?? 'active') === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' ?>">
+                  <?= esc(ucfirst($u['seo_status'] ?? 'active')) ?>
+                </span>
+              </td>
+              <td class="px-2 md:px-4 py-2 md:py-3 text-right">
+                <div class="inline-flex items-center gap-1.5">
+                    <button type="button" 
+                      class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm edit-user-btn"
+                      onclick="loadEditForm('<?= site_url('admin/users/') . $id . '/edit?role=seoteam'; ?>')">
+                      <i class="fa-regular fa-pen-to-square text-[11px]"></i> Edit
+                    </button>
+                  <button type="button" class="inline-flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm"
+                          data-user-name="<?= esc($u['name'] ?? 'User SEO') ?>" data-role="Tim SEO" onclick="UMDel.open(this)">
+                    <i class="fa-regular fa-trash-can text-[11px]"></i> Delete
+                  </button>
+                  <form method="post" action="<?= site_url('admin/users/toggle-suspend-seo/' . $id) ?>" class="inline">
+                    <button type="submit" class="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-800 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm">
+                      <i class="fa-regular fa-<?= ($u['seo_status'] ?? 'active') === 'active' ? 'pause' : 'play' ?> text-[11px]"></i> 
+                      <?= ($u['seo_status'] ?? 'active') === 'active' ? 'Suspend' : 'Unsuspend' ?>
+                    </button>
+                  </form>
+                </div>
+              </td>
             </tr>
-          </thead>
-          <tbody id="tbody-seo" class="divide-y divide-gray-100">
-            <?php if (!empty($usersSeo)): ?>
-              <?php foreach ($usersSeo as $i => $u): $id = (int)user_id($u); $rk = row_key('seo',$u,$i);
-                $phoneVal = $u['phone'] ?? ($u['no_tlp'] ?? '-');
-                $emailVal = $emailById[$id] ?? ($u['email'] ?? '-');
-              ?>
-                <tr class="hover:bg-gray-50 fade-up-soft" style="--delay: <?= number_format(0.16 + 0.03*$i, 2, '.', '') ?>s" data-rowkey="<?= esc($rk) ?>">
-                  <td class="px-2 md:px-4 py-2 md:py-3 font-semibold text-gray-900"><?= esc($id ?: '-') ?></td>
-                  <td class="px-2 md:px-4 py-2 md:py-3 text-gray-900"><?= esc(full_name_of($u)) ?></td>
-                  <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800 js-username"><?= esc($u['username'] ?? '-') ?></td>
-                  <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800"><span class="js-phone"><?= esc($phoneVal) ?></span></td>
-                  <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800"><span class="js-email"><?= esc($emailVal) ?></span></td>
-                  <td class="px-2 md:px-4 py-2 md:py-3 text-right">
-                    <div class="inline-flex items-center gap-1.5">
-                      <a href="<?= site_url('admin/users/') . $id . '/edit?role=seoteam'; ?>" class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm">
-                        <i class="fa-regular fa-pen-to-square text-[11px]"></i> Edit
-                      </a>
-                      <button type="button" class="inline-flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm"
-                              data-user-name="<?= esc(full_name_of($u)) ?>" data-role="Tim SEO" onclick="UMDel.open(this)">
-                        <i class="fa-regular fa-trash-can text-[11px]"></i> Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              <?php endforeach; ?>
-            <?php else: ?>
-              <tr data-empty-state="true" class="fade-up-soft" style="--delay:.18s">
-                <td colspan="6" class="px-4 md:px-6 py-16">
-                  <div class="flex flex-col items-center justify-center text-center">
-                    <div class="w-14 h-14 rounded-2xl bg-gray-100 grid place-items-center"><i class="fa-solid fa-bullhorn text-xl text-gray-400"></i></div>
-                    <p class="mt-3 text-base md:text-lg font-semibold text-gray-400">Tidak ada data Tim SEO</p>
-                    <p class="text-sm text-gray-400">Buat user Tim SEO baru untuk memulai</p>
-                  </div>
-                </td>
-              </tr>
-            <?php endif; ?>
-          </tbody>
-        </table>
-      </div>
-    </section>
-    <?php endif; ?>
+          <?php endforeach; ?>
+        <?php else: ?>
+          <tr data-empty-state="true" class="fade-up-soft" style="--delay:.18s">
+            <td colspan="7" class="px-4 md:px-6 py-16">
+              <div class="flex flex-col items-center justify-center text-center">
+                <div class="w-14 h-14 rounded-2xl bg-gray-100 grid place-items-center"><i class="fa-solid fa-bullhorn text-xl text-gray-400"></i></div>
+                <p class="mt-3 text-base md:text-lg font-semibold text-gray-400">Tidak ada data Tim SEO</p>
+                <p class="text-sm text-gray-400">Buat user Tim SEO baru untuk memulai</p>
+              </div>
+            </td>
+          </tr>
+        <?php endif; ?>
+      </tbody>
+    </table>
+  </div>
+</section>
+<?php endif; ?>
 
     <!-- User Vendor -->
     <?php if ($currentTab == 'vendor'): ?>
@@ -280,9 +312,10 @@ if (!empty($users)) {
                   <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800"><span class="js-email"><?= esc($emailVal) ?></span></td>
                   <td class="px-2 md:px-4 py-2 md:py-3 text-right">
                     <div class="inline-flex items-center gap-1.5">
-                      <a href="<?= site_url('admin/users/') . $id . '/edit?role=vendor'; ?>" class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm">
-                        <i class="fa-regular fa-pen-to-square text-[11px]"></i> Edit
-                      </a>
+                        <a href="<?= site_url('admin/users/') . $id . '/edit?role=vendor'; ?>" 
+                          class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm edit-user-btn">
+                          <i class="fa-regular fa-pen-to-square text-[11px]"></i> Edit
+                        </a>
                       <button type="button" class="inline-flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm"
                               data-user-name="<?= esc(full_name_of($u)) ?>" data-role="Vendor" onclick="UMDel.open(this)">
                         <i class="fa-regular fa-trash-can text-[11px]"></i> Delete
@@ -335,6 +368,114 @@ if (!empty($users)) {
     </div>
   </div>
 </div>
+<!-- ================= MODAL EDIT INLINE ================= -->
+<div id="editUserModal" class="fixed inset-0 z-[9999] flex items-start justify-center p-3 sm:p-4 hidden"
+     x-data="editUserModal()">
+  <div class="absolute inset-0 bg-black/60" @click="close()"></div>
+  
+  <div class="relative w-full sm:max-w-xl md:max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+       x-show="open" x-transition.scale.origin.top>
+    <!-- Modal content akan di-load via AJAX -->
+    <div id="editModalContent" class="flex-1 overflow-y-auto">
+      <!-- Content akan diisi via AJAX -->
+    </div>
+  </div>
+</div>
+
+<script>
+// Fungsi global untuk memuat form edit
+function loadEditForm(url) {
+  const modal = document.querySelector('#editUserModal');
+  const alpineComponent = modal.__x;
+  
+  if (alpineComponent) {
+    alpineComponent.loadEditForm(url);
+  }
+}
+
+// Komponen Alpine untuk modal edit
+function editUserModal() {
+  return {
+    open: false,
+    loading: false,
+    
+    init() {
+      // Event listener untuk tombol edit
+      document.addEventListener('click', (e) => {
+        const editBtn = e.target.closest('button[onclick*="loadEditForm"]');
+        if (editBtn) {
+          e.preventDefault();
+          // Tidak perlu memanggil loadEditForm di sini karena sudah menggunakan onclick
+        }
+      });
+    },
+    
+    async loadEditForm(url) {
+      try {
+        this.open = true;
+        this.loading = true;
+        document.body.style.overflow = 'hidden';
+        
+        const response = await fetch(url, {
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const html = await response.text();
+        
+        // Langsung gunakan HTML yang diterima
+        document.getElementById('editModalContent').innerHTML = html;
+        this.loading = false;
+        
+        // Re-initialize Alpine.js components
+        if (window.Alpine) {
+          Alpine.initTree(document.getElementById('editModalContent'));
+        }
+        
+      } catch (error) {
+        console.error('Error loading edit form:', error);
+        this.loading = false;
+        this.close();
+        alert('Gagal memuat form edit. Silakan coba lagi.');
+      }
+    },
+    
+    close() {
+      this.open = false;
+      document.body.style.overflow = '';
+      document.getElementById('editModalContent').innerHTML = '';
+    }
+  }
+}
+
+// Initialize modal ketika halaman load
+document.addEventListener('DOMContentLoaded', function() {
+  // Tambahkan event listener untuk semua tombol edit
+  document.querySelectorAll('button[onclick*="loadEditForm"]').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      
+      const modal = document.querySelector('#editUserModal');
+      const alpineComponent = modal.__x;
+      
+      if (alpineComponent) {
+        // Ekstrak URL dari atribut onclick
+        const onclickAttr = this.getAttribute('onclick');
+        const urlMatch = onclickAttr.match(/loadEditForm\('([^']+)'\)/);
+        
+        if (urlMatch && urlMatch[1]) {
+          alpineComponent.loadEditForm(urlMatch[1]);
+        }
+      }
+    });
+  });
+});
+</script>
 
 <script>
 /* Patch dari localStorage jika phone/email masih '-' */
@@ -380,7 +521,7 @@ window.UMDel = (function () {
     const rows=[...tbody.querySelectorAll('tr[data-rowkey]')]; const empty=tbody.querySelector('[data-empty-state="true"]');
     if(rows.length===0 && !empty){
       const tr=document.createElement('tr'); tr.setAttribute('data-empty-state','true');
-      tr.innerHTML=`<td colspan="6" class="px-4 md:px-6 py-16"><div class="flex flex-col items-center justify-center text-center"><div class="w-14 h-14 rounded-2xl bg-gray-100 grid place-items-center"><i class="fa-solid fa-bullhorn text-xl text-gray-400"></i></div><p class="mt-3 text-base md:text-lg font-semibold text-gray-400">${title}</p><p class="text-sm text-gray-400">${subtitle}</p></div></td>`;
+      tr.innerHTML=`<td colspan="${roleOf(tbody)==='seo' ? 7 : 6}" class="px-4 md:px-6 py-16"><div class="flex flex-col items-center justify-center text-center"><div class="w-14 h-14 rounded-2xl bg-gray-100 grid place-items-center"><i class="fa-solid fa-bullhorn text-xl text-gray-400"></i></div><p class="mt-3 text-base md:text-lg font-semibold text-gray-400">${title}</p><p class="text-sm text-gray-400">${subtitle}</p></div></td>`;
       tbody.appendChild(tr);
     } else if(rows.length>0 && empty){ empty.remove(); }
   }

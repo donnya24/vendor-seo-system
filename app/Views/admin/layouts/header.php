@@ -2,6 +2,8 @@
 <html lang="id" class="h-full">
 <head>
   <meta charset="utf-8">
+  <meta name="csrf-token-name" content="<?= csrf_token() ?>">
+  <meta name="csrf-token" content="<?= csrf_hash() ?>">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#1e40af">
   <title><?= esc($title ?? 'Admin') ?> | Imersa</title>
@@ -25,23 +27,6 @@
 
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
-
-  <!-- Hotwire Turbo -->
-  <script src="https://unpkg.com/@hotwired/turbo@8.0.4/dist/turbo.es2017-umd.js" defer></script>
-  <script>
-    // Init Turbo secepat mungkin
-    (function initTurbo(){
-      function apply(){
-        if (!window.Turbo) return;
-        try{
-          Turbo.session.drive = true;
-          if (Turbo.setProgressBarDelay) Turbo.setProgressBarDelay(0);
-        }catch(e){}
-      }
-      if (document.readyState === 'complete') apply();
-      else window.addEventListener('load', apply, { once:true });
-    })();
-  </script>
 
   <style>
     :root{
@@ -72,15 +57,6 @@
     /* Overlay modal */
     .overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:9999;opacity:0;pointer-events:none;transition:opacity .3s}
     .overlay.active{opacity:1;pointer-events:auto}
-
-    /* Progress bar Turbo */
-    turbo-progress-bar {
-      background: linear-gradient(to right, var(--primary), var(--primary-dark));
-      height: 3px;
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
-    turbo-progress-bar.loading { opacity: 1; }
   </style>
 
   <!-- Alpine -->
@@ -109,7 +85,7 @@
     const sb=getSidebar(); if(!sb) return;
     const obs=new MutationObserver(()=>{measureSidebar();applyHeaderOffset();});
     obs.observe(sb,{attributes:true,attributeFilter:['class','style']});
-    // Simpan untuk dibersihkan sebelum Turbo cache
+    // Simpan untuk dibersihkan
     window.__sbObs = obs;
   }
 
@@ -135,10 +111,9 @@
     if (window.__sbObs){ try{ window.__sbObs.disconnect(); }catch(e){} delete window.__sbObs; }
   }
 
+  // Inisialisasi saat halaman dimuat
   document.addEventListener('DOMContentLoaded', initLayoutBindings);
-  document.addEventListener('turbo:load', initLayoutBindings);
-  document.addEventListener('turbo:before-cache', cleanupLayoutBindings);
-
+  
   // (Tidak dipakai; dibiarkan agar tidak mengubah skrip lain)
   window.handleSearch = (e) => e.preventDefault();
 
@@ -227,13 +202,12 @@
       document.getElementById('profilePickerArea')?.addEventListener('click', ()=> inputGallery?.click());
       openGalleryBtn?.addEventListener('click', ()=> inputGallery?.click());
 
-      // Bersihkan blob URL saat akan dicache/tinggalkan halaman
-      document.addEventListener('turbo:before-cache', revokeBlob, { once:true });
+      // Bersihkan blob URL saat akan meninggalkan halaman
       window.addEventListener('beforeunload', revokeBlob, { once:true });
     }
 
+    // Inisialisasi saat halaman dimuat
     document.addEventListener('DOMContentLoaded', bindProfileUpload);
-    document.addEventListener('turbo:load', bindProfileUpload);
   })();
   </script>
 </head>
@@ -357,7 +331,7 @@
   <div id="appShell" class="flex flex-1 pt-14"></div>
 
   <script>
-    // Modal profil + guard Turbo cache
+    // Modal profil
     (function(){
       const m = document.getElementById('profileModal');
       if(!m) return;
@@ -365,10 +339,6 @@
         m.classList.contains('active') ? (m.style.opacity='1', m.style.pointerEvents='auto') : (m.style.opacity='0', m.style.pointerEvents='none');
       });
       obs.observe(m, { attributes:true, attributeFilter:['class'] });
-      document.addEventListener('turbo:before-cache', () => {
-        m.classList.remove('active');
-        document.body.style.overflow = '';
-      });
     })();
 
     // Event handlers
@@ -378,22 +348,34 @@
       const closeBtn1 = document.getElementById('profileCloseBtn');
       const hamburgerBtn = document.getElementById('hamburgerBtn');
 
-      function openModal(){ profileModal.classList.add('active'); document.body.style.overflow='hidden'; }
-      function closeModal(){ profileModal.classList.remove('active'); document.body.style.overflow=''; }
+      function openModal(){ 
+        profileModal.classList.add('active'); 
+        document.body.style.overflow='hidden'; 
+      }
+      
+      function closeModal(){ 
+        profileModal.classList.remove('active'); 
+        document.body.style.overflow=''; 
+      }
 
       openAvatarBtn?.addEventListener('click', openModal);
       closeBtn1?.addEventListener('click', closeModal);
-      profileModal?.addEventListener('click', (e)=>{ if(e.target===profileModal) closeModal(); });
+      profileModal?.addEventListener('click', (e)=>{ 
+        if(e.target===profileModal) closeModal(); 
+      });
 
       hamburgerBtn?.addEventListener('click', ()=>{
         const sb=document.getElementById('adminSidebar')||document.querySelector('.sidebar');
         if(!sb) return;
         if(sb.classList.contains('-translate-x-full')){
-          sb.classList.remove('-translate-x-full'); sb.classList.add('translate-x-0');
+          sb.classList.remove('-translate-x-full'); 
+          sb.classList.add('translate-x-0');
         }else{
-          sb.classList.remove('translate-x-0'); sb.classList.add('-translate-x-full');
+          sb.classList.remove('translate-x-0'); 
+          sb.classList.add('-translate-x-full');
         }
-        measureSidebar(); applyHeaderOffset();
+        measureSidebar(); 
+        applyHeaderOffset();
       });
 
       // Avatar header loader (tanpa <img> inline)
@@ -402,24 +384,21 @@
       const src = (openAvatarBtn?.getAttribute('data-avatar-src')||'').trim();
       if(src && mount && fallback){
         const img = new Image();
-        img.alt='Avatar'; img.draggable=false; img.loading='lazy';
+        img.alt='Avatar'; 
+        img.draggable=false; 
+        img.loading='lazy';
         img.className='h-8 w-8 rounded-full ring-2 ring-white/50 object-cover';
-        img.onload = ()=>{ mount.innerHTML=''; mount.appendChild(img); fallback.classList.add('hidden'); };
-        img.onerror = ()=>{ mount.innerHTML=''; fallback.classList.remove('hidden'); };
+        img.onload = ()=>{ 
+          mount.innerHTML=''; 
+          mount.appendChild(img); 
+          fallback.classList.add('hidden'); 
+        };
+        img.onerror = ()=>{ 
+          mount.innerHTML=''; 
+          fallback.classList.remove('hidden'); 
+        };
         img.src = src;
       }
-    })();
-
-    // Progress bar Turbo (show/hide)
-    (function(){
-      document.addEventListener('turbo:before-visit', () => {
-        const bar = document.querySelector('turbo-progress-bar');
-        if (bar) bar.classList.add('loading');
-      });
-      document.addEventListener('turbo:load', () => {
-        const bar = document.querySelector('turbo-progress-bar');
-        if (bar) bar.classList.remove('loading');
-      });
     })();
 
     // Dropdown notifikasi (Alpine)

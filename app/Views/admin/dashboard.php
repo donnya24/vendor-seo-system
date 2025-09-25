@@ -96,7 +96,7 @@
       <div class="bg-gradient-to-br from-green-50 to-green-100 p-2.5 rounded-lg border border-green-200 shadow-xs hover:shadow-sm transition-shadow fade-up" style="--delay:.14s">
         <div class="flex items-center justify-between">
           <div class="flex-1">
-            <p class="text-[10px] font-semibold text-green-800 uppercase tracking-wider mb-0.5">KOMISI BULAN INI</p>
+            <p class="text-[10px] font-semibold text-green-800 uppercase tracking-wider mb-0.5">TOTAL KOMISI</p>
             <p class="text-lg font-bold text-green-900">Rp <?= number_format($stats['monthlyCommissionPaid'] ?? 0, 0, ',', '.'); ?></p>
           </div>
           <div class="flex items-center justify-center w-8 h-8 bg-green-600 rounded-md text-white ml-2"><i class="fas fa-money-bill-wave text-xs"></i></div>
@@ -120,7 +120,7 @@
       <div class="bg-gradient-to-br from-orange-50 to-orange-100 p-2.5 rounded-lg border border-orange-200 shadow-xs hover:shadow-sm transition-shadow fade-up" style="--delay:.26s">
         <div class="flex items-center justify-between">
           <div class="flex-1">
-            <p class="text-[10px] font-semibold text-orange-800 uppercase tracking-wider mb-0.5">LEADS HARI INI</p>
+            <p class="text-[10px] font-semibold text-orange-800 uppercase tracking-wider mb-0.5">TOTAL LEADS HARI INI</p>
             <p class="text-lg font-bold text-orange-900"><?= esc($stats['leadsToday'] ?? 0); ?></p>
           </div>
           <div class="flex items-center justify-center w-8 h-8 bg-orange-600 rounded-md text-white ml-2"><i class="fas fa-clock text-xs"></i></div>
@@ -158,7 +158,7 @@
       <!-- ======= Daftar Vendor (pengajuan terbaru) - 70% ======= -->
       <div class="lg:w-[70%] bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 fade-up" style="--delay:.44s">
         <div class="px-4 py-3 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-          <h3 class="text-sm font-semibold text-gray-800 flex items-center"><i class="fa-solid fa-building mr-2 text-blue-600 text-xs"></i>Daftar Vendor</h3>
+          <h3 class="text-sm font-semibold text-gray-800 flex items-center"><i class="fa-solid fa-building mr-2 text-blue-600 text-xs"></i>Daftar Pengajuan Vendor</h3>
         </div>
 
         <div class="p-0">
@@ -167,7 +167,7 @@
               <thead class="bg-blue-600">
                 <tr>
                   <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">NO</th>
-                  <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">NAMA USAHA</th>
+                  <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">VENDOR</th>
                   <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">PEMILIK</th>
                   <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">KONTAK</th>
                   <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">KOMISI DIMINTA</th>
@@ -193,7 +193,7 @@
 
                     $komisi   = is_numeric($r['komisi'] ?? null) ? (float)$r['komisi'] : (float)preg_replace('/[^0-9.]/','', (string)($r['komisi'] ?? 0));
                     $status   = strtolower((string)($r['status'] ?? 'pending'));
-                    $approved = in_array($status, ['approved','disetujui','sudah disetujui']);
+                    $approved = ($status === 'verified');
                 ?>
                 <tr id="req-row-<?= $id ?>" class="hover:bg-gray-50 fade-up-soft" style="--delay: <?= $delay ?>s;">
                   <td class="px-4 py-4 whitespace-nowrap align-top"><div class="text-sm font-bold text-gray-900"><?= $no ?></div></td>
@@ -229,8 +229,10 @@
                       <span class="inline-flex items-center gap-1.5 bg-gray-100 text-gray-500 text-xs font-semibold px-3 py-1.5 rounded-xl cursor-not-allowed">Sudah Disetujui</span>
                     <?php else: ?>
                       <div class="flex flex-wrap gap-2">
-                        <button class="inline-flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 rounded-xl shadow-sm" onclick="approveVendorRequest(<?= $id ?>)">Setujui</button>
-                        <button class="inline-flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1.5 rounded-xl shadow-sm" onclick="rejectVendorRequest(<?= $id ?>)">Tolak</button>
+                        <button class="inline-flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 rounded-xl shadow-sm"
+                          onclick="approveVendorRequest(event, <?= $id ?>)">Setujui</button>
+                        <button class="inline-flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1.5 rounded-xl shadow-sm"
+                          onclick="rejectVendorRequest(event, <?= $id ?>)">Tolak</button>
                       </div>
                     <?php endif; ?>
                   </td>
@@ -238,7 +240,11 @@
                 <?php endforeach; ?>
 
                 <?php if (empty($__reqs)): ?>
-                  <tr class="fade-up-soft" style="--delay:.52s"><td colspan="7" class="px-4 py-10 text-center text-sm text-gray-500">Belum ada pengajuan vendor.</td></tr>
+                  <tr class="fade-up-soft" style="--delay:.52s">
+                    <td colspan="7" class="px-4 py-10 text-center text-sm text-gray-500">
+                      Belum ada pengajuan vendor saat ini.
+                    </td>
+                  </tr>
                 <?php endif; ?>
               </tbody>
             </table>
@@ -341,57 +347,47 @@
       })();
     </script>
 
-    <!-- JS Approve / Reject Pengajuan (baris hilang saat sukses) -->
     <script>
-      async function approveVendorRequest(id){
-        try{
-          const btn = event?.target;
-          if(btn){ btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Proses'; }
-          const res = await fetch('<?= site_url('admin/vendor-requests/approve'); ?>', {
-            method: 'POST',
-            headers: {'Content-Type':'application/x-www-form-urlencoded'},
-            body: new URLSearchParams({ id, '<?= csrf_token() ?>':'<?= csrf_hash() ?>' })
-          });
-          const json = await res.json().catch(()=>({ok:false}));
-          if(res.ok && json.ok){
-            const row = document.getElementById('req-row-'+id);
-            if(row){ row.remove(); }
-          }else{
-            alert(json.msg || 'Gagal menyetujui pengajuan.');
-            if(btn){ btn.disabled = false; btn.innerHTML = 'Setujui'; }
-          }
-        }catch(e){
-          alert('Terjadi kesalahan koneksi.');
-          const btn = event?.target;
-          if(btn){ btn.disabled = false; btn.innerHTML = 'Setujui'; }
-        }
+      async function approveVendorRequest(e, id) {
+        e.preventDefault();
+        if (!confirm("Yakin ingin menyetujui vendor ini?")) return;
+
+        const formData = new FormData();
+        formData.append("id", id);
+
+        const res = await fetch("<?= site_url('admin/vendorrequests/approve') ?>", {
+          method: "POST",
+          body: formData,
+          headers: { "X-Requested-With": "XMLHttpRequest" }
+        });
+
+        const data = await res.json();
+        alert(data.message);
+
+        if (data.status === "success") location.reload();
       }
 
-      async function rejectVendorRequest(id){
-        if(!confirm('Tolak pengajuan vendor ini? Tindakan tidak dapat dibatalkan.')) return;
-        try{
-          const btn = event?.target;
-          if(btn){ btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Proses'; }
-          const res = await fetch('<?= site_url('admin/vendor-requests/reject'); ?>', {
-            method: 'POST',
-            headers: {'Content-Type':'application/x-www-form-urlencoded'},
-            body: new URLSearchParams({ id, '<?= csrf_token() ?>':'<?= csrf_hash() ?>' })
-          });
-          const json = await res.json().catch(()=>({ok:false}));
-          if(res.ok && json.ok){
-            const row = document.getElementById('req-row-'+id);
-            if(row){ row.remove(); }
-          }else{
-            alert(json.msg || 'Gagal menolak pengajuan.');
-            if(btn){ btn.disabled = false; btn.innerHTML = 'Tidak Setuju'; }
-          }
-        }catch(e){
-          alert('Terjadi kesalahan koneksi.');
-          const btn = event?.target;
-          if(btn){ btn.disabled = false; btn.innerHTML = 'Tidak Setuju'; }
-        }
+      async function rejectVendorRequest(e, id) {
+        e.preventDefault();
+        const reason = prompt("Masukkan alasan penolakan:", "Pengajuan ditolak admin");
+        if (!reason) return;
+
+        const formData = new FormData();
+        formData.append("id", id);
+        formData.append("reason", reason);
+
+        const res = await fetch("<?= site_url('admin/vendorrequests/reject') ?>", {
+          method: "POST",
+          body: formData,
+          headers: { "X-Requested-With": "XMLHttpRequest" }
+        });
+
+        const data = await res.json();
+        alert(data.message);
+
+        if (data.status === "success") location.reload();
       }
-    </script>
+      </script>
   </main>
 </div>
 

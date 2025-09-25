@@ -42,13 +42,19 @@ class Filters extends BaseFilters
     ];
 public array $globals = [
     'before' => [
-        'csrf' => ['except' => ['logout', 'login/*', 'auth/*']],
+        'csrf' => [
+            'except' => [
+                'admin/vendorrequests/approve',
+                'admin/vendorrequests/reject',
+            ],
+        ],
     ],
     'after'  => [
         'noCache',
         'toolbar',
     ],
 ];
+
     // Atur CSRF hanya untuk method tulis (opsional; aman juga biarkan di $globals)
     public array $methods = [
         // 'post'   => ['csrf'],

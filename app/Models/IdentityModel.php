@@ -1,4 +1,5 @@
 <?php
+// app/Models/IdentityModel.php
 
 namespace App\Models;
 
@@ -8,5 +9,7 @@ class IdentityModel extends Model
 {
     protected $table = 'auth_identities';
     protected $primaryKey = 'id';
-    protected $allowedFields = ['user_id', 'type', 'secret', 'secret2'];
+    protected $allowedFields = ['user_id', 'type', 'secret', 'secret2', 'created_at', 'updated_at'];
+    protected $useTimestamps = false;
+    protected $returnType = 'array';
 }

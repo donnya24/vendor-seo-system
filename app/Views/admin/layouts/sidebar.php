@@ -114,33 +114,6 @@
         </div>
       </div>
 
-      <a href="<?= site_url('admin/vendors'); ?>"
-         class="block py-2 px-2 rounded-md mb-1 flex items-center transition-colors duration-200 hover:bg-blue-700/70
-                text-white/90 visited:text-white/90"
-         :class="{'bg-blue-600 text-white': activeMenu === 'vendors', 'text-white/90': activeMenu !== 'vendors'}"
-         @click="if (!$store.layout.isDesktop) $store.layout.sidebarOpen = false; setActiveMenu('vendors')">
-        <i class="fas fa-users mr-2 w-4 text-center text-xs"></i>
-        <span class="text-sm">Vendors</span>
-      </a>
-
-      <a href="<?= site_url('admin/services'); ?>"
-         class="block py-2 px-2 rounded-md mb-1 flex items-center transition-colors duration-200 hover:bg-blue-700/70
-                text-white/90 visited:text-white/90"
-         :class="{'bg-blue-600 text-white': activeMenu === 'services', 'text-white/90': activeMenu !== 'services'}"
-         @click="if (!$store.layout.isDesktop) $store.layout.sidebarOpen = false; setActiveMenu('services')">
-        <i class="fas fa-toolbox mr-2 w-4 text-center text-xs"></i>
-        <span class="text-sm">Services</span>
-      </a>
-
-      <a href="<?= site_url('admin/areas'); ?>"
-         class="block py-2 px-2 rounded-md mb-1 flex items-center transition-colors duration-200 hover:bg-blue-700/70
-                text-white/90 visited:text-white/90"
-         :class="{'bg-blue-600 text-white': activeMenu === 'areas', 'text-white/90': activeMenu !== 'areas'}"
-         @click="if (!$store.layout.isDesktop) $store.layout.sidebarOpen = false; setActiveMenu('areas')">
-        <i class="fas fa-map-marker-alt mr-2 w-4 text-center text-xs"></i>
-        <span class="text-sm">Areas</span>
-      </a>
-
       <a href="<?= site_url('admin/leads'); ?>"
          class="block py-2 px-2 rounded-md mb-1 flex items-center transition-colors duration-200 hover:bg-blue-700/70
                 text-white/90 visited:text-white/90"
@@ -159,7 +132,7 @@
            :class="{'bg-blue-600 text-white': activeMenu === 'announcements', 'text-white/90': activeMenu !== 'announcements'}"
            @click="if (!$store.layout.isDesktop) $store.layout.sidebarOpen = false; setActiveMenu('announcements')">
           <i class="fas fa-bullhorn mr-2 w-4 text-center text-xs"></i>
-          <span class="text-sm">Announcements</span>
+          <span class="text-sm">Announcements or Notifications</span>
         </a>
 
         <a href="<?= site_url('admin/activity-logs'); ?>"

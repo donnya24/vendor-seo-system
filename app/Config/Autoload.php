@@ -16,5 +16,5 @@ class Autoload extends AutoloadConfig
     public $files = [];
 
     // Autoload helpers (cukup sekali)
-    public $helpers = ['auth', 'setting', 'activity', 'url', 'form', 'text', 'seo']; // tambahkan 'activity' di sini
+    public $helpers = ['auth', 'setting', 'activity', 'url', 'form', 'text', 'seo'];
 }

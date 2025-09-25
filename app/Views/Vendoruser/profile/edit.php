@@ -31,24 +31,38 @@ if ($profileImage) {
       <button class="text-gray-500 hover:text-gray-700" @click="$store.ui.modal=null"><i class="fas fa-times"></i></button>
     </div>
 
-    <div class="px-6 py-4 bg-gray-50 border-b">
-      <div class="flex items-center justify-between">
-        <span class="text-sm font-medium text-gray-600">Status Akun:</span>
-        <span class="px-3 py-1 rounded-full text-xs font-semibold 
-          <?= $status==='verified' ? 'bg-green-100 text-green-800' : ($status==='inactive' ? 'bg-gray-100 text-gray-800' : ($status==='rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800')) ?>">
-          <?= ucfirst($status) ?>
-        </span>
-      </div>
-      <?php if (!$isVerified): ?>
-        <div class="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-700">
-          Akun belum terverifikasi. Anda tetap dapat <b>mengubah pengajuan komisi</b> sampai diverifikasi.
-        </div>
-      <?php else: ?>
-        <div class="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
-          Akun sudah terverifikasi. Pengajuan komisi tidak dapat diubah oleh vendor.
-        </div>
-      <?php endif; ?>
+<div class="px-6 py-4 bg-gray-50 border-b">
+  <div class="flex items-center justify-between">
+    <span class="text-sm font-medium text-gray-600">Status Akun:</span>
+    <span class="px-3 py-1 rounded-full text-xs font-semibold 
+      <?= $status==='verified' ? 'bg-green-100 text-green-800' : ($status==='inactive' ? 'bg-gray-100 text-gray-800' : ($status==='rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800')) ?>">
+      <?= ucfirst($status) ?>
+    </span>
+  </div>
+
+  <?php if ($status === 'rejected' && !empty($vp['rejection_reason'])): ?>
+    <div class="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+      <b>Alasan Ditolak:</b><br>
+      <?= esc($vp['rejection_reason']) ?>
     </div>
+  <?php elseif ($status === 'inactive' && !empty($vp['inactive_reason'])): ?>
+    <div class="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
+      <b>Alasan Nonaktif:</b><br>
+      <?= esc($vp['inactive_reason']) ?>
+    </div>
+  <?php endif; ?>
+
+  <?php if (!$isVerified && $status !== 'rejected' && $status !== 'inactive'): ?>
+    <div class="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-700">
+      Akun belum terverifikasi. Anda tetap dapat <b>mengubah pengajuan komisi</b> sampai diverifikasi.
+    </div>
+  <?php elseif ($isVerified): ?>
+    <div class="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+      Akun sudah terverifikasi. Pengajuan komisi tidak dapat diubah oleh vendor.
+    </div>
+  <?php endif; ?>
+</div>
+
 
     <?php if ($successMessage): ?>
       <div class="px-6 py-4 bg-green-50 border-b text-green-700"><i class="fas fa-check-circle mr-2"></i><?= esc($successMessage) ?></div>

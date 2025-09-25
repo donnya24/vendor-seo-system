@@ -119,10 +119,6 @@
         <template x-for="k in $store.app.topKeywords" :key="k.id">
           <div class="px-3 md:px-4 py-2 md:py-3 hover:bg-gray-50">
             <div class="flex items-start justify-between">
-              <div class="flex-1 min-w-0">
-                <p class="text-xs md:text-sm font-medium text-gray-900 truncate" x-text="k.text || 'Unknown'"></p>
-                <p class="text-xs text-gray-500 truncate" x-text="k.project || 'Unknown project'"></p>
-              </div>
               <div class="ml-2 flex-shrink-0 flex flex-col items-end">
                 <span class="inline-flex items-center justify-center h-6 w-6 md:h-7 md:w-7 rounded-full text-xs font-semibold"
                       :class="{
@@ -159,7 +155,7 @@
     </div>
 
     <?php
-      $rows  = array_slice($recentLeads ?? [], 0, 10);
+      $rows  = $recentLeads ?? [];
       $start = 1;
     ?>
 
@@ -177,7 +173,7 @@
         <tbody class="divide-y divide-gray-200">
           <?php if (empty($rows)): ?>
             <tr>
-              <td colspan="5" class="px-3 md:px-4 py-3 md:py-4 text-center text-gray-500">Belum ada lead.</td>
+              <td colspan="6" class="px-3 md:px-4 py-3 md:py-4 text-center text-gray-500">Belum ada lead.</td>
             </tr>
           <?php else: foreach ($rows as $idx => $lead): ?>
             <tr class="hover:bg-gray-50 transition">

@@ -11,6 +11,12 @@ class Leads extends BaseController
     private $vendorProfile;
     private $isVerified;
     private $vendorId;
+    private $activityLogsModel;
+
+    public function __construct()
+    {
+        $this->activityLogsModel = new ActivityLogsModel();
+    }
 
     private function initVendor(): bool
     {
@@ -33,19 +39,30 @@ class Leads extends BaseController
         ]);
     }
 
-    private function logActivity(string $action, string $description = null)
+    private function logActivity(string $action, string $description = null, array $additionalData = [])
     {
-        $user = service('auth')->user();
-        (new ActivityLogsModel())->insert([
-            'user_id'    => $user->id,
-            'vendor_id'  => $this->vendorId,
-            'module'     => 'leads',
-            'action'     => $action,
-            'description'=> $description,
-            'ip_address' => $this->request->getIPAddress(),
-            'user_agent' => $this->request->getUserAgent(),
-            'created_at' => date('Y-m-d H:i:s'),
-        ]);
+        try {
+            $user = service('auth')->user();
+            $data = [
+                'user_id'     => $user->id,
+                'vendor_id'   => $this->vendorId,
+                'module'      => 'leads',
+                'action'      => $action,
+                'status'      => 'success',
+                'description' => $description,
+                'ip_address'  => $this->request->getIPAddress(),
+                'user_agent'  => $this->request->getUserAgent(),
+                'created_at'  => date('Y-m-d H:i:s'),
+            ];
+
+            if (!empty($additionalData)) {
+                $data['additional_data'] = json_encode($additionalData);
+            }
+
+            $this->activityLogsModel->insert($data);
+        } catch (\Throwable $e) {
+            log_message('error', 'Failed to log activity in Leads: ' . $e->getMessage());
+        }
     }
 
     public function index()
@@ -69,7 +86,10 @@ class Leads extends BaseController
 
         $m->orderBy('tanggal', 'DESC');
 
-        $this->logActivity('view', 'Melihat daftar leads');
+        $this->logActivity('view', 'Melihat daftar leads', [
+            'start_date' => $start,
+            'end_date' => $end
+        ]);
 
         // ⬇️ gunakan layout master
         return view('vendoruser/layouts/vendor_master', [
@@ -120,7 +140,9 @@ class Leads extends BaseController
             return redirect()->to(site_url('vendoruser/leads'))->with('error','Data tidak ditemukan');
         }
 
-        $this->logActivity('view_detail', "Melihat detail leads ID {$id}");
+        $this->logActivity('view_detail', "Melihat detail leads ID {$id}", [
+            'lead_id' => $id
+        ]);
 
         if ($this->request->isAJAX()) {
             return $this->response->setJSON(['status'=>'success','lead'=>$lead]);
@@ -146,7 +168,9 @@ class Leads extends BaseController
                 ->with('error', 'Laporan tidak ditemukan.');
         }
 
-        $this->logActivity('edit_form', "Membuka form edit leads ID {$id}");
+        $this->logActivity('edit_form', "Membuka form edit leads ID {$id}", [
+            'lead_id' => $id
+        ]);
 
         return view('vendoruser/leads/edit', $this->withVendorData([
             'page' => 'Edit Laporan Leads',
@@ -180,11 +204,21 @@ class Leads extends BaseController
             'updated_at'          => date('Y-m-d H:i:s'),
         ];
 
-        (new LeadsModel())->insert($data);
+        $leadsModel = new LeadsModel();
+        $result = $leadsModel->insert($data);
+        $insertId = $leadsModel->getInsertID();
 
-        $this->logActivity('create', "Menambahkan laporan leads tanggal {$data['tanggal']}");
-
-        return $this->respondAjax('success', 'Laporan leads berhasil ditambahkan.');
+        if ($result) {
+            $this->logActivity('create', "Menambahkan laporan leads tanggal {$data['tanggal']}", [
+                'lead_id' => $insertId,
+                'tanggal' => $data['tanggal'],
+                'jumlah_leads_masuk' => $data['jumlah_leads_masuk'],
+                'jumlah_leads_closing' => $data['jumlah_leads_closing']
+            ]);
+            return $this->respondAjax('success', 'Laporan leads berhasil ditambahkan.');
+        } else {
+            return $this->respondAjax('error', 'Gagal menambahkan laporan leads.');
+        }
     }
 
     public function update($id)
@@ -210,16 +244,26 @@ class Leads extends BaseController
             return $this->respondAjax('error', implode('<br>', $this->validator->getErrors()));
         }
 
-        $m->update((int) $id, [
+        $updateData = [
             'tanggal'             => $this->request->getPost('tanggal'),
             'jumlah_leads_masuk'  => (int) $this->request->getPost('jumlah_leads_masuk'),
             'jumlah_leads_closing'=> (int) $this->request->getPost('jumlah_leads_closing'),
             'updated_at'          => date('Y-m-d H:i:s'),
-        ]);
+        ];
 
-        $this->logActivity('update', "Memperbarui laporan leads ID {$id}");
+        $result = $m->update((int) $id, $updateData);
 
-        return $this->respondAjax('success', 'Laporan leads berhasil diperbarui.');
+        if ($result) {
+            $this->logActivity('update', "Memperbarui laporan leads ID {$id}", [
+                'lead_id' => $id,
+                'tanggal' => $updateData['tanggal'],
+                'jumlah_leads_masuk' => $updateData['jumlah_leads_masuk'],
+                'jumlah_leads_closing' => $updateData['jumlah_leads_closing']
+            ]);
+            return $this->respondAjax('success', 'Laporan leads berhasil diperbarui.');
+        } else {
+            return $this->respondAjax('error', 'Gagal memperbarui laporan leads.');
+        }
     }
 
     public function delete($id)
@@ -235,11 +279,17 @@ class Leads extends BaseController
             return $this->respondAjax('error', 'Laporan tidak ditemukan.');
         }
 
-        $m->delete((int) $id);
+        $result = $m->delete((int) $id);
 
-        $this->logActivity('delete', "Menghapus laporan leads ID {$id}");
-
-        return $this->respondAjax('success', 'Laporan leads berhasil dihapus.');
+        if ($result) {
+            $this->logActivity('delete', "Menghapus laporan leads ID {$id}", [
+                'lead_id' => $id,
+                'tanggal' => $lead['tanggal']
+            ]);
+            return $this->respondAjax('success', 'Laporan leads berhasil dihapus.');
+        } else {
+            return $this->respondAjax('error', 'Gagal menghapus laporan leads.');
+        }
     }
 
     private function respondAjax(string $status, string $message)
@@ -254,6 +304,7 @@ class Leads extends BaseController
         $type = $status === 'success' ? 'success' : 'error';
         return redirect()->back()->with($type, $message);
     }
+
     public function deleteMultiple()
     {
         if (! $this->initVendor()) {
@@ -272,11 +323,13 @@ class Leads extends BaseController
                     ->delete();
 
         if ($deleted) {
-            $this->logActivity('delete_multiple', "Menghapus laporan leads ID: " . implode(',', $ids));
+            $this->logActivity('delete_multiple', "Menghapus multiple laporan leads", [
+                'lead_ids' => $ids,
+                'count' => count($ids)
+            ]);
             return $this->respondAjax('success', 'Data terpilih berhasil dihapus.');
         }
 
         return $this->respondAjax('error', 'Gagal menghapus data terpilih.');
     }
-
 }

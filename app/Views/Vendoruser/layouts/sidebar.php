@@ -70,34 +70,50 @@ if (!function_exists('navItem')) {
     </div>
   </div>
 
-  <!-- Profile -->
-  <div class="flex-shrink-0 px-4 py-4 border-b border-white/10">
-    <div class="flex items-center space-x-3 p-3 rounded-xl bg-white/10 backdrop-blur-sm">
-      <div class="w-12 h-12 rounded-full overflow-hidden bg-white/20 border-2 border-white/30 flex-shrink-0">
-        <?php if ($profileImagePath && $profileImagePath !== base_url('assets/img/default-avatar.png')): ?>
-          <img src="<?= $profileImagePath ?>" class="w-full h-full object-cover" alt="Profile">
-        <?php else: ?>
-          <div class="w-full h-full flex items-center justify-center">
-            <i class="fas fa-user text-white/70 text-lg"></i>
-          </div>
-        <?php endif; ?>
-      </div>
-      <div class="flex-1 min-w-0">
-        <p class="text-white font-semibold text-[13px] truncate leading-tight"><?= esc($vendorName) ?></p>
-        <div class="flex items-center space-x-2 mt-1">
-          <?php if ($isVerified): ?>
-            <span class="inline-flex items-center text-[10px] bg-green-500/20 text-green-300 px-2 py-0.5 rounded-full">
-              <i class="fas fa-check-circle mr-1 text-[10px]"></i> Verified
-            </span>
-          <?php else: ?>
-            <span class="inline-flex items-center text-[10px] bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded-full">
-              <i class="fas fa-exclamation-circle mr-1 text-[10px]"></i> Pending
-            </span>
-          <?php endif; ?>
+<!-- Profile -->
+<div class="flex-shrink-0 px-4 py-4 border-b border-white/10">
+  <div class="flex items-center space-x-3 p-3 rounded-xl bg-white/10 backdrop-blur-sm">
+    
+    <!-- Foto Profil -->
+    <div class="w-12 h-12 rounded-full overflow-hidden bg-white/20 border-2 border-white/30 flex-shrink-0">
+      <?php if ($profileImagePath && $profileImagePath !== base_url('assets/img/default-avatar.png')): ?>
+        <img src="<?= $profileImagePath ?>" class="w-full h-full object-cover" alt="Profile">
+      <?php else: ?>
+        <div class="w-full h-full flex items-center justify-center">
+          <i class="fas fa-user text-white/70 text-lg"></i>
         </div>
+      <?php endif; ?>
+    </div>
+
+    <!-- Info Vendor -->
+    <div class="flex-1 min-w-0">
+      <p class="text-white font-semibold text-[13px] truncate leading-tight">
+        <?= esc($vendorName) ?>
+      </p>
+      
+      <!-- Badge Status -->
+      <div class="flex items-center space-x-2 mt-1">
+        <?php if (($vp['status'] ?? '') === 'verified'): ?>
+          <span class="inline-flex items-center text-[10px] bg-green-500/20 text-green-300 px-2 py-0.5 rounded-full">
+            <i class="fas fa-check-circle mr-1 text-[10px]"></i> Verified
+          </span>
+        <?php elseif (($vp['status'] ?? '') === 'pending'): ?>
+          <span class="inline-flex items-center text-[10px] bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded-full">
+            <i class="fas fa-exclamation-circle mr-1 text-[10px]"></i> Pending
+          </span>
+        <?php elseif (($vp['status'] ?? '') === 'rejected'): ?>
+          <span class="inline-flex items-center text-[10px] bg-red-500/20 text-red-300 px-2 py-0.5 rounded-full">
+            <i class="fas fa-times-circle mr-1 text-[10px]"></i> Rejected
+          </span>
+        <?php elseif (($vp['status'] ?? '') === 'inactive'): ?>
+          <span class="inline-flex items-center text-[10px] bg-gray-500/20 text-gray-300 px-2 py-0.5 rounded-full">
+            <i class="fas fa-ban mr-1 text-[10px]"></i> Inactive
+          </span>
+        <?php endif; ?>
       </div>
     </div>
   </div>
+</div>
 
   <!-- Navigation -->
   <nav class="flex-1 px-4 py-4 overflow-y-auto">

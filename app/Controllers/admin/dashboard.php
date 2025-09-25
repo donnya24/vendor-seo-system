@@ -102,37 +102,13 @@ class Dashboard extends BaseController
                     ".($hasStatus? "COALESCE(vp.status,'pending')" : "'pending'")." AS status
                 ");
 
-            // ==== Kondisi fleksibel agar tidak kosong ====
-            $added = false;
-            $qb->groupStart();
-
+            // ==== Hanya ambil vendor dengan status 'pending' ====
             if ($hasStatus) {
-                $pendingSet = ['pending','menunggu','request','requested','unverified','review','Belum Disetujui','belum','belum disetujui'];
-                $qb->whereIn('vp.status', $pendingSet);
-                $added = true;
+                $qb->where('vp.status', 'pending');
+            } else {
+                // Jika kolom status tidak ada, asumsikan semua vendor adalah pending
+                $qb->where('1=1');
             }
-
-            if ($hasIsVerif) {
-                if ($added) {
-                    $qb->orWhere('vp.is_verified', 0)
-                       ->orWhere('vp.is_verified IS NULL', null, false);
-                } else {
-                    $qb->where('vp.is_verified', 0)
-                       ->orWhere('vp.is_verified IS NULL', null, false);
-                }
-                $added = true;
-            }
-
-            if ($hasReqCom) {
-                if ($added) {
-                    $qb->orWhere('vp.requested_commission IS NOT NULL AND vp.requested_commission > 0', null, false);
-                } else {
-                    $qb->where('vp.requested_commission IS NOT NULL AND vp.requested_commission > 0', null, false);
-                }
-                $added = true;
-            }
-
-            $qb->groupEnd();
 
             $commissionRequests = $qb->orderBy($orderCol, 'DESC')
                                      ->limit(3)
@@ -153,6 +129,10 @@ class Dashboard extends BaseController
                 $waCandidates    = ['whatsapp_number','whatsapp','wa','no_wa','nowa','whatsappno','wa_number'];
                 $phoneExpr = $buildCoalesce($phoneCandidates, $vpFields, 'vp', 'phone');
                 $waExpr    = $buildCoalesce($waCandidates,    $vpFields, 'vp', 'wa');
+                
+                // Cek apakah kolom requested_commission ada di tabel commissions
+                $hasRequestedCommission = in_array('requested_commission', $cmFields, true);
+                $commissionExpr = $hasRequestedCommission ? "COALESCE(c.requested_commission, 0)" : "0";
 
                 $commissionRequests = $db->table('commissions c')
                     ->select("
@@ -161,11 +141,12 @@ class Dashboard extends BaseController
                         COALESCE(vp.owner_name,   '-')  AS pemilik,
                         {$phoneExpr},
                         {$waExpr},
-                        COALESCE(c.requested_commission, 0) AS komisi,
+                        {$commissionExpr} AS komisi,
                         COALESCE(c.status,'pending') AS status
                     ")
-                    ->join('vendor_profiles vp', 'vp.user_id = c.vendor_id', 'left')
-                    ->whereIn('c.status', ['pending','requested','review','menunggu'])
+                    ->join('vendor_profiles vp', 'vp.id = c.vendor_id', 'left')
+                    // Hanya ambil yang statusnya pending
+                    ->where('c.status', 'pending')
                     ->orderBy($orderCol2, 'DESC')
                     ->limit(3)
                     ->get()->getResultArray();
@@ -240,7 +221,7 @@ class Dashboard extends BaseController
         // Ambil 10 leads terbaru beserta business_name dari vendor_profiles
         $rows = $leadsModel
             ->select('leads.id, leads.vendor_id, leads.jumlah_leads_masuk, leads.jumlah_leads_closing, leads.tanggal, leads.updated_at, COALESCE(vendor_profiles.business_name, "-") AS business_name')
-            ->join('vendor_profiles', 'leads.vendor_id = vendor_profiles.user_id', 'left')
+            ->join('vendor_profiles', 'leads.vendor_id = vendor_profiles.id', 'left')
             ->orderBy('leads.id', 'DESC')
             ->limit(10)
             ->findAll();
