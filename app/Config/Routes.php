@@ -35,14 +35,21 @@ $routes->group('admin', ['filter' => ['session', 'group:admin']], static functio
     $routes->get('dashboard', 'Admin\Dashboard::index');
     $routes->get('api/stats', 'Admin\Dashboard::stats');
 
-    // Users
-    $routes->get('users',                 'Admin\Users::index');
-    $routes->get('users/create',          'Admin\Users::create');
-    $routes->post('users/store',          'Admin\Users::store');
-    $routes->get('users/(:num)/edit',     'Admin\Users::edit/$1');
-    $routes->post('users/(:num)/update',  'Admin\Users::update/$1');
-    $routes->post('users/(:num)/delete',  'Admin\Users::delete/$1');
-    $routes->post('users/(:num)/toggle-suspend', 'Admin\Users::toggleSuspend/$1');
+    // Users SEO
+    $routes->group('users-seo', function($routes){
+        $routes->get('/', 'Admin\UsersSeo::index');
+        $routes->get('create', 'Admin\UsersSeo::create');
+        $routes->post('store', 'Admin\UsersSeo::store');
+        $routes->post('(:num)/delete', 'Admin\UsersSeo::delete/$1');
+    });
+
+    // Users Vendor
+    $routes->group('users-vendor', function($routes){
+        $routes->get('/', 'Admin\UsersVendor::index');
+        $routes->get('create', 'Admin\UsersVendor::create');
+        $routes->post('store', 'Admin\UsersVendor::store');
+        $routes->post('(:num)/delete', 'Admin\UsersVendor::delete/$1');
+    });
 
     // Vendors
     $routes->get('vendors',                   'Admin\Vendors::index');
@@ -51,13 +58,16 @@ $routes->group('admin', ['filter' => ['session', 'group:admin']], static functio
     $routes->post('vendors/(:num)/unverify',  'Admin\Vendors::unverify/$1');
     $routes->post('vendors/(:num)/commission','Admin\Vendors::setCommission/$1');
 
-    // Leads (read only)
-    $routes->get('leads',            'Admin\Leads::index');
-    $routes->get('leads/(:num)',     'Admin\Leads::show/$1');
-    $routes->get('leads/export/csv', 'Admin\Leads::exportCsv');
-    $routes->get('leads/export/xlsx','Admin\Leads::exportXlsx');
+    // Leads
+    $routes->group('leads', function($routes){
+        $routes->get('/', 'Admin\Leads::index');
+        $routes->post('store', 'Admin\Leads::store');
+        $routes->get('edit/(:num)', 'Admin\Leads::edit/$1');
+        $routes->post('update/(:num)', 'Admin\Leads::update/$1');
+        $routes->post('delete/(:num)', 'Admin\Leads::delete/$1');
+    });
 
-        // Vendor Requests (Approve / Reject)
+    // Vendor Requests (Approve / Reject)
     $routes->post('vendorrequests/approve', 'Admin\VendorRequests::approve');
     $routes->post('vendorrequests/reject',  'Admin\VendorRequests::reject');
 

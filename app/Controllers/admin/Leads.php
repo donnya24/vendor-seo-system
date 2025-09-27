@@ -4,95 +4,100 @@ namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
 use App\Models\LeadsModel;
-use App\Models\LeadEvidencesModel;
 use App\Models\VendorProfilesModel;
-use App\Models\VendorServicesProductsModel;
-use App\Models\AreasModel;
 
 class Leads extends BaseController
 {
+    protected $leadsModel;
+    protected $vendorModel;
+
+    public function __construct()
+    {
+        $this->leadsModel  = new LeadsModel();
+        $this->vendorModel = new VendorProfilesModel();
+    }
+
     public function index()
     {
-        $m = new LeadsModel();
+        $leadsModel  = new \App\Models\LeadsModel();
+        $vendorModel = new \App\Models\VendorProfilesModel();
 
-        // Filter (GET)
-        $status   = $this->request->getGet('status');
-        $vendorId = $this->request->getGet('vendor_id');
-        $serviceId= $this->request->getGet('service_id');
-        $areaId   = $this->request->getGet('area_id');
-        $source   = $this->request->getGet('source');
-        $from     = $this->request->getGet('from');
-        $to       = $this->request->getGet('to');
+        $leads = $leadsModel
+            ->select('leads.*, vendor_profiles.business_name AS vendor_name') // ✅ alias vendor_name
+            ->join('vendor_profiles', 'vendor_profiles.id = leads.vendor_id', 'left')
+            ->orderBy('leads.id', 'DESC')
+            ->findAll();
 
-        if ($status)    $m->where('status', $status);
-        if ($vendorId)  $m->where('vendor_id', $vendorId);
-        if ($serviceId) $m->where('service_id', $serviceId);
-        if ($areaId)    $m->where('area_id', $areaId);
-        if ($source)    $m->where('source', $source);
-        if ($from)      $m->where('DATE(created_at) >=', $from);
-        if ($to)        $m->where('DATE(created_at) <=', $to);
-
-        $leads = $m->orderBy('id','DESC')->findAll();
+        $vendors = $vendorModel
+            ->select('id, business_name')
+            ->orderBy('business_name', 'ASC')
+            ->findAll();
 
         return view('admin/leads/index', [
-            'page'     => 'Leads',
-            'leads'    => $leads,
-            'vendors'  => (new VendorProfilesModel())->findAll(),
-            'services' => (new VendorServicesProductsModel())->findAll(),
-            'areas'    => (new AreasModel())->findAll(),
-            'filters'  => compact('status','vendorId','serviceId','areaId','source','from','to')
+            'page'    => 'Leads',
+            'leads'   => $leads,
+            'vendors' => $vendors,
         ]);
     }
 
-
-
-    // Export dummy (CSV)
-    public function exportCsv()
+    public function create()
     {
-        $rows = (new LeadsModel())->orderBy('id','DESC')->findAll();
-        $out  = fopen('php://output', 'w');
-        $filename = 'leads_' . date('Ymd_His') . '.csv';
-        header('Content-Type: text/csv');
-        header('Content-Disposition: attachment; filename="'.$filename.'"');
-
-        fputcsv($out, ['ID','Customer','Vendor','Service','Area','Status','Source','Created At']);
-        foreach ($rows as $r) {
-            fputcsv($out, [
-                $r['id'] ?? $r->id ?? '',
-                $r['customer_name'] ?? '',
-                $r['vendor_id'] ?? '',
-                $r['service_id'] ?? '',
-                $r['area_id'] ?? '',
-                $r['status'] ?? '',
-                $r['source'] ?? '',
-                $r['created_at'] ?? '',
-            ]);
-        }
-        fclose($out); exit;
+        return view('admin/leads/create', [
+            'vendors' => $this->vendorModel->findAll(),
+        ]);
     }
 
-    // Export dummy (XLSX) → untuk cepat, kirim CSV juga tapi ubah header
-    public function exportXlsx()
+    public function store()
     {
-        $rows = (new LeadsModel())->orderBy('id','DESC')->findAll();
-        $out  = fopen('php://output', 'w');
-        $filename = 'leads_' . date('Ymd_His') . '.xlsx';
-        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment; filename="'.$filename.'"');
+        $m = new LeadsModel();
 
-        fputcsv($out, ['ID','Customer','Vendor','Service','Area','Status','Source','Created At']);
-        foreach ($rows as $r) {
-            fputcsv($out, [
-                $r['id'] ?? '',
-                $r['customer_name'] ?? '',
-                $r['vendor_id'] ?? '',
-                $r['service_id'] ?? '',
-                $r['area_id'] ?? '',
-                $r['status'] ?? '',
-                $r['source'] ?? '',
-                $r['created_at'] ?? '',
-            ]);
+        $m->insert([
+            'vendor_id'            => $this->request->getPost('vendor_id'),
+            'tanggal'              => $this->request->getPost('tanggal'),
+            'jumlah_leads_masuk'   => $this->request->getPost('jumlah_leads_masuk'),
+            'jumlah_leads_closing' => $this->request->getPost('jumlah_leads_closing'),
+            'reported_by_vendor'   => $this->request->getPost('reported_by_vendor') ?? 0, // ✅ default 0
+            'assigned_at'          => null,
+            'updated_at'           => date('Y-m-d H:i:s'),
+        ]);
+
+        return redirect()->to('admin/leads')->with('success', 'Lead berhasil ditambahkan');
+    }
+
+    public function edit($id)
+    {
+        $m = new LeadsModel();
+        $lead = $m->find($id);
+
+        if (! $lead) {
+            return redirect()->to('admin/leads')->with('error', 'Lead tidak ditemukan');
         }
-        fclose($out); exit;
+
+        return view('admin/leads/edit', [
+            'lead'    => $lead,
+            'vendors' => (new VendorProfilesModel())->findAll(),
+        ]);
+    }
+
+    public function update($id)
+    {
+        $m = new LeadsModel();
+
+        $m->update($id, [
+            'vendor_id'            => $this->request->getPost('vendor_id'),
+            'tanggal'              => $this->request->getPost('tanggal'),
+            'jumlah_leads_masuk'   => $this->request->getPost('jumlah_leads_masuk'),
+            'jumlah_leads_closing' => $this->request->getPost('jumlah_leads_closing'),
+            'reported_by_vendor'   => $this->request->getPost('reported_by_vendor') ?? 0,
+            'updated_at'           => date('Y-m-d H:i:s'),
+        ]);
+
+        return redirect()->to('admin/leads')->with('success', 'Lead berhasil diperbarui');
+    }
+
+    public function delete($id)
+    {
+        $this->leadsModel->delete($id);
+        return redirect()->to('admin/leads')->with('success', 'Lead berhasil dihapus');
     }
 }
