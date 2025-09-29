@@ -27,33 +27,33 @@ class Vendor_verify extends BaseController
     }
 
     public function approve($id)
-    {
-        $user = service('auth')->user();
-        $vendor = $this->vendorModel->find($id);
+{
+    $user   = service('auth')->user();
+    $vendor = $this->vendorModel->find($id);
 
-        if (!$vendor) {
-            return redirect()->back()->with('error', 'Vendor tidak ditemukan.');
-        }
-
-        $this->vendorModel->update($id, [
-            'approved_by_seo' => 1,
-            'approved_at'     => date('Y-m-d H:i:s'),
-            'approved_by'     => $user->id
-        ]);
-
-        $vendor = $this->vendorModel->find($id);
-        if ($vendor) {
-            $this->activityLogsModel->insert([
-                'user_id'   => $user->id,
-                'vendor_id' => $vendor['id'], // valid FK
-                'module'    => 'vendor',
-                'action'    => 'approve',
-                'status'    => 'success',
-                'description' => 'Vendor disetujui oleh tim SEO',
-                'created_at'  => date('Y-m-d H:i:s')
-            ]);
-        }
-
-        return redirect()->back()->with('success', 'Vendor berhasil disetujui.');
+    if (!$vendor) {
+        return redirect()->back()->with('error', 'Vendor tidak ditemukan.');
     }
+
+    // Update status dan info approval
+    $this->vendorModel->update($id, [
+        'status'      => 'verified',
+        'approved_at' => date('Y-m-d H:i:s'),
+        'action_by'   => $user->id
+    ]);
+
+    // Catat log aktivitas
+    $this->activityLogsModel->insert([
+        'user_id'     => $user->id,
+        'vendor_id'   => $id,
+        'module'      => 'vendor',
+        'action'      => 'approve',
+        'status'      => 'success',
+        'description' => 'Vendor disetujui oleh tim SEO',
+        'created_at'  => date('Y-m-d H:i:s')
+    ]);
+
+    return redirect()->back()->with('success', 'Vendor berhasil disetujui.');
+}
+
 }

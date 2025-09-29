@@ -22,11 +22,23 @@ class Dashboard extends BaseController
         $start = $this->request->getGet('start') ?? date('Y-m-01');
         $end   = $this->request->getGet('end')   ?? date('Y-m-t');
 
-        // Ambil target dengan laporan terakhir
         $targets = (new SeoKeywordTargetsModel())
-            ->withLatestReport()
+            ->withLatestReport($start, $end)
             ->where('seo_keyword_targets.vendor_id', $vendorId)
             ->findAll();
+
+        // hitung perubahan
+        foreach ($targets as &$t) {
+            $current = (int)($t['current_position'] ?? 0);
+            $target  = (int)($t['target_position'] ?? 0);
+            $status  = $t['status'] ?? 'pending';
+
+            if ($status === 'completed' && $current && $target) {
+                $t['last_change'] = $current - $target;
+            } else {
+                $t['last_change'] = null;
+            }
+        }
 
         // Statistik leads
         $leadStats = (new LeadsModel())->getDashboardStats(
@@ -37,11 +49,20 @@ class Dashboard extends BaseController
 
         // Ambil total komisi untuk periode filter
         $commission = (new CommissionsModel())
-            ->select('COALESCE(SUM(amount),0) as total_amount, MAX(status) as status', false)
+            ->select('COALESCE(SUM(amount),0) as total_amount')
             ->where('vendor_id', $vendorId)
             ->where('period_start >=', $start)
             ->where('period_end <=', $end)
             ->first();
+
+        $status = (new CommissionsModel())
+            ->select('status')
+            ->where('vendor_id', $vendorId)
+            ->where('period_start >=', $start)
+            ->where('period_end <=', $end)
+            ->orderBy('updated_at', 'DESC')
+            ->get()
+            ->getRow('status');
 
         // Catat log activity
         $this->logActivity($vendorId, 'dashboard', 'view', "Membuka dashboard periode {$start} - {$end}");

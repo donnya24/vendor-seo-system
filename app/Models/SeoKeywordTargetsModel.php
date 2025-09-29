@@ -27,16 +27,16 @@ class SeoKeywordTargetsModel extends Model
         'notes',
     ];
 
-    /**
-     * Ambil keyword target dengan report terbaru (ranking terakhir).
-     * Join ke tabel seo_reports berdasarkan keyword & vendor_id.
-     */
     public function withLatestReport()
     {
-        return $this->select('seo_keyword_targets.*, r.position AS last_position, r.change AS last_change, r.trend AS last_trend, r.created_at AS last_checked')
+        return $this->select('seo_keyword_targets.*, 
+                r.position AS last_position, 
+                r.created_at AS last_checked,
+                vp.business_name as vendor_name')
+            ->join('vendor_profiles vp', 'vp.id = seo_keyword_targets.vendor_id', 'left')
             ->join(
                 '(SELECT vendor_id, keyword, MAX(created_at) as max_created
-                  FROM seo_reports GROUP BY vendor_id, keyword) lr',
+                FROM seo_reports GROUP BY vendor_id, keyword) lr',
                 'lr.vendor_id = seo_keyword_targets.vendor_id AND lr.keyword = seo_keyword_targets.keyword',
                 'left'
             )

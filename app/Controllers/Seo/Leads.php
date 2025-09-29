@@ -21,13 +21,19 @@ class Leads extends BaseController
             ?? session()->get('vendor_id')
             ?? 1);
 
-        // ambil filter start & end
         $start = $this->request->getGet('start') ?? date('Y-m-01');
         $end   = $this->request->getGet('end')   ?? date('Y-m-t');
 
-        $leads = $this->leadModel->getLeadsByVendor($vendorId, $start, $end);
+        // join ke vendor_profiles supaya bisa ambil nama
+        $leads = $this->leadModel
+            ->select('leads.*, vendor_profiles.business_name as vendor_name')
+            ->join('vendor_profiles', 'vendor_profiles.id = leads.vendor_id', 'left')
+            ->where('leads.vendor_id', $vendorId)
+            ->where('tanggal >=', $start)
+            ->where('tanggal <=', $end)
+            ->orderBy('tanggal', 'DESC')
+            ->paginate(20);
 
-        // catat activity log
         $this->logActivity(
             $vendorId,
             'leads',
