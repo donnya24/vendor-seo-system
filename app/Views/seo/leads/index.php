@@ -46,8 +46,12 @@
           <tr>
             <th class="px-4 py-3 text-center">No</th>
             <th class="px-4 py-3 text-left">Vendor</th>
+<<<<<<< HEAD
             <!-- PERBAIKAN: Mengubah header "Tanggal" menjadi "Periode" -->
             <th class="px-4 py-3 text-center">Periode Laporan</th>
+=======
+            <th class="px-4 py-3 text-center">Tanggal</th>
+>>>>>>> 869b4bc627c145c1f2490a07683852c604bf0f32
             <th class="px-4 py-3 text-center">Leads Masuk</th>
             <th class="px-4 py-3 text-center">Leads Closing</th>
           </tr>
@@ -58,20 +62,30 @@
             <tr class="hover:bg-blue-50 transition-colors">
               <td class="px-4 py-3 text-center text-gray-600"><?= $i++ ?></td>
               <td class="px-4 py-3 font-medium text-gray-900"><?= esc($l['vendor_name'] ?? '-') ?></td>
+<<<<<<< HEAD
               <!-- PERBAIKAN: Menampilkan rentang tanggal instead of satu tanggal -->
               <td class="px-4 py-3 text-center text-gray-700">
                   <?= esc(date('d M Y', strtotime($l['tanggal_mulai']))) ?> s/d <?= esc(date('d M Y', strtotime($l['tanggal_selesai']))) ?>
               </td>
+=======
+              <td class="px-4 py-3 text-center text-gray-700"><?= esc($l['tanggal']) ?></td>
+>>>>>>> 869b4bc627c145c1f2490a07683852c604bf0f32
               <td class="px-4 py-3 text-center font-semibold text-blue-600"><?= esc($l['jumlah_leads_masuk'] ?? 0) ?></td>
               <td class="px-4 py-3 text-center font-semibold text-green-600"><?= esc($l['jumlah_leads_closing'] ?? 0) ?></td>
             </tr>
             <?php endforeach ?>
           <?php else: ?>
             <tr>
+<<<<<<< HEAD
               <!-- PERBAIKAN: Menyesuaikan colspan dengan jumlah header baru -->
               <td colspan="5" class="px-4 py-10 text-center text-gray-500">
                 <i class="fas fa-inbox text-gray-300 text-3xl mb-2"></i>
                 <p>Tidak ada data leads pada periode yang dipilih.</p>
+=======
+              <td colspan="5" class="px-4 py-10 text-center text-gray-500">
+                <i class="fas fa-inbox text-gray-300 text-3xl mb-2"></i>
+                <p>Tidak ada data</p>
+>>>>>>> 869b4bc627c145c1f2490a07683852c604bf0f32
               </td>
             </tr>
           <?php endif ?>

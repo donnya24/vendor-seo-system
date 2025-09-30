@@ -24,8 +24,20 @@ class Leads extends BaseController
         $start = $this->request->getGet('start') ?? date('Y-m-01');
         $end   = $this->request->getGet('end')   ?? date('Y-m-t');
 
+<<<<<<< HEAD
         // PERBAIKAN: Memanggil method baru di model yang sudah termasuk join dan filter
         $leads = $this->leadModel->getLeadsWithVendor($vendorId, $start, $end);
+=======
+        // join ke vendor_profiles supaya bisa ambil nama
+        $leads = $this->leadModel
+            ->select('leads.*, vendor_profiles.business_name as vendor_name')
+            ->join('vendor_profiles', 'vendor_profiles.id = leads.vendor_id', 'left')
+            ->where('leads.vendor_id', $vendorId)
+            ->where('tanggal >=', $start)
+            ->where('tanggal <=', $end)
+            ->orderBy('tanggal', 'DESC')
+            ->paginate(20);
+>>>>>>> 869b4bc627c145c1f2490a07683852c604bf0f32
 
         $this->logActivity(
             $vendorId,
