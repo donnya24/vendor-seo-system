@@ -1,22 +1,24 @@
 <?php
-$session = session();
-$vp = $vp ?? [];
+ $session = session();
+ $vp = $vp ?? [];
 
-$status = $vp['status'] ?? 'pending';
-$isVerified = ($status === 'verified');
+ $status = $vp['status'] ?? 'pending';
+ $isVerified = ($status === 'verified');
 
-$hasCommissionApproved = !empty($vp['commission_rate']);
-$currentCommission     = $vp['commission_rate'] ?? null;
-$requestedCommission   = $vp['requested_commission'] ?? null;
+ $hasCommissionApproved = !empty($vp['commission_rate']);
+ $currentCommission     = $vp['commission_rate'] ?? null;
+ $requestedCommission   = $vp['requested_commission'] ?? null;
+ $requestedCommissionNominal = $vp['requested_commission_nominal'] ?? null;
+ $commissionType        = $vp['commission_type'] ?? 'percent';
 
-$userEmail = service('auth')->user()->email ?? '';
+ $userEmail = service('auth')->user()->email ?? '';
 
-$successMessage = $session->getFlashdata('success');
-$errorMessage   = $session->getFlashdata('error');
-$errors         = $session->getFlashdata('errors');
+ $successMessage = $session->getFlashdata('success');
+ $errorMessage   = $session->getFlashdata('error');
+ $errors         = $session->getFlashdata('errors');
 
-$profileImage     = $vp['profile_image'] ?? '';
-$profileImagePath = base_url('assets/img/default-avatar.png');
+ $profileImage     = $vp['profile_image'] ?? '';
+ $profileImagePath = base_url('assets/img/default-avatar.png');
 if ($profileImage) {
   $candidate = FCPATH . 'uploads/vendor_profiles/' . $profileImage;
   if (is_file($candidate)) $profileImagePath = base_url('uploads/vendor_profiles/' . $profileImage);
@@ -155,26 +157,64 @@ if ($profileImage) {
       </div>
 
       <!-- Komisi -->
-      <div class="md-:col-span-2 mt-2">
+      <div class="md:col-span-2 mt-2">
         <h4 class="text-md font-semibold text-gray-800 mb-3 border-b pb-2">Komisi</h4>
       </div>
 
       <?php if ($isVerified): ?>
         <div class="md:col-span-2">
           <label class="block text-sm font-semibold mb-2">Komisi yang diajukan vendor</label>
-          <input type="text" value="<?= $requestedCommission ? (float)$requestedCommission . '%' : '-' ?>" class="w-full border rounded-lg px-3 py-2 bg-yellow-50 text-yellow-800" readonly>
+          <?php 
+            $displayValue = '-';
+            if ($commissionType === 'percent' && $requestedCommission) {
+                $displayValue = (float)$requestedCommission . '%';
+            } elseif ($commissionType === 'nominal' && $requestedCommissionNominal) {
+                $displayValue = 'Rp ' . number_format($requestedCommissionNominal, 0, ',', '.');
+            }
+          ?>
+          <input type="text" value="<?= $displayValue ?>" class="w-full border rounded-lg px-3 py-2 bg-yellow-50 text-yellow-800" readonly>
           <p class="text-xs text-gray-500 mt-1">Nilai ini adalah pengajuan awal Anda dan tidak bisa diubah setelah diverifikasi.</p>
         </div>
       <?php else: ?>
         <div class="md:col-span-2">
+          <label class="block text-sm font-semibold mb-2">Jenis Komisi <span class="text-red-500">*</span></label>
+          <div class="flex space-x-4">
+            <label class="inline-flex items-center">
+              <input type="radio" name="commission_type" value="percent" class="form-radio" 
+                     <?= ($commissionType === 'percent') ? 'checked' : '' ?>
+                     onchange="toggleCommissionInput()">
+              <span class="ml-2">Persen (%)</span>
+            </label>
+            <label class="inline-flex items-center">
+              <input type="radio" name="commission_type" value="nominal" class="form-radio"
+                     <?= ($commissionType === 'nominal') ? 'checked' : '' ?>
+                     onchange="toggleCommissionInput()">
+              <span class="ml-2">Nominal (Rp)</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="md:col-span-2" id="percent-input" style="<?= ($commissionType === 'nominal') ? 'display:none' : '' ?>">
           <label class="block text-sm font-semibold mb-2">Ajukan/ubah komisi (%) <span class="text-red-500">*</span></label>
           <div class="flex items-center">
             <input type="number" name="requested_commission" min="1" max="100" step="0.1"
                    value="<?= esc($requestedCommission ?? '') ?>"
-                   class="w-28 border rounded-lg px-3 py-2 mr-2" required><span>%</span>
+                   class="w-28 border rounded-lg px-3 py-2 mr-2" <?= ($commissionType === 'percent') ? 'required' : '' ?>><span>%</span>
           </div>
-          <p class="text-xs text-gray-500 mt-1">Selama status belum <b>verified</b>, Anda bebas mengubah nilai ini.</p>
         </div>
+
+        <div class="md:col-span-2" id="nominal-input" style="<?= ($commissionType === 'percent') ? 'display:none' : '' ?>">
+          <label class="block text-sm font-semibold mb-2">Ajukan/ubah komisi (Rp) <span class="text-red-500">*</span></label>
+          <div class="flex items-center">
+            <span class="mr-2">Rp</span>
+            <input type="text" name="requested_commission_nominal" id="nominal-field"
+                   value="<?= $requestedCommissionNominal ? number_format($requestedCommissionNominal, 0, ',', '.') : '' ?>"
+                   class="w-40 border rounded-lg px-3 py-2" <?= ($commissionType === 'nominal') ? 'required' : '' ?>>
+          </div>
+          <p class="text-xs text-gray-500 mt-1">Contoh: 200.000, 1.000.000, 10.000.000</p>
+        </div>
+
+        <p class="text-xs text-gray-500 mt-1 md:col-span-2">Selama status belum <b>verified</b>, Anda bebas mengubah nilai ini.</p>
       <?php endif; ?>
 
       <div class="md:col-span-2 pt-4 border-t mt-4">
@@ -222,6 +262,56 @@ function removeProfileImage() {
     document.getElementById('remove_profile_image').value = '1';
   } catch (err) { console.error('Remove profile image error:', err); }
 }
+
+function toggleCommissionInput() {
+  const percentInput = document.getElementById('percent-input');
+  const nominalInput = document.getElementById('nominal-input');
+  const percentRadio = document.querySelector('input[name="commission_type"][value="percent"]');
+  const nominalRadio = document.querySelector('input[name="commission_type"][value="nominal"]');
+
+  if (percentRadio.checked) {
+    percentInput.style.display = 'block';
+    nominalInput.style.display = 'none';
+    // Remove required attribute from nominal input
+    document.querySelector('input[name="requested_commission_nominal"]').removeAttribute('required');
+    // Add required attribute to percent input
+    document.querySelector('input[name="requested_commission"]').setAttribute('required', 'required');
+  } else {
+    percentInput.style.display = 'none';
+    nominalInput.style.display = 'block';
+    // Remove required attribute from percent input
+    document.querySelector('input[name="requested_commission"]').removeAttribute('required');
+    // Add required attribute to nominal input
+    document.querySelector('input[name="requested_commission_nominal"]').setAttribute('required', 'required');
+  }
+}
+
+// Format nominal input
+document.addEventListener('DOMContentLoaded', function() {
+  const nominalField = document.getElementById('nominal-field');
+  if (nominalField) {
+    nominalField.addEventListener('input', function(e) {
+      // Remove all non-digit characters
+      let value = e.target.value.replace(/[^\d]/g, '');
+      // Format with thousand separators
+      if (value) {
+        value = parseInt(value).toLocaleString('id-ID');
+      }
+      e.target.value = value;
+    });
+    
+    // Handle paste event to clean up the value
+    nominalField.addEventListener('paste', function(e) {
+      setTimeout(function() {
+        let value = e.target.value.replace(/[^\d]/g, '');
+        if (value) {
+          value = parseInt(value).toLocaleString('id-ID');
+        }
+        e.target.value = value;
+      }, 1);
+    });
+  }
+});
 </script>
 
 <!-- SweetAlert2 toast dari flashdata (PROFIL) -->

@@ -21,13 +21,12 @@ class Leads extends BaseController
             ?? session()->get('vendor_id')
             ?? 1);
 
-        // ambil filter start & end
         $start = $this->request->getGet('start') ?? date('Y-m-01');
         $end   = $this->request->getGet('end')   ?? date('Y-m-t');
 
-        $leads = $this->leadModel->getLeadsByVendor($vendorId, $start, $end);
+        // PERBAIKAN: Memanggil method baru di model yang sudah termasuk join dan filter
+        $leads = $this->leadModel->getLeadsWithVendor($vendorId, $start, $end);
 
-        // catat activity log
         $this->logActivity(
             $vendorId,
             'leads',
@@ -39,7 +38,7 @@ class Leads extends BaseController
             'title'      => 'Pantau Leads',
             'activeMenu' => 'leads',
             'leads'      => $leads,
-            'pager'      => $this->leadModel->pager,
+            'pager'      => $this->leadModel->pager, // Pager otomatis dari model
             'vendorId'   => $vendorId,
             'start'      => $start,
             'end'        => $end
@@ -62,5 +61,4 @@ class Leads extends BaseController
             'created_at'  => date('Y-m-d H:i:s'),
         ]);
     }
-
 }

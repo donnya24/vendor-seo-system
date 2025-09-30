@@ -8,7 +8,7 @@ class Autoload extends AutoloadConfig
 {
     public $psr4 = [
         APP_NAMESPACE => APPPATH,
-        // biarkan default lainnya (Config & CodeIgniter) seperti biasa
+        'App\Helpers'  => APPPATH . 'Helpers',
     ];
 
     public $classmap = [];

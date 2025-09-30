@@ -22,39 +22,66 @@ class Dashboard extends BaseController
         $start = $this->request->getGet('start') ?? date('Y-m-01');
         $end   = $this->request->getGet('end')   ?? date('Y-m-t');
 
-        // Ambil target dengan laporan terakhir
+        // Ambil keyword targets + latest report
         $targets = (new SeoKeywordTargetsModel())
-            ->withLatestReport()
+            ->withLatestReport() // tanpa argumen, cukup latest saja
             ->where('seo_keyword_targets.vendor_id', $vendorId)
             ->findAll();
 
-        // Statistik leads
+        // Hitung perubahan posisi terhadap target
+        foreach ($targets as &$t) {
+            $current = (int)($t['current_position'] ?? 0);
+            $target  = (int)($t['target_position'] ?? 0);
+            $status  = $t['status'] ?? 'pending';
+
+            $t['last_change'] = ($status === 'completed' && $current && $target)
+                ? $current - $target
+                : null;
+        }
+
+        // Statistik leads (gunakan periode filter)
         $leadStats = (new LeadsModel())->getDashboardStats(
             $vendorId,
             "{$start} 00:00:00",
             "{$end} 23:59:59"
-        );
+        ) ?? ['total' => 0, 'closed' => 0];
 
         // Ambil total komisi untuk periode filter
         $commission = (new CommissionsModel())
-            ->select('COALESCE(SUM(amount),0) as total_amount, MAX(status) as status', false)
+            ->select('COALESCE(SUM(amount),0) as total_amount')
             ->where('vendor_id', $vendorId)
             ->where('period_start >=', $start)
             ->where('period_end <=', $end)
             ->first();
 
+        // Ambil status komisi terbaru
+        $status = (new CommissionsModel())
+            ->select('status')
+            ->where('vendor_id', $vendorId)
+            ->where('period_start >=', $start)
+            ->where('period_end <=', $end)
+            ->orderBy('updated_at', 'DESC')
+            ->get()
+            ->getRow('status');
+
         // Catat log activity
-        $this->logActivity($vendorId, 'dashboard', 'view', "Membuka dashboard periode {$start} - {$end}");
+        $this->logActivity(
+            $vendorId,
+            'dashboard',
+            'view',
+            "Membuka dashboard periode {$start} - {$end}"
+        );
 
         return view('seo/dashboard', [
-            'title'       => 'SEO Dashboard',
-            'activeMenu'  => 'dashboard',
-            'vendorId'    => $vendorId,
-            'targets'     => $targets,
-            'leadStats'   => $leadStats ?? ['total' => 0, 'closed' => 0],
-            'commission'  => $commission,
-            'start'       => $start,
-            'end'         => $end,
+            'title'      => 'SEO Dashboard',
+            'activeMenu' => 'dashboard',
+            'vendorId'   => $vendorId,
+            'targets'    => $targets,
+            'leadStats'  => $leadStats,
+            'commission' => $commission,
+            'status'     => $status,
+            'start'      => $start,
+            'end'        => $end,
         ]);
     }
 

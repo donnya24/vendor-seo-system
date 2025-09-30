@@ -5,116 +5,78 @@
 <div class="space-y-6" x-data="seoReports()" x-init="init()">
 
   <head>
-      <meta name="csrf-token-name" content="<?= csrf_token() ?>">
-      <meta name="csrf-token" content="<?= csrf_hash() ?>">
+    <meta name="csrf-token-name" content="<?= csrf_token() ?>">
+    <meta name="csrf-token" content="<?= csrf_hash() ?>">
   </head>
 
   <!-- Header -->
-  <div class="flex items-center justify-between">
-    <h2 class="text-2xl font-semibold text-gray-800">SEO Reports</h2>
-    <button @click="openModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow">
-      + Tambah Report
-    </button>
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <h2 class="text-2xl font-bold text-gray-900">SEO Reports</h2>
   </div>
 
-  <!-- Table -->
-  <div class="bg-white p-4 rounded-xl shadow border border-gray-200 overflow-x-auto">
-    <table class="min-w-full text-sm divide-y divide-gray-200">
-      <thead class="bg-blue-600 text-white uppercase text-xs">
-        <tr>
-          <th class="p-3 text-center">No</th>
-          <th class="p-3 text-left">Tanggal</th>
-          <th class="p-3 text-left">Project / Keyword</th>
-          <th class="p-3 text-center">Posisi</th>
-          <th class="p-3 text-center">Perubahan</th>
-          <th class="p-3 text-center">Trend</th>
-          <th class="p-3 text-center">Leads</th>
-          <th class="p-3 text-center">Aksi</th>
-        </tr>
-      </thead>
-      <tbody class="bg-white divide-y divide-gray-100">
-        <?php if (!empty($reports)): $no=1; foreach($reports as $r): ?>
-        <tr class="hover:bg-gray-50">
-          <td class="p-3 text-center"><?= $no++ ?></td>
-          <td class="p-3"><?= esc(date('d M Y', strtotime($r['created_at']))) ?></td>
-          <td class="p-3">
-            <div class="font-medium"><?= esc($r['project']) ?></div>
-            <div class="text-xs text-gray-500"><?= esc($r['keyword']) ?></div>
-          </td>
-          <td class="p-3 text-center"><?= $r['position'] ?: '—' ?></td>
-          <td class="p-3 text-center <?= $r['change']>0?'text-green-600':($r['change']<0?'text-red-600':'text-gray-400') ?>">
-            <?= $r['change'] ? (($r['change']>0?'+':'').$r['change']) : '—' ?>
-          </td>
-          <td class="p-3 text-center"><?= esc($r['trend'] ?: '-') ?></td>
-          <td class="p-3 text-center"><?= $r['leads'] ?? '—' ?></td>
-          <td class="p-3 text-center space-x-2">
-            <button @click="edit(<?= $r['id'] ?>)" 
-                    class="px-3 py-1 text-xs rounded bg-blue-500 text-white hover:bg-blue-600">
-              Edit
-            </button>
-            <button @click="destroy(<?= $r['id'] ?>)" 
-                    class="px-3 py-1 text-xs rounded bg-green-500 text-white hover:bg-green-600">
-              Hapus
-            </button>
-          </td>
-        </tr>
-        <?php endforeach; else: ?>
-        <tr><td colspan="8" class="p-3 text-center text-gray-500">Tidak ada data</td></tr>
-        <?php endif ?>
-      </tbody>
-    </table>
-  </div>
+  <!-- Table Container -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200 text-sm">
+        <!-- Table Head -->
+        <thead class="bg-blue-600 text-white text-xs uppercase sticky top-0 z-10">
+          <tr>
+            <th class="px-4 py-3 text-center font-semibold tracking-wider">No</th>
+            <th class="px-4 py-3 text-left font-semibold tracking-wider">Tanggal</th>
+            <th class="px-4 py-3 text-left font-semibold tracking-wider">Nama Vendor</th>
+            <th class="px-4 py-3 text-left font-semibold tracking-wider">Keyword Layanan</th>
+            <th class="px-4 py-3 text-center font-semibold tracking-wider">Posisi</th>
+            <th class="px-4 py-3 text-center font-semibold tracking-wider">Perubahan</th>
+          </tr>
+        </thead>
 
-  <!-- Modal -->
-  <div x-show="showModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" x-cloak>
-    <div class="bg-white rounded-xl shadow-lg w-full max-w-lg p-6 relative" @click.away="closeModal()">
-      <button @click="closeModal()" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
-      <h3 class="text-xl font-semibold mb-4" x-text="modalTitle">Tambah Report</h3>
-
-      <form @submit.prevent="submitForm" class="space-y-4">
-        <input type="hidden" name="id" x-model="form.id">
-        <input type="hidden" name="vendor_id" value="<?= esc($vendorId) ?>">
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Project</label>
-          <input type="text" x-model="form.project" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Keyword</label>
-          <input type="text" x-model="form.keyword" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
-        </div>
-
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700">Posisi</label>
-            <input type="number" x-model="form.position" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700">Perubahan</label>
-            <input type="number" x-model="form.change" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Trend</label>
-          <select x-model="form.trend" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
-            <option value="stable">Stable</option>
-            <option value="up">Up</option>
-            <option value="down">Down</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Leads</label>
-          <input type="number" x-model="form.leads" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
-        </div>
-
-        <div class="flex justify-end space-x-2 pt-4">
-          <button type="button" @click="closeModal()" class="px-4 py-2 bg-gray-200 rounded-lg">Batal</button>
-          <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Simpan</button>
-        </div>
-      </form>
+        <!-- Table Body -->
+        <tbody class="divide-y divide-gray-100">
+          <?php if (!empty($reports)): $no=1; foreach($reports as $r): ?>
+            <tr class="hover:bg-gray-50 transition-colors duration-150">
+              <td class="px-4 py-3 text-center text-gray-600"><?= $no++ ?></td>
+              <td class="px-4 py-3 text-gray-800"><?= esc(date('d M Y', strtotime($r['updated_at'] ?? $r['created_at']))) ?></td>
+              <td class="px-4 py-3 text-gray-900 font-medium truncate max-w-[200px]" title="<?= esc($r['vendor_name']) ?>">
+                <?= esc($r['vendor_name']) ?>
+              </td>
+              <td class="px-4 py-3 text-gray-700 truncate max-w-[250px]" title="<?= esc($r['keyword']) ?>">
+                <?= esc($r['keyword']) ?>
+              </td>
+              <td class="px-4 py-3 text-center">
+                <span class="inline-flex items-center justify-center px-3 py-1 rounded-full bg-gray-100 text-gray-800 font-medium">
+                  <?= esc($r['current_position'] ?? '-') ?>
+                </span>
+              </td>
+              <td class="px-4 py-3 text-center">
+                <?php if ($r['change'] !== null): ?>
+                  <?php if ($r['change'] > 0): ?>
+                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                      +<?= $r['change'] ?> <i class="fas fa-arrow-up ml-1"></i>
+                    </span>
+                  <?php elseif ($r['change'] < 0): ?>
+                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                      <?= $r['change'] ?> <i class="fas fa-arrow-down ml-1"></i>
+                    </span>
+                  <?php else: ?>
+                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+                      0
+                    </span>
+                  <?php endif; ?>
+                <?php else: ?>
+                  <span class="text-gray-400">—</span>
+                <?php endif; ?>
+              </td>
+            </tr>
+          <?php endforeach; else: ?>
+            <tr>
+              <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                <i class="fas fa-inbox text-gray-300 text-2xl mb-2"></i>
+                <p>Belum ada laporan complete.</p>
+              </td>
+            </tr>
+          <?php endif; ?>
+        </tbody>
+      </table>
     </div>
   </div>
 </div>

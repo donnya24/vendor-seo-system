@@ -43,12 +43,19 @@ $routes->group('admin', ['filter' => ['session', 'group:admin']], static functio
         $routes->post('(:num)/delete', 'Admin\UsersSeo::delete/$1');
     });
 
-    // Users Vendor
-    $routes->group('users-vendor', function($routes){
-        $routes->get('/', 'Admin\UsersVendor::index');
-        $routes->get('create', 'Admin\UsersVendor::create');
-        $routes->post('store', 'Admin\UsersVendor::store');
-        $routes->post('(:num)/delete', 'Admin\UsersVendor::delete/$1');
+    // Users (Vendor & SEO digabung)
+    $routes->group('users', function($routes){
+        $routes->get('/', 'Admin\Users::index');           // list (tab seo/vendor)
+        $routes->get('create', 'Admin\Users::create');     // form create
+        $routes->post('store', 'Admin\Users::store');      // simpan user baru
+
+        $routes->get('(:num)/edit', 'Admin\Users::edit/$1');   // form edit
+        $routes->post('(:num)/update', 'Admin\Users::update/$1'); // simpan update
+        $routes->post('(:num)/delete', 'Admin\Users::delete/$1'); // hapus
+
+        // Toggle suspend vendor/seo
+        $routes->post('(:num)/toggle-suspend', 'Admin\Users::toggleSuspend/$1');
+        $routes->post('(:num)/toggle-suspend-seo', 'Admin\Users::toggleSuspendSeo/$1');
     });
 
     // Vendors
@@ -65,6 +72,7 @@ $routes->group('admin', ['filter' => ['session', 'group:admin']], static functio
         $routes->get('edit/(:num)', 'Admin\Leads::edit/$1');
         $routes->post('update/(:num)', 'Admin\Leads::update/$1');
         $routes->post('delete/(:num)', 'Admin\Leads::delete/$1');
+        $routes->get('(:num)', 'Admin\Leads::show/$1');
     });
 
     // Vendor Requests (Approve / Reject)

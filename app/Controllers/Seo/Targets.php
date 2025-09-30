@@ -22,6 +22,8 @@ class Targets extends BaseController
             ?? 1;
 
         $rows = $this->model
+            ->select('seo_keyword_targets.*, vendor_profiles.business_name as vendor_name')
+            ->join('vendor_profiles', 'vendor_profiles.id = seo_keyword_targets.vendor_id', 'left')
             ->withLatestReport()
             ->where('seo_keyword_targets.vendor_id', $vendorId)
             ->orderBy('priority', 'DESC')

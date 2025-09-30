@@ -80,11 +80,11 @@ class Leads extends BaseController
         $m->where('vendor_id', $this->vendorId);
 
         if ($start !== '' && $end !== '') {
-            $m->where('tanggal >=', $start)
-            ->where('tanggal <=', $end);
+            $m->where('tanggal_mulai >=', $start)
+            ->where('tanggal_selesai <=', $end);
         }
 
-        $m->orderBy('tanggal', 'DESC');
+        $m->orderBy('tanggal_mulai', 'DESC');
 
         $this->logActivity('view', 'Melihat daftar leads', [
             'start_date' => $start,
@@ -185,7 +185,8 @@ class Leads extends BaseController
         }
 
         $rules = [
-            'tanggal'             => 'required|valid_date[Y-m-d]',
+            'tanggal_mulai'       => 'required|valid_date[Y-m-d]',
+            'tanggal_selesai'     => 'required|valid_date[Y-m-d]',
             'jumlah_leads_masuk'  => 'required|integer',
             'jumlah_leads_closing'=> 'required|integer',
         ];
@@ -194,9 +195,18 @@ class Leads extends BaseController
             return $this->respondAjax('error', implode('<br>', $this->validator->getErrors()));
         }
 
+        $tanggalMulai = $this->request->getPost('tanggal_mulai');
+        $tanggalSelesai = $this->request->getPost('tanggal_selesai');
+        
+        // Validasi bahwa tanggal mulai tidak boleh setelah tanggal selesai
+        if (strtotime($tanggalMulai) > strtotime($tanggalSelesai)) {
+            return $this->respondAjax('error', 'Tanggal mulai tidak boleh setelah tanggal selesai');
+        }
+
         $data = [
             'vendor_id'           => $this->vendorId,
-            'tanggal'             => $this->request->getPost('tanggal'),
+            'tanggal_mulai'       => $tanggalMulai,
+            'tanggal_selesai'     => $tanggalSelesai,
             'jumlah_leads_masuk'  => (int) $this->request->getPost('jumlah_leads_masuk'),
             'jumlah_leads_closing'=> (int) $this->request->getPost('jumlah_leads_closing'),
             'reported_by_vendor'  => $this->vendorId,
@@ -209,9 +219,10 @@ class Leads extends BaseController
         $insertId = $leadsModel->getInsertID();
 
         if ($result) {
-            $this->logActivity('create', "Menambahkan laporan leads tanggal {$data['tanggal']}", [
+            $this->logActivity('create', "Menambahkan laporan leads periode {$tanggalMulai} - {$tanggalSelesai}", [
                 'lead_id' => $insertId,
-                'tanggal' => $data['tanggal'],
+                'tanggal_mulai' => $tanggalMulai,
+                'tanggal_selesai' => $tanggalSelesai,
                 'jumlah_leads_masuk' => $data['jumlah_leads_masuk'],
                 'jumlah_leads_closing' => $data['jumlah_leads_closing']
             ]);
@@ -235,7 +246,8 @@ class Leads extends BaseController
         }
 
         $rules = [
-            'tanggal'             => 'required|valid_date[Y-m-d]',
+            'tanggal_mulai'       => 'required|valid_date[Y-m-d]',
+            'tanggal_selesai'     => 'required|valid_date[Y-m-d]',
             'jumlah_leads_masuk'  => 'required|integer',
             'jumlah_leads_closing'=> 'required|integer',
         ];
@@ -244,8 +256,17 @@ class Leads extends BaseController
             return $this->respondAjax('error', implode('<br>', $this->validator->getErrors()));
         }
 
+        $tanggalMulai = $this->request->getPost('tanggal_mulai');
+        $tanggalSelesai = $this->request->getPost('tanggal_selesai');
+        
+        // Validasi bahwa tanggal mulai tidak boleh setelah tanggal selesai
+        if (strtotime($tanggalMulai) > strtotime($tanggalSelesai)) {
+            return $this->respondAjax('error', 'Tanggal mulai tidak boleh setelah tanggal selesai');
+        }
+
         $updateData = [
-            'tanggal'             => $this->request->getPost('tanggal'),
+            'tanggal_mulai'       => $tanggalMulai,
+            'tanggal_selesai'     => $tanggalSelesai,
             'jumlah_leads_masuk'  => (int) $this->request->getPost('jumlah_leads_masuk'),
             'jumlah_leads_closing'=> (int) $this->request->getPost('jumlah_leads_closing'),
             'updated_at'          => date('Y-m-d H:i:s'),
@@ -256,7 +277,8 @@ class Leads extends BaseController
         if ($result) {
             $this->logActivity('update', "Memperbarui laporan leads ID {$id}", [
                 'lead_id' => $id,
-                'tanggal' => $updateData['tanggal'],
+                'tanggal_mulai' => $tanggalMulai,
+                'tanggal_selesai' => $tanggalSelesai,
                 'jumlah_leads_masuk' => $updateData['jumlah_leads_masuk'],
                 'jumlah_leads_closing' => $updateData['jumlah_leads_closing']
             ]);
@@ -284,7 +306,8 @@ class Leads extends BaseController
         if ($result) {
             $this->logActivity('delete', "Menghapus laporan leads ID {$id}", [
                 'lead_id' => $id,
-                'tanggal' => $lead['tanggal']
+                'tanggal_mulai' => $lead['tanggal_mulai'],
+                'tanggal_selesai' => $lead['tanggal_selesai']
             ]);
             return $this->respondAjax('success', 'Laporan leads berhasil dihapus.');
         } else {
