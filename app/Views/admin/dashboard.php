@@ -54,6 +54,12 @@
   .contact .line{ display:flex; align-items:center; gap:8px; color:#334155; }
   .contact .line i{ width:16px; text-align:center; color:#94a3b8; }
   .contact .wa a{ color:#047857; }
+
+  /* Date range styling */
+  .date-range{ font-size:11px; line-height:1.3; }
+  .date-range .start{ font-weight:600; color:#374151; }
+  .date-range .separator{ color:#9ca3af; margin:0 4px; }
+  .date-range .end{ font-weight:600; color:#374151; }
 </style>
 
 <script>
@@ -78,58 +84,10 @@
     class="flex-1 overflow-y-auto p-3 md:p-4 no-scrollbar fade-up"
     style="--dur:.60s; --delay:.02s"
   >
-    <!-- 6 STATS CARDS (sesuai kebutuhan) -->
+    <!-- 3 STATS CARDS (sesuai kebutuhan) -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mb-6">
-      <!-- 1. Total vendor -->
-      <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-2.5 rounded-lg border border-blue-200 shadow-xs hover:shadow-sm transition-shadow fade-up" style="--delay:.08s">
-        <div class="flex items-center justify-between">
-          <div class="flex-1">
-            <p class="text-[10px] font-semibold text-blue-800 uppercase tracking-wider mb-0.5">TOTAL VENDOR</p>
-            <p class="text-lg font-bold text-blue-900"><?= esc($stats['totalVendors'] ?? 0); ?></p>
-          </div>
-          <div class="flex items-center justify-center w-8 h-8 bg-blue-600 rounded-md text-white ml-2"><i class="fas fa-store text-xs"></i></div>
-        </div>
-        <div class="mt-1.5 pt-1.5 border-t border-blue-200/50"><div class="flex items-center text-blue-700 text-[10px] font-medium"><i class="fas fa-arrow-up mr-0.5"></i><span class="font-semibold">Terdaftar aktif</span></div></div>
-      </div>
-
-      <!-- 2. Total komisi bulan ini (yang status ws paid) -->
-      <div class="bg-gradient-to-br from-green-50 to-green-100 p-2.5 rounded-lg border border-green-200 shadow-xs hover:shadow-sm transition-shadow fade-up" style="--delay:.14s">
-        <div class="flex items-center justify-between">
-          <div class="flex-1">
-            <p class="text-[10px] font-semibold text-green-800 uppercase tracking-wider mb-0.5">TOTAL KOMISI</p>
-            <p class="text-lg font-bold text-green-900">Rp <?= number_format($stats['monthlyCommissionPaid'] ?? 0, 0, ',', '.'); ?></p>
-          </div>
-          <div class="flex items-center justify-center w-8 h-8 bg-green-600 rounded-md text-white ml-2"><i class="fas fa-money-bill-wave text-xs"></i></div>
-        </div>
-        <div class="mt-1.5 pt-1.5 border-t border-green-200/50"><div class="flex items-center text-green-700 text-[10px] font-medium"><i class="fas fa-check-circle mr-0.5"></i><span class="font-semibold">Status paid</span></div></div>
-      </div>
-
-      <!-- 3. Top keyword -->
-      <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-2.5 rounded-lg border border-purple-200 shadow-xs hover:shadow-sm transition-shadow fade-up" style="--delay:.20s">
-        <div class="flex items-center justify-between">
-          <div class="flex-1">
-            <p class="text-[10px] font-semibold text-purple-800 uppercase tracking-wider mb-0.5">TOP KEYWORD</p>
-            <p class="text-lg font-bold text-purple-900"><?= esc($stats['topKeyword'] ?? '-'); ?></p>
-          </div>
-          <div class="flex items-center justify-center w-8 h-8 bg-purple-600 rounded-md text-white ml-2"><i class="fas fa-key text-xs"></i></div>
-        </div>
-        <div class="mt-1.5 pt-1.5 border-t border-purple-200/50"><div class="flex items-center text-purple-700 text-[10px] font-medium"><i class="fas fa-fire mr-0.5"></i><span class="font-semibold">Paling dicari</span></div></div>
-      </div>
-
-      <!-- 4. Total leads masuk realtime (hari ini) -->
-      <div class="bg-gradient-to-br from-orange-50 to-orange-100 p-2.5 rounded-lg border border-orange-200 shadow-xs hover:shadow-sm transition-shadow fade-up" style="--delay:.26s">
-        <div class="flex items-center justify-between">
-          <div class="flex-1">
-            <p class="text-[10px] font-semibold text-orange-800 uppercase tracking-wider mb-0.5">TOTAL LEADS HARI INI</p>
-            <p class="text-lg font-bold text-orange-900"><?= esc($stats['leadsToday'] ?? 0); ?></p>
-          </div>
-          <div class="flex items-center justify-center w-8 h-8 bg-orange-600 rounded-md text-white ml-2"><i class="fas fa-clock text-xs"></i></div>
-        </div>
-        <div class="mt-1.5 pt-1.5 border-t border-orange-200/50"><div class="flex items-center text-orange-700 text-[10px] font-medium"><i class="fas fa-calendar-day mr-0.5"></i><span class="font-semibold">Realtime</span></div></div>
-      </div>
-
-      <!-- 5. Total lead masuk (keseluruhan) -->
-      <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 p-2.5 rounded-lg border border-indigo-200 shadow-xs hover:shadow-sm transition-shadow fade-up" style="--delay:.32s">
+      <!-- 1. Total leads masuk -->
+      <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 p-2.5 rounded-lg border border-indigo-200 shadow-xs hover:shadow-sm transition-shadow fade-up" style="--delay:.08s">
         <div class="flex items-center justify-between">
           <div class="flex-1">
             <p class="text-[10px] font-semibold text-indigo-800 uppercase tracking-wider mb-0.5">TOTAL LEADS MASUK</p>
@@ -140,16 +98,28 @@
         <div class="mt-1.5 pt-1.5 border-t border-indigo-200/50"><div class="flex items-center text-indigo-700 text-[10px] font-medium"><i class="fas fa-users mr-0.5"></i><span class="font-semibold">Customer chat</span></div></div>
       </div>
 
-      <!-- 6. Total leads closing -->
-      <div class="bg-gradient-to-br from-emerald-50 to-emerald-100 p-2.5 rounded-lg border border-emerald-200 shadow-xs hover:shadow-sm transition-shadow fade-up" style="--delay:.38s">
+      <!-- 2. Total leads closing -->
+      <div class="bg-gradient-to-br from-emerald-50 to-emerald-100 p-2.5 rounded-lg border border-emerald-200 shadow-xs hover:shadow-sm transition-shadow fade-up" style="--delay:.14s">
         <div class="flex items-center justify-between">
           <div class="flex-1">
-            <p class="text-[10px] font-semibold text-emerald-800 uppercase tracking-wider mb-0.5">LEADS CLOSING</p>
+            <p class="text-[10px] font-semibold text-emerald-800 uppercase tracking-wider mb-0.5">TOTAL LEADS CLOSING</p>
             <p class="text-lg font-bold text-emerald-900"><?= esc($stats['totalLeadsClosing'] ?? 0); ?></p>
           </div>
           <div class="flex items-center justify-center w-8 h-8 bg-emerald-600 rounded-md text-white ml-2"><i class="fas fa-handshake text-xs"></i></div>
         </div>
         <div class="mt-1.5 pt-1.5 border-t border-emerald-200/50"><div class="flex items-center text-emerald-700 text-[10px] font-medium"><i class="fas fa-check-double mr-0.5"></i><span class="font-semibold">Deal selesai</span></div></div>
+      </div>
+
+      <!-- 3. Total tim SEO -->
+      <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-2.5 rounded-lg border border-purple-200 shadow-xs hover:shadow-sm transition-shadow fade-up" style="--delay:.20s">
+        <div class="flex items-center justify-between">
+          <div class="flex-1">
+            <p class="text-[10px] font-semibold text-purple-800 uppercase tracking-wider mb-0.5">TOTAL TIM SEO</p>
+            <p class="text-lg font-bold text-purple-900"><?= esc($stats['totalSeoTeam'] ?? 0); ?></p>
+          </div>
+          <div class="flex items-center justify-center w-8 h-8 bg-purple-600 rounded-md text-white ml-2"><i class="fas fa-users-gear text-xs"></i></div>
+        </div>
+        <div class="mt-1.5 pt-1.5 border-t border-purple-200/50"><div class="flex items-center text-purple-700 text-[10px] font-medium"><i class="fas fa-user-tie mr-0.5"></i><span class="font-semibold">Tim aktif</span></div></div>
       </div>
     </div>
 
@@ -286,7 +256,7 @@
                     <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">VENDOR</th>
                     <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">MASUK</th>
                     <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">CLOSING</th>
-                    <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">TANGGAL</th>
+                    <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">PERIODE</th>
                     <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">UPDATE</th>
                     <th class="px-4 py-3 text-left text-[11px] font-semibold text-white uppercase tracking-wider">AKSI</th>
                 </tr>
@@ -314,10 +284,14 @@
                             <div class="text-sm text-gray-900"><?= esc($lead['closing'] ?? 0) ?></div>
                         </td>
                         <td class="px-4 py-4 whitespace-nowrap align-top">
-                            <div class="text-sm text-gray-900"><?= esc($lead['tanggal'] ?? '-') ?></div>
+                            <div class="date-range">
+                                <span class="start"><?= date('d M Y', strtotime($lead['tanggal_mulai'] ?? 'now')) ?></span>
+                                <span class="separator">s/d</span>
+                                <span class="end"><?= date('d M Y', strtotime($lead['tanggal_selesai'] ?? 'now')) ?></span>
+                            </div>
                         </td>
                         <td class="px-4 py-4 whitespace-nowrap align-top">
-                            <div class="text-sm text-gray-900"><?= esc($lead['updated_at'] ?? '-') ?></div>
+                            <div class="text-sm text-gray-900"><?= date('d M Y H:i', strtotime($lead['updated_at'] ?? 'now')) ?></div>
                         </td>
                         <td class="px-4 py-4 whitespace-nowrap align-top">
                             <a href="<?= esc($lead['detail_url'] ?? '#') ?>" class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-xl shadow-sm visited:text-white">

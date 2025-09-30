@@ -20,12 +20,15 @@ class Dashboard extends BaseController
         $monthTo   = date('Y-m-t');
 
         // === METRIK ===
-        $todayLeads = $leads->where('tanggal', $today)
+        // For today's leads, check if today's date falls within the date range
+        $todayLeads = $leads->where('tanggal_mulai <=', $today)
+                            ->where('tanggal_selesai >=', $today)
                             ->selectSum('jumlah_leads_masuk', 'total_masuk')
                             ->first()['total_masuk'] ?? 0;
 
-        $monthlyDeals = $leads->where('tanggal >=', $monthFrom)
-                              ->where('tanggal <=', $monthTo)
+        // For monthly deals, check for overlapping periods
+        $monthlyDeals = $leads->where('tanggal_mulai <=', $monthTo)
+                              ->where('tanggal_selesai >=', $monthFrom)
                               ->selectSum('jumlah_leads_closing', 'total_close')
                               ->first()['total_close'] ?? 0;
 
@@ -179,12 +182,15 @@ class Dashboard extends BaseController
         $monthFrom = date('Y-m-01');
         $monthTo   = date('Y-m-t');
 
-        $todayLeads = $leads->where('tanggal', $today)
+        // For today's leads, check if today's date falls within the date range
+        $todayLeads = $leads->where('tanggal_mulai <=', $today)
+                            ->where('tanggal_selesai >=', $today)
                             ->selectSum('jumlah_leads_masuk', 'total_masuk')
                             ->first()['total_masuk'] ?? 0;
 
-        $monthlyDeals = $leads->where('tanggal >=', $monthFrom)
-                              ->where('tanggal <=', $monthTo)
+        // For monthly deals, check for overlapping periods
+        $monthlyDeals = $leads->where('tanggal_mulai <=', $monthTo)
+                              ->where('tanggal_selesai >=', $monthFrom)
                               ->selectSum('jumlah_leads_closing', 'total_close')
                               ->first()['total_close'] ?? 0;
 
@@ -220,7 +226,7 @@ class Dashboard extends BaseController
 
         // Ambil 10 leads terbaru beserta business_name dari vendor_profiles
         $rows = $leadsModel
-            ->select('leads.id, leads.vendor_id, leads.jumlah_leads_masuk, leads.jumlah_leads_closing, leads.tanggal, leads.updated_at, COALESCE(vendor_profiles.business_name, "-") AS business_name')
+            ->select('leads.id, leads.vendor_id, leads.jumlah_leads_masuk, leads.jumlah_leads_closing, leads.tanggal_mulai, leads.tanggal_selesai, leads.updated_at, COALESCE(vendor_profiles.business_name, "-") AS business_name')
             ->join('vendor_profiles', 'leads.vendor_id = vendor_profiles.id', 'left')
             ->orderBy('leads.id', 'DESC')
             ->limit(10)
@@ -228,6 +234,9 @@ class Dashboard extends BaseController
 
         // Normalisasi data untuk view
         return array_map(static function ($r) {
+            // Use tanggal_mulai as the primary date for display
+            $tanggal = $r['tanggal_mulai'] ?? '-';
+            
             return [
                 'id_leads'      => isset($r['id']) ? (string)$r['id'] : '-',               // ID leads
                 'vendor_id'     => isset($r['vendor_id']) ? (string)$r['vendor_id'] : '-', // ID vendor
@@ -237,11 +246,10 @@ class Dashboard extends BaseController
                 'diproses'      => 0,                                                      // Placeholder diproses
                 'ditolak'       => 0,                                                      // Placeholder ditolak
                 'closing'       => isset($r['jumlah_leads_closing']) ? (int)$r['jumlah_leads_closing'] : 0,
-                'tanggal'       => $r['tanggal'] ?? '-',                                    // Tanggal leads
+                'tanggal'       => $tanggal,                                                // Tanggal leads (use tanggal_mulai)
                 'updated_at'    => $r['updated_at'] ?? '-',                                 // Update terakhir
                 'detail_url'    => isset($r['id']) ? site_url('admin/leads/'.$r['id']) : '#', // Link detail
             ];
         }, $rows ?? []);
     }
-
 }

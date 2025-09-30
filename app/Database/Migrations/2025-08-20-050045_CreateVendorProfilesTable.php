@@ -16,30 +16,38 @@ class CreateVendorProfilesTable extends Migration
             'phone'              => ['type' => 'VARCHAR', 'constraint' => 30],
             'whatsapp_number'    => ['type' => 'VARCHAR', 'constraint' => 30, 'null' => true],
 
-            // status vendor (lebih fleksibel)
+            // status vendor
             'status'             => [
                 'type'       => 'ENUM',
                 'constraint' => ['verified', 'rejected', 'inactive', 'pending'],
                 'default'    => 'pending',
             ],
 
-            'is_verified'        => ['type' => 'TINYINT', 'constraint' => 1, 'default' => 0],
-
-            // tambahan field untuk manajemen approval
-            'requested_commission' => ['type' => 'DECIMAL', 'constraint' => '5,2', 'null' => true],
-            'rejection_reason'     => ['type' => 'TEXT', 'null' => true],
-            'inactive_reason'      => ['type' => 'TEXT', 'null' => true],
-            'approved_at'          => ['type' => 'DATETIME', 'null' => true],
-            'action_by'            => ['type' => 'INT', 'unsigned' => true, 'null' => true],
+            // foto profil vendor
+            'profile_image'      => ['type' => 'VARCHAR', 'constraint' => 255, 'null' => true],
 
             // timestamps
             'created_at'         => ['type' => 'DATETIME', 'default' => new RawSql('CURRENT_TIMESTAMP')],
             'updated_at'         => ['type' => 'DATETIME', 'null' => true],
+
+            // manajemen komisi
+            'requested_commission'        => ['type' => 'DECIMAL', 'constraint' => '5,2', 'null' => true],
+            'requested_commission_nominal'=> ['type' => 'DECIMAL', 'constraint' => '15,2', 'null' => true],
+            'commission_type'             => [
+                'type'       => 'ENUM',
+                'constraint' => ['percent', 'nominal'],
+                'null'       => true,
+            ],
+
+            // alasan & approval
+            'rejection_reason'   => ['type' => 'TEXT', 'null' => true],
+            'inactive_reason'    => ['type' => 'TEXT', 'null' => true],
+            'approved_at'        => ['type' => 'DATETIME', 'null' => true],
+            'action_by'          => ['type' => 'INT', 'null' => true], // optional unsigned
         ]);
 
         $this->forge->addKey('id', true);
         $this->forge->addKey('user_id');
-
         $this->forge->addForeignKey('user_id', 'users', 'id', 'CASCADE', 'CASCADE');
 
         $this->forge->createTable(

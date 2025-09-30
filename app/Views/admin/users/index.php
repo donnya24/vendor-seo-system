@@ -182,18 +182,6 @@ if (!empty($users)) {
 
   <!-- Main -->
   <main id="pageMain" class="flex-1 px-3 md:px-6 pb-6 mt-3 space-y-6 max-w-screen-xl mx-auto w-full fade-up" style="--dur:.60s; --delay:.06s">
-    
-    <!-- Tabs Navigation -->
-    <div class="flex border-b border-gray-200 fade-up" style="--delay:.08s">
-      <button class="py-2 px-4 text-sm font-medium rounded-t-lg transition-colors duration-200 <?= $currentTab == 'seo' ? 'tab-active' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50' ?>" 
-              onclick="window.location.href='<?= site_url('admin/users?tab=seo'); ?>'">
-        <i class="fas fa-users mr-2"></i> User Tim SEO
-      </button>
-      <button class="py-2 px-4 text-sm font-medium rounded-t-lg transition-colors duration-200 <?= $currentTab == 'vendor' ? 'tab-active' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50' ?>" 
-              onclick="window.location.href='<?= site_url('admin/users?tab=vendor'); ?>'">
-        <i class="fas fa-store mr-2"></i> User Vendor
-      </button>
-    </div>
 
    <!-- Dalam bagian tabel SEO -->
 <?php if ($currentTab == 'seo'): ?>

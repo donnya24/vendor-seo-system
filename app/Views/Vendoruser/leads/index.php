@@ -115,7 +115,7 @@
         <thead class="bg-blue-600 text-white uppercase tracking-wide">
           <tr>
             <th class="px-2 py-2 sticky top-0 bg-blue-600 z-[1] w-10">No</th>
-            <th class="px-2 py-2 sticky top-0 bg-blue-600 z-[1]">Tanggal</th>
+            <th class="px-2 py-2 sticky top-0 bg-blue-600 z-[1]">Periode Tanggal</th>
             <th class="px-2 py-2 sticky top-0 bg-blue-600 z-[1] whitespace-nowrap">Leads Masuk</th>
             <th class="px-2 py-2 sticky top-0 bg-blue-600 z-[1] whitespace-nowrap">Leads Closing</th>
             <th class="px-2 py-2 sticky top-0 bg-blue-600 z-[1]">Aksi</th>
@@ -130,7 +130,7 @@
             <?php foreach ($rows as $i => $l): ?>
               <tr class="hover:bg-gray-50 transition group">
                 <td class="px-2 py-2 font-medium"><?= $startNo + $i ?></td>
-                <td class="px-2 py-2"><?= esc($l['tanggal']); ?></td>
+                <td class="px-2 py-2"><?= esc($l['tanggal_mulai']); ?> – <?= esc($l['tanggal_selesai']); ?></td>
                 <td class="px-2 py-2"><?= esc($l['jumlah_leads_masuk']); ?></td>
                 <td class="px-2 py-2"><?= esc($l['jumlah_leads_closing']); ?></td>
                 <td class="px-2 py-2">

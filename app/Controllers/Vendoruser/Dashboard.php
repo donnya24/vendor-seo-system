@@ -4,6 +4,7 @@ namespace App\Controllers\Vendoruser;
 use App\Controllers\BaseController;
 use App\Models\VendorProfilesModel;
 use App\Models\LeadsModel;
+use App\Models\CommissionsModel; // Tambahkan model Commissions
 use App\Models\ActivityLogsModel;
 
 class Dashboard extends BaseController
@@ -45,7 +46,6 @@ class Dashboard extends BaseController
     {
         $this->initVendor();
         $db = db_connect();
-        $today = date('Y-m-d');
 
         // Log activity akses dashboard
         $this->logActivity(
@@ -57,8 +57,9 @@ class Dashboard extends BaseController
         );
 
         $leadsModel = new LeadsModel();
+        $commissionsModel = new CommissionsModel(); // Tambahkan inisialisasi model Commissions
 
-        // ===== Statistik Leads =====
+        // ===== Statistik Leads Total =====
         $leadsNew = (clone $leadsModel)
             ->selectSum('jumlah_leads_masuk')
             ->where('vendor_id', $this->vendorId)
@@ -69,17 +70,18 @@ class Dashboard extends BaseController
             ->where('vendor_id', $this->vendorId)
             ->get()->getRow('jumlah_leads_closing') ?? 0;
 
-        $leadsToday = (clone $leadsModel)
-            ->selectSum('jumlah_leads_masuk')
+        // ===== Statistik Komisi =====
+        $commissionsPaid = (clone $commissionsModel)
+            ->selectSum('amount')
             ->where('vendor_id', $this->vendorId)
-            ->where('DATE(tanggal)', $today)
-            ->get()->getRow('jumlah_leads_masuk') ?? 0;
+            ->where('status', 'paid')
+            ->get()->getRow('amount') ?? 0;
 
-        $leadsClosingToday = (clone $leadsModel)
-            ->selectSum('jumlah_leads_closing')
+        $commissionsUnpaid = (clone $commissionsModel)
+            ->selectSum('amount')
             ->where('vendor_id', $this->vendorId)
-            ->where('DATE(tanggal)', $today)
-            ->get()->getRow('jumlah_leads_closing') ?? 0;
+            ->where('status', 'unpaid')
+            ->get()->getRow('amount') ?? 0;
 
         // ===== Leads terbaru =====
         $recentRows = (clone $leadsModel)
@@ -94,7 +96,8 @@ class Dashboard extends BaseController
                 'project' => $l['project'] ?? '-',
                 'masuk'   => (int) ($l['jumlah_leads_masuk'] ?? 0),
                 'closing' => (int) ($l['jumlah_leads_closing'] ?? 0),
-                'tanggal' => !empty($l['tanggal']) ? date('Y-m-d', strtotime($l['tanggal'])) : '-',
+                'tanggal_mulai' => !empty($l['tanggal_mulai']) ? date('Y-m-d', strtotime($l['tanggal_mulai'])) : '-',
+                'tanggal_selesai' => !empty($l['tanggal_selesai']) ? date('Y-m-d', strtotime($l['tanggal_selesai'])) : '-',
                 'updated' => !empty($l['updated_at']) ? date('Y-m-d H:i', strtotime($l['updated_at'])) : '-',
             ];
         }, $recentRows ?? []);
@@ -141,8 +144,8 @@ class Dashboard extends BaseController
                 'stats'         => [
                     'leads_new'           => (int) $leadsNew,
                     'leads_closing'       => (int) $leadsClosing,
-                    'leads_today'         => (int) $leadsToday,
-                    'leads_closing_today' => (int) $leadsClosingToday,
+                    'commissions_paid'     => (float) $commissionsPaid,
+                    'commissions_unpaid'   => (float) $commissionsUnpaid,
                     'keywords_total'      => (int) $keywordsTotal,
                 ],
                 'recentLeads'   => $recentLeads,

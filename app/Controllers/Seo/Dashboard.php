@@ -22,17 +22,35 @@ class Dashboard extends BaseController
         $start = $this->request->getGet('start') ?? date('Y-m-01');
         $end   = $this->request->getGet('end')   ?? date('Y-m-t');
 
+<<<<<<< HEAD
+        // Ambil keyword targets + latest report
+        $targets = (new SeoKeywordTargetsModel())
+            ->withLatestReport() // tanpa argumen, cukup latest saja
+            ->where('seo_keyword_targets.vendor_id', $vendorId)
+            ->findAll();
+
+        // Hitung perubahan posisi terhadap target
+=======
         $targets = (new SeoKeywordTargetsModel())
             ->withLatestReport($start, $end)
             ->where('seo_keyword_targets.vendor_id', $vendorId)
             ->findAll();
 
         // hitung perubahan
+>>>>>>> 869b4bc627c145c1f2490a07683852c604bf0f32
         foreach ($targets as &$t) {
             $current = (int)($t['current_position'] ?? 0);
             $target  = (int)($t['target_position'] ?? 0);
             $status  = $t['status'] ?? 'pending';
 
+<<<<<<< HEAD
+            $t['last_change'] = ($status === 'completed' && $current && $target)
+                ? $current - $target
+                : null;
+        }
+
+        // Statistik leads (gunakan periode filter)
+=======
             if ($status === 'completed' && $current && $target) {
                 $t['last_change'] = $current - $target;
             } else {
@@ -41,11 +59,12 @@ class Dashboard extends BaseController
         }
 
         // Statistik leads
+>>>>>>> 869b4bc627c145c1f2490a07683852c604bf0f32
         $leadStats = (new LeadsModel())->getDashboardStats(
             $vendorId,
             "{$start} 00:00:00",
             "{$end} 23:59:59"
-        );
+        ) ?? ['total' => 0, 'closed' => 0];
 
         // Ambil total komisi untuk periode filter
         $commission = (new CommissionsModel())
@@ -55,6 +74,10 @@ class Dashboard extends BaseController
             ->where('period_end <=', $end)
             ->first();
 
+<<<<<<< HEAD
+        // Ambil status komisi terbaru
+=======
+>>>>>>> 869b4bc627c145c1f2490a07683852c604bf0f32
         $status = (new CommissionsModel())
             ->select('status')
             ->where('vendor_id', $vendorId)
@@ -65,17 +88,23 @@ class Dashboard extends BaseController
             ->getRow('status');
 
         // Catat log activity
-        $this->logActivity($vendorId, 'dashboard', 'view', "Membuka dashboard periode {$start} - {$end}");
+        $this->logActivity(
+            $vendorId,
+            'dashboard',
+            'view',
+            "Membuka dashboard periode {$start} - {$end}"
+        );
 
         return view('seo/dashboard', [
-            'title'       => 'SEO Dashboard',
-            'activeMenu'  => 'dashboard',
-            'vendorId'    => $vendorId,
-            'targets'     => $targets,
-            'leadStats'   => $leadStats ?? ['total' => 0, 'closed' => 0],
-            'commission'  => $commission,
-            'start'       => $start,
-            'end'         => $end,
+            'title'      => 'SEO Dashboard',
+            'activeMenu' => 'dashboard',
+            'vendorId'   => $vendorId,
+            'targets'    => $targets,
+            'leadStats'  => $leadStats,
+            'commission' => $commission,
+            'status'     => $status,
+            'start'      => $start,
+            'end'        => $end,
         ]);
     }
 
