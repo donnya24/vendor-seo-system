@@ -41,6 +41,9 @@ class Commissions extends BaseController
         $commission = $commissionModel->find($id);
 
         if (!$commission) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Komisi tidak ditemukan.']);
+            }
             return redirect()->back()->with('error', 'Komisi tidak ditemukan.');
         }
 
@@ -50,13 +53,11 @@ class Commissions extends BaseController
             'paid_at'     => date('Y-m-d H:i:s'),
         ]);
 
-        $this->logActivity(
-            $commission['vendor_id'],
-            'commissions',
-            'approve',
-            "Komisi #{$id} telah diverifikasi & dibayar."
-        );
+        $this->logActivity($commission['vendor_id'], 'commissions', 'approve', "Komisi #{$id} telah diverifikasi & dibayar.");
 
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => true]);
+        }
         return redirect()->back()->with('msg', 'Komisi telah diverifikasi & dibayar.');
     }
 
@@ -66,6 +67,9 @@ class Commissions extends BaseController
         $commission = $commissionModel->find($id);
 
         if (!$commission) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Komisi tidak ditemukan.']);
+            }
             return redirect()->back()->with('error', 'Komisi tidak ditemukan.');
         }
 
@@ -74,13 +78,11 @@ class Commissions extends BaseController
             'rejected_at' => date('Y-m-d H:i:s'),
         ]);
 
-        $this->logActivity(
-            $commission['vendor_id'],
-            'commissions',
-            'reject',
-            "Komisi #{$id} telah ditolak."
-        );
+        $this->logActivity($commission['vendor_id'], 'commissions', 'reject', "Komisi #{$id} telah ditolak.");
 
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => true]);
+        }
         return redirect()->back()->with('msg', 'Komisi telah ditolak.');
     }
 

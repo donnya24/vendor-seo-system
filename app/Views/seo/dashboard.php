@@ -18,38 +18,6 @@
         </div>
     </div>
 
-    <!-- FILTER SECTION -->
-    <div class="bg-white rounded-xl shadow border border-gray-200 p-6">
-        <div class="flex items-center gap-2 mb-4">
-            <i class="fas fa-filter text-blue-600"></i>
-            <h2 class="text-lg font-semibold text-gray-800">Filter Data</h2>
-        </div>
-        
-        <form method="get" class="flex flex-col sm:flex-row flex-wrap gap-4">
-            <input type="hidden" name="vendor_id" value="<?= esc($vendorId) ?>">
-
-            <div class="flex-1 min-w-[200px]">
-                <label for="start-date" class="block text-sm font-medium text-gray-700 mb-1">Dari Tanggal</label>
-                <input type="date" id="start-date" name="start" value="<?= esc($start) ?>" 
-                       class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
-            </div>
-
-            <div class="flex items-end text-gray-400 font-medium">—</div>
-
-            <div class="flex-1 min-w-[200px]">
-                <label for="end-date" class="block text-sm font-medium text-gray-700 mb-1">Sampai Tanggal</label>
-                <input type="date" id="end-date" name="end" value="<?= esc($end) ?>" 
-                       class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
-            </div>
-
-            <div class="flex items-end">
-                <button type="submit" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-medium transition shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                    <i class="fas fa-search mr-2"></i> Terapkan
-                </button>
-            </div>
-        </form>
-    </div>
-
     <!-- STATS CARDS -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <!-- Leads -->
@@ -62,20 +30,6 @@
                     </div>
                     <div class="p-3 bg-blue-100 rounded-xl">
                         <i class="fas fa-user-friends text-blue-600 text-lg"></i>
-                    </div>
-                </div>
-                <div class="mt-4 pt-4 border-t border-gray-100 grid grid-cols-3 text-center">
-                    <div>
-                        <p class="text-xs text-gray-500">Closed</p>
-                        <p class="font-semibold text-green-600"><?= (int)($leadStats['closed'] ?? 0) ?></p>
-                    </div>
-                    <div>
-                        <p class="text-xs text-gray-500">On Going</p>
-                        <p class="font-semibold text-yellow-600"><?= (int)($leadStats['in_progress'] ?? 0) ?></p>
-                    </div>
-                    <div>
-                        <p class="text-xs text-gray-500">New</p>
-                        <p class="font-semibold text-blue-600"><?= (int)($leadStats['new_cnt'] ?? 0) ?></p>
                     </div>
                 </div>
             </div>
