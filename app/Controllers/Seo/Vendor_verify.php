@@ -26,23 +26,24 @@ class Vendor_verify extends BaseController
         ]);
     }
 
-    public function approve($id)
+public function approve($id)
 {
     $user   = service('auth')->user();
     $vendor = $this->vendorModel->find($id);
 
     if (!$vendor) {
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Vendor tidak ditemukan.']);
+        }
         return redirect()->back()->with('error', 'Vendor tidak ditemukan.');
     }
 
-    // Update status dan info approval
     $this->vendorModel->update($id, [
         'status'      => 'verified',
         'approved_at' => date('Y-m-d H:i:s'),
         'action_by'   => $user->id
     ]);
 
-    // Catat log aktivitas
     $this->activityLogsModel->insert([
         'user_id'     => $user->id,
         'vendor_id'   => $id,
@@ -53,7 +54,12 @@ class Vendor_verify extends BaseController
         'created_at'  => date('Y-m-d H:i:s')
     ]);
 
+    if ($this->request->isAJAX()) {
+        return $this->response->setJSON(['success' => true, 'message' => 'Vendor berhasil disetujui.']);
+    }
+
     return redirect()->back()->with('success', 'Vendor berhasil disetujui.');
 }
+
 
 }

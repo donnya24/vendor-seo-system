@@ -144,7 +144,7 @@ $routes->group('seo', [
 
     // Approve Vendor
     $routes->get('vendor', 'Vendor_verify::index');
-    $routes->get('vendor/approve/(:num)', 'Vendor_verify::approve/$1');
+    $routes->post('vendor_verify/approve/(:num)', 'Vendor_verify::approve/$1');
 
     // Log Activity
     $routes->get('logs', 'Logs::index');

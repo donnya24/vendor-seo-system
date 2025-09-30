@@ -18,6 +18,7 @@ class CommissionsModel extends Model
         'status',
         'proof',
         'paid_at',
+        'rejected_at',
         'created_at',
         'updated_at',
     ];

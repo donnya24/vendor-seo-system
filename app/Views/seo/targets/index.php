@@ -92,7 +92,7 @@
                         class="inline-flex items-center justify-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
                   <i class="fas fa-edit mr-1"></i> Edit
                 </button>
-                <button @click="destroy(<?= $t['id'] ?>)" 
+                <button @click="confirmDelete(<?= $t['id'] ?>)" 
                         class="inline-flex items-center justify-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200">
                   <i class="fas fa-trash-alt mr-1"></i> Hapus
                 </button>
@@ -112,7 +112,7 @@
   </div>
 </div>
 
-  <!-- Modal -->
+  <!-- Modal Form -->
   <div x-show="showModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" x-cloak x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
     <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" @click.away="closeModal()" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 transform scale-100" x-transition:leave-end="opacity-0 transform scale-95">
       <!-- Modal Header -->
@@ -200,6 +200,38 @@
     </div>
   </div>
 
+  <!-- Modal Konfirmasi Hapus -->
+  <div x-show="showDeleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" x-cloak x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-md" @click.away="showDeleteModal = false" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 transform scale-100" x-transition:leave-end="opacity-0 transform scale-95">
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-gray-900">Konfirmasi Hapus</h3>
+        <button @click="showDeleteModal = false" class="text-gray-400 hover:text-gray-500 focus:outline-none focus:text-gray-500">
+          <i class="fas fa-times text-xl"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-6">
+        <div class="flex items-center justify-center w-16 h-16 mx-auto bg-red-100 rounded-full mb-4">
+          <i class="fas fa-exclamation-triangle text-red-600 text-2xl"></i>
+        </div>
+        <h3 class="text-lg font-medium text-center text-gray-900 mb-2">Apakah Anda yakin?</h3>
+        <p class="text-sm text-gray-500 text-center mb-6">Target yang dihapus tidak dapat dikembalikan. Apakah Anda yakin ingin menghapus target ini?</p>
+        
+        <!-- Buttons -->
+        <div class="flex flex-col sm:flex-row sm:justify-center gap-3">
+          <button @click="showDeleteModal = false" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 font-medium transition-colors duration-200">
+            Batal
+          </button>
+          <button @click="executeDelete()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 font-medium transition-colors duration-200">
+            Hapus Target
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Notification Toast (for success/error messages) -->
   <div x-show="notification.show" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform translate-y-2" x-transition:enter-end="opacity-100 transform translate-y-0" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 transform translate-y-0" x-transition:leave-end="opacity-0 transform translate-y-2"
        class="fixed bottom-4 right-4 z-50 bg-white rounded-lg shadow-lg border-l-4 p-4 max-w-md"
@@ -210,7 +242,7 @@
        x-cloak>
     <div class="flex items-start">
       <div class="flex-shrink-0">
-        <i class="fas" :class="{
+        <i class="fas text-xl" :class="{
           'fa-check-circle text-green-500': notification.type === 'success',
           'fa-exclamation-circle text-red-500': notification.type === 'error'
         }"></i>
@@ -227,10 +259,19 @@
     </div>
   </div>
 
+  <!-- Loading Overlay -->
+  <div x-show="loading" class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50" x-cloak>
+    <div class="bg-white rounded-lg p-6 flex flex-col items-center">
+      <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+      <p class="text-gray-700 font-medium">Memproses...</p>
+    </div>
+  </div>
+
 <script>
 function seoTargets() {
     return {
         showModal: false,
+        showDeleteModal: false,
         modalTitle: 'Tambah Target',
         notification: {
             show: false,
@@ -239,6 +280,8 @@ function seoTargets() {
             message: '',
             timeout: null
         },
+        loading: false,
+        deleteId: null,
         form: {
             id: '',
             vendor_id: '<?= esc($vendorId) ?>',
@@ -298,6 +341,7 @@ function seoTargets() {
             document.body.style.overflow = '';
         },
         edit(id) {
+            this.loading = true;
             fetch(`<?= site_url('seo/targets/edit') ?>/${id}`, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
@@ -315,21 +359,30 @@ function seoTargets() {
                 this.form = { ...this.form, ...data.data };
                 this.showModal = true;
                 document.body.style.overflow = 'hidden';
+                this.loading = false;
             })
             .catch(err => {
+                this.loading = false;
                 this.showNotification('error', 'Error', err.message);
             });
         },
-        destroy(id) {
-            if (!confirm('Yakin ingin menghapus target ini?')) return;
-
+        confirmDelete(id) {
+            this.deleteId = id;
+            this.showDeleteModal = true;
+        },
+        executeDelete() {
+            if (!this.deleteId) return;
+            
+            this.loading = true;
+            this.showDeleteModal = false;
+            
             const csrfName = document.querySelector('meta[name="csrf-token-name"]').content;
             const csrfHash = document.querySelector('meta[name="csrf-token"]').content;
 
             const formData = new FormData();
             formData.append(csrfName, csrfHash);
 
-            fetch(`<?= site_url('seo/targets/delete') ?>/${id}`, {
+            fetch(`<?= site_url('seo/targets/delete') ?>/${this.deleteId}`, {
                 method: 'POST',
                 headers: { 'X-Requested-With': 'XMLHttpRequest' },
                 body: formData
@@ -344,6 +397,7 @@ function seoTargets() {
                 }
             })
             .then(data => {
+                this.loading = false;
                 if (data.success) {
                     this.showNotification('success', 'Berhasil', 'Target berhasil dihapus');
                     setTimeout(() => location.reload(), 1500);
@@ -352,10 +406,13 @@ function seoTargets() {
                 }
             })
             .catch(err => {
+                this.loading = false;
                 this.showNotification('error', 'Error', 'Error: ' + err.message);
             });
         },
         submitForm() {
+            this.loading = true;
+            
             const csrfName = document.querySelector('meta[name="csrf-token-name"]').content;
             const csrfHash = document.querySelector('meta[name="csrf-token"]').content;
 
@@ -385,8 +442,10 @@ function seoTargets() {
                 }
             })
             .then(data => {
+                this.loading = false;
                 if (data.success) {
-                    this.showNotification('success', 'Berhasil', 'Target berhasil disimpan');
+                    const action = this.form.id ? 'diperbarui' : 'ditambahkan';
+                    this.showNotification('success', 'Berhasil', 'Target berhasil ' + action);
                     setTimeout(() => {
                         this.closeModal();
                         location.reload();
@@ -396,6 +455,7 @@ function seoTargets() {
                 }
             })
             .catch(err => {
+                this.loading = false;
                 console.error(err);
                 this.showNotification('error', 'Error', 'Terjadi kesalahan: ' + err.message);
             });
