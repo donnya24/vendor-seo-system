@@ -100,4 +100,23 @@ class Leads extends BaseController
         $this->leadsModel->delete($id);
         return redirect()->to('admin/leads')->with('success', 'Lead berhasil dihapus');
     }
+
+    public function show($id)
+    {
+        $leadsModel = new \App\Models\LeadsModel();
+        $vendorsModel = new \App\Models\VendorProfilesModel();
+
+        $lead = $leadsModel->select('leads.*, vendor_profiles.business_name as vendor_name')
+                        ->join('vendor_profiles', 'vendor_profiles.id = leads.vendor_id', 'left')
+                        ->find($id);
+
+        if (!$lead) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound("Lead dengan ID $id tidak ditemukan");
+        }
+
+        return view('admin/leads/show', [
+            'lead' => $lead,
+            'vendors' => $vendorsModel->findAll(),
+        ]);
+    }
 }

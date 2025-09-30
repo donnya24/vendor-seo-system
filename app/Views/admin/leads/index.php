@@ -35,7 +35,15 @@
                 <td class="px-4 py-2"><?= esc($lead['vendor_name']) ?></td>
                 <td class="px-4 py-2"><?= esc($lead['jumlah_leads_masuk']) ?></td>
                 <td class="px-4 py-2"><?= esc($lead['jumlah_leads_closing']) ?></td>
-                <td class="px-4 py-2"><?= esc($lead['tanggal']) ?></td>
+                <td class="px-4 py-2">
+                  <?php if (!empty($lead['tanggal_mulai']) && !empty($lead['tanggal_selesai'])): ?>
+                    <?= esc($lead['tanggal_mulai']) ?> s/d <?= esc($lead['tanggal_selesai']) ?>
+                  <?php elseif (!empty($lead['tanggal_mulai'])): ?>
+                    <?= esc($lead['tanggal_mulai']) ?>
+                  <?php else: ?>
+                    <span class="text-gray-400">-</span>
+                  <?php endif; ?>
+                </td>
                 <td class="px-4 py-2"><?= esc($lead['updated_at']) ?></td>
                 <td class="px-4 py-2 flex gap-2">
                   <!-- Modal Edit -->

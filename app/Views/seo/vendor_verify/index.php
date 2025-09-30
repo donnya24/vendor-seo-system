@@ -10,12 +10,6 @@
       </h1>
       <p class="mt-1 text-sm text-gray-600">Kelola vendor dan verifikasi pendaftaran</p>
     </div>
-    <div class="flex items-center gap-2 text-sm text-gray-500">
-      <i class="fas fa-building text-blue-600"></i>
-      <span>Dashboard</span>
-      <i class="fas fa-chevron-right text-xs"></i>
-      <span class="text-blue-600 font-medium">Vendor</span>
-    </div>
   </div>
 
   <!-- Flash Messages -->
@@ -41,19 +35,19 @@
       </div>
     </div>
     
-    <div class="overflow-x-auto">
-      <table class="min-w-full text-sm divide-y divide-gray-200">
-        <thead class="bg-gray-50">
-          <tr>
-            <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
-            <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Usaha</th>
-            <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pemilik</th>
-            <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kontak</th>
-            <th scope="col" class="px-5 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Komisi Diminta</th>
-            <th scope="col" class="px-5 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-            <th scope="col" class="px-5 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-          </tr>
-        </thead>
+  <div class="overflow-x-auto">
+    <table class="min-w-full text-sm divide-y divide-gray-200">
+      <thead class="bg-blue-600">
+        <tr>
+          <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">No</th>
+          <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Nama Usaha</th>
+          <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Pemilik</th>
+          <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Kontak</th>
+          <th scope="col" class="px-5 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Komisi Diminta</th>
+          <th scope="col" class="px-5 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Status</th>
+          <th scope="col" class="px-5 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Aksi</th>
+        </tr>
+      </thead>
         <tbody class="bg-white divide-y divide-gray-200">
           <?php if (!empty($vendors)): ?>
             <?php $no = 1; foreach ($vendors as $vendor): ?>
@@ -83,7 +77,13 @@
                   <?php endif; ?>
                 </td>
                 <td class="px-5 py-4 text-center text-gray-900 font-medium">
-                  <?= $vendor['requested_commission'] ? esc($vendor['requested_commission']).'%' : '-' ?>
+                  <?php if ($vendor['commission_type'] === 'percent' && !empty($vendor['requested_commission'])): ?>
+                    <?= esc($vendor['requested_commission']) ?>%
+                  <?php elseif ($vendor['commission_type'] === 'nominal' && !empty($vendor['requested_commission_nominal'])): ?>
+                    Rp <?= number_format($vendor['requested_commission_nominal'], 0, ',', '.') ?>
+                  <?php else: ?>
+                    -
+                  <?php endif; ?>
                 </td>
                 <td class="px-5 py-4 text-center">
                   <?php if ($vendor['status'] === 'verified'): ?>
