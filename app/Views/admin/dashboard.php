@@ -60,6 +60,54 @@
   .date-range .start{ font-weight:600; color:#374151; }
   .date-range .separator{ color:#9ca3af; margin:0 4px; }
   .date-range .end{ font-weight:600; color:#374151; }
+
+  /* Modal styling */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  }
+  
+  .modal-content {
+    background-color: white;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  }
+  
+  .modal-header {
+    padding: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .modal-body {
+    padding: 1rem;
+  }
+  
+  .modal-footer {
+    padding: 1rem;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+  
+  .hidden {
+    display: none;
+  }
 </style>
 
 <script>
@@ -84,10 +132,46 @@
     class="flex-1 overflow-y-auto p-3 md:p-4 no-scrollbar fade-up"
     style="--dur:.60s; --delay:.02s"
   >
-    <!-- 3 STATS CARDS (sesuai kebutuhan) -->
+    <!-- 6 STATS CARDS (sesuai kebutuhan) -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mb-6">
-      <!-- 1. Total leads masuk -->
-      <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 p-2.5 rounded-lg border border-indigo-200 shadow-xs hover:shadow-sm transition-shadow fade-up" style="--delay:.08s">
+      <!-- 1. Total vendor (verified only) -->
+      <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-2.5 rounded-lg border border-blue-200 shadow-xs hover:shadow-sm transition-shadow fade-up" style="--delay:.08s">
+        <div class="flex items-center justify-between">
+          <div class="flex-1">
+            <p class="text-[10px] font-semibold text-blue-800 uppercase tracking-wider mb-0.5">TOTAL VENDOR</p>
+            <p class="text-lg font-bold text-blue-900"><?= esc($stats['totalVendors'] ?? 0); ?></p>
+          </div>
+          <div class="flex items-center justify-center w-8 h-8 bg-blue-600 rounded-md text-white ml-2"><i class="fas fa-store text-xs"></i></div>
+        </div>
+        <div class="mt-1.5 pt-1.5 border-t border-blue-200/50"><div class="flex items-center text-blue-700 text-[10px] font-medium"><i class="fas fa-check-circle mr-0.5"></i><span class="font-semibold">Terverifikasi</span></div></div>
+      </div>
+
+      <!-- 2. Total komisi bulan ini (yang status ws paid) -->
+      <div class="bg-gradient-to-br from-green-50 to-green-100 p-2.5 rounded-lg border border-green-200 shadow-xs hover:shadow-sm transition-shadow fade-up" style="--delay:.14s">
+        <div class="flex items-center justify-between">
+          <div class="flex-1">
+            <p class="text-[10px] font-semibold text-green-800 uppercase tracking-wider mb-0.5">TOTAL KOMISI</p>
+            <p class="text-lg font-bold text-green-900">Rp <?= number_format($stats['monthlyCommissionPaid'] ?? 0, 0, ',', '.'); ?></p>
+          </div>
+          <div class="flex items-center justify-center w-8 h-8 bg-green-600 rounded-md text-white ml-2"><i class="fas fa-money-bill-wave text-xs"></i></div>
+        </div>
+        <div class="mt-1.5 pt-1.5 border-t border-green-200/50"><div class="flex items-center text-green-700 text-[10px] font-medium"><i class="fas fa-check-circle mr-0.5"></i><span class="font-semibold">Status paid</span></div></div>
+      </div>
+
+      <!-- 3. Top keyword -->
+      <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-2.5 rounded-lg border border-purple-200 shadow-xs hover:shadow-sm transition-shadow fade-up" style="--delay:.20s">
+        <div class="flex items-center justify-between">
+          <div class="flex-1">
+            <p class="text-[10px] font-semibold text-purple-800 uppercase tracking-wider mb-0.5">LEADS PALING DICARI</p>
+            <p class="text-lg font-bold text-purple-900"><?= esc($stats['topKeyword'] ?? '-'); ?></p>
+          </div>
+          <div class="flex items-center justify-center w-8 h-8 bg-purple-600 rounded-md text-white ml-2"><i class="fas fa-search text-xs"></i></div>
+        </div>
+        <div class="mt-1.5 pt-1.5 border-t border-purple-200/50"><div class="flex items-center text-purple-700 text-[10px] font-medium"><i class="fas fa-fire mr-0.5"></i><span class="font-semibold">Paling dicari</span></div></div>
+      </div>
+
+      <!-- 4. Total leads masuk -->
+      <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 p-2.5 rounded-lg border border-indigo-200 shadow-xs hover:shadow-sm transition-shadow fade-up" style="--delay:.26s">
         <div class="flex items-center justify-between">
           <div class="flex-1">
             <p class="text-[10px] font-semibold text-indigo-800 uppercase tracking-wider mb-0.5">TOTAL LEADS MASUK</p>
@@ -98,8 +182,8 @@
         <div class="mt-1.5 pt-1.5 border-t border-indigo-200/50"><div class="flex items-center text-indigo-700 text-[10px] font-medium"><i class="fas fa-users mr-0.5"></i><span class="font-semibold">Customer chat</span></div></div>
       </div>
 
-      <!-- 2. Total leads closing -->
-      <div class="bg-gradient-to-br from-emerald-50 to-emerald-100 p-2.5 rounded-lg border border-emerald-200 shadow-xs hover:shadow-sm transition-shadow fade-up" style="--delay:.14s">
+      <!-- 5. Total leads closing -->
+      <div class="bg-gradient-to-br from-emerald-50 to-emerald-100 p-2.5 rounded-lg border border-emerald-200 shadow-xs hover:shadow-sm transition-shadow fade-up" style="--delay:.32s">
         <div class="flex items-center justify-between">
           <div class="flex-1">
             <p class="text-[10px] font-semibold text-emerald-800 uppercase tracking-wider mb-0.5">TOTAL LEADS CLOSING</p>
@@ -110,16 +194,16 @@
         <div class="mt-1.5 pt-1.5 border-t border-emerald-200/50"><div class="flex items-center text-emerald-700 text-[10px] font-medium"><i class="fas fa-check-double mr-0.5"></i><span class="font-semibold">Deal selesai</span></div></div>
       </div>
 
-      <!-- 3. Total tim SEO -->
-      <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-2.5 rounded-lg border border-purple-200 shadow-xs hover:shadow-sm transition-shadow fade-up" style="--delay:.20s">
+      <!-- 6. Total tim SEO (active only) -->
+      <div class="bg-gradient-to-br from-orange-50 to-orange-100 p-2.5 rounded-lg border border-orange-200 shadow-xs hover:shadow-sm transition-shadow fade-up" style="--delay:.38s">
         <div class="flex items-center justify-between">
           <div class="flex-1">
-            <p class="text-[10px] font-semibold text-purple-800 uppercase tracking-wider mb-0.5">TOTAL TIM SEO</p>
-            <p class="text-lg font-bold text-purple-900"><?= esc($stats['totalSeoTeam'] ?? 0); ?></p>
+            <p class="text-[10px] font-semibold text-orange-800 uppercase tracking-wider mb-0.5">TOTAL TIM SEO</p>
+            <p class="text-lg font-bold text-orange-900"><?= esc($stats['totalSeoTeam'] ?? 0); ?></p>
           </div>
-          <div class="flex items-center justify-center w-8 h-8 bg-purple-600 rounded-md text-white ml-2"><i class="fas fa-users-gear text-xs"></i></div>
+          <div class="flex items-center justify-center w-8 h-8 bg-orange-600 rounded-md text-white ml-2"><i class="fas fa-users-gear text-xs"></i></div>
         </div>
-        <div class="mt-1.5 pt-1.5 border-t border-purple-200/50"><div class="flex items-center text-purple-700 text-[10px] font-medium"><i class="fas fa-user-tie mr-0.5"></i><span class="font-semibold">Tim aktif</span></div></div>
+        <div class="mt-1.5 pt-1.5 border-t border-orange-200/50"><div class="flex items-center text-orange-700 text-[10px] font-medium"><i class="fas fa-user-check mr-0.5"></i><span class="font-semibold">Tim aktif</span></div></div>
       </div>
     </div>
 
@@ -161,7 +245,16 @@
                     $phone    = trim((string)($r['phone'] ?? ''));
                     $waRaw    = trim((string)($r['wa'] ?? ($r['whatsapp_number'] ?? '')));
 
-                    $komisi   = is_numeric($r['komisi'] ?? null) ? (float)$r['komisi'] : (float)preg_replace('/[^0-9.]/','', (string)($r['komisi'] ?? 0));
+                    // Perbaikan untuk menangani komisi persentase atau nominal
+                    $komisiType = $r['commission_type'] ?? 'percent';
+                    $komisiValue = 0;
+                    
+                    if ($komisiType === 'percent') {
+                        $komisiValue = is_numeric($r['komisi'] ?? null) ? (float)$r['komisi'] : (float)preg_replace('/[^0-9.]/','', (string)($r['komisi'] ?? 0));
+                    } else {
+                        $komisiValue = is_numeric($r['komisi_nominal'] ?? null) ? (float)$r['komisi_nominal'] : (float)preg_replace('/[^0-9.]/','', (string)($r['komisi_nominal'] ?? 0));
+                    }
+                    
                     $status   = strtolower((string)($r['status'] ?? 'pending'));
                     $approved = ($status === 'verified');
                 ?>
@@ -184,7 +277,11 @@
                   </td>
                   <td class="px-4 py-4 whitespace-nowrap align-top">
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      <?= number_format($komisi,1) ?>%
+                      <?php if ($komisiType === 'percent'): ?>
+                        <?= number_format($komisiValue, 1) ?>%
+                      <?php else: ?>
+                        Rp <?= number_format($komisiValue, 0, ',', '.') ?>
+                      <?php endif; ?>
                     </span>
                   </td>
                   <td class="px-4 py-4 whitespace-nowrap align-top">
@@ -284,85 +381,195 @@
                             <div class="text-sm text-gray-900"><?= esc($lead['closing'] ?? 0) ?></div>
                         </td>
                         <td class="px-4 py-4 whitespace-nowrap align-top">
-                            <div class="date-range">
-                                <span class="start"><?= date('d M Y', strtotime($lead['tanggal_mulai'] ?? 'now')) ?></span>
-                                <span class="separator">s/d</span>
-                                <span class="end"><?= date('d M Y', strtotime($lead['tanggal_selesai'] ?? 'now')) ?></span>
+                            <div class="date-range font-medium" style="font-size:13px;">
+                              <span class="start"><?= date('d M Y', strtotime($lead['tanggal_mulai'] ?? 'now')) ?></span>
+                              <span class="separator text-gray-500">s/d</span>
+                              <span class="end"><?= date('d M Y', strtotime($lead['tanggal_selesai'] ?? 'now')) ?></span>
                             </div>
                         </td>
                         <td class="px-4 py-4 whitespace-nowrap align-top">
                             <div class="text-sm text-gray-900"><?= date('d M Y H:i', strtotime($lead['updated_at'] ?? 'now')) ?></div>
                         </td>
                         <td class="px-4 py-4 whitespace-nowrap align-top">
-                            <a href="<?= esc($lead['detail_url'] ?? '#') ?>" class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-xl shadow-sm visited:text-white">
+                            <button onclick="showLeadDetail(<?= $lead['id_leads'] ?>)" 
+                                    class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-xl shadow-sm">
                                 <i class="fa-regular fa-eye text-[11px]"></i> Detail
-                            </a>
+                            </button>
                         </td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
-
         </div>
       </div>
     </section>
-
-    <!-- Waktu real-time (independen) -->
-    <script>
-      (function(){
-        const fmtDate = new Intl.DateTimeFormat('id-ID',{day:'2-digit',month:'short',year:'numeric'});
-        const fmtTime = new Intl.DateTimeFormat('id-ID',{hour:'2-digit',minute:'2-digit'});
-        function render(){
-          document.querySelectorAll('.js-date').forEach(el=>{const d=new Date(el.dataset.ts);el.textContent=isNaN(d)?'—':fmtDate.format(d);});
-          document.querySelectorAll('.js-time').forEach(el=>{const d=new Date(el.dataset.ts);el.textContent=isNaN(d)?'—':fmtTime.format(d);});
-        }
-        render();
-        setInterval(render, 30000);
-      })();
-    </script>
-
-    <script>
-      async function approveVendorRequest(e, id) {
-        e.preventDefault();
-        if (!confirm("Yakin ingin menyetujui vendor ini?")) return;
-
-        const formData = new FormData();
-        formData.append("id", id);
-
-        const res = await fetch("<?= site_url('admin/vendorrequests/approve') ?>", {
-          method: "POST",
-          body: formData,
-          headers: { "X-Requested-With": "XMLHttpRequest" }
-        });
-
-        const data = await res.json();
-        alert(data.message);
-
-        if (data.status === "success") location.reload();
-      }
-
-      async function rejectVendorRequest(e, id) {
-        e.preventDefault();
-        const reason = prompt("Masukkan alasan penolakan:", "Pengajuan ditolak admin");
-        if (!reason) return;
-
-        const formData = new FormData();
-        formData.append("id", id);
-        formData.append("reason", reason);
-
-        const res = await fetch("<?= site_url('admin/vendorrequests/reject') ?>", {
-          method: "POST",
-          body: formData,
-          headers: { "X-Requested-With": "XMLHttpRequest" }
-        });
-
-        const data = await res.json();
-        alert(data.message);
-
-        if (data.status === "success") location.reload();
-      }
-      </script>
   </main>
 </div>
+
+<!-- Modal untuk Detail Leads -->
+<div id="leadDetailModal" class="modal-overlay hidden">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="text-xl font-semibold">Detail Laporan Leads</h3>
+      <button onclick="closeLeadDetailModal()" class="text-gray-400 hover:text-gray-600">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    
+    <div id="leadDetailContent" class="modal-body">
+      <!-- Konten akan dimuat melalui AJAX -->
+      <div class="flex justify-center py-8">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    </div>
+    
+    <div class="modal-footer">
+      <button onclick="closeLeadDetailModal()" class="px-3 py-2 rounded-lg bg-gray-200 hover:bg-gray-300">
+        Kembali
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Fungsi untuk menampilkan detail leads
+  async function showLeadDetail(id) {
+    // Tampilkan modal
+    document.getElementById('leadDetailModal').classList.remove('hidden');
+    
+    // Reset konten modal
+    document.getElementById('leadDetailContent').innerHTML = `
+      <div class="flex justify-center py-8">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    `;
+    
+    try {
+      // Ambil data leads melalui AJAX
+      const response = await fetch(`<?= site_url('admin/api/leads') ?>/${id}`);
+      const result = await response.json();
+      
+      if (result.status === 'success') {
+        const lead = result.data;
+        
+        // Tampilkan data leads menggunakan struktur dari view show.php
+        document.getElementById('leadDetailContent').innerHTML = `
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div>
+              <div class="text-gray-500">Vendor</div>
+              <div class="font-medium">${lead.vendor}</div>
+            </div>
+            <div>
+              <div class="text-gray-500">Periode Laporan</div>
+              <div class="font-medium">${lead.periode}</div>
+            </div>
+            <div>
+              <div class="text-gray-500">Leads Masuk</div>
+              <div class="font-medium">${lead.leads_masuk}</div>
+            </div>
+            <div>
+              <div class="text-gray-500">Leads Closing</div>
+              <div class="font-medium">${lead.leads_closing}</div>
+            </div>
+            <div>
+              <div class="text-gray-500">Dilaporkan Oleh Vendor</div>
+              <div class="font-medium">${lead.reported_by}</div>
+            </div>
+            <div>
+              <div class="text-gray-500">Terakhir Diperbarui</div>
+              <div class="font-medium">${lead.updated_at}</div>
+            </div>
+          </div>
+        `;
+      } else {
+        // Tampilkan pesan error
+        document.getElementById('leadDetailContent').innerHTML = `
+          <div class="bg-red-50 border-l-4 border-red-500 p-4">
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <i class="fas fa-exclamation-circle text-red-500"></i>
+              </div>
+              <div class="ml-3">
+                <p class="text-sm text-red-700">${result.message}</p>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      // Tampilkan pesan error
+      document.getElementById('leadDetailContent').innerHTML = `
+        <div class="bg-red-50 border-l-4 border-red-500 p-4">
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <i class="fas fa-exclamation-circle text-red-500"></i>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm text-red-700">Terjadi kesalahan saat memuat data. Silakan coba lagi.</p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+  }
+  
+  // Fungsi untuk menutup modal
+  function closeLeadDetailModal() {
+    document.getElementById('leadDetailModal').classList.add('hidden');
+  }
+
+  // Waktu real-time (independen)
+  (function(){
+    const fmtDate = new Intl.DateTimeFormat('id-ID',{day:'2-digit',month:'short',year:'numeric'});
+    const fmtTime = new Intl.DateTimeFormat('id-ID',{hour:'2-digit',minute:'2-digit'});
+    function render(){
+      document.querySelectorAll('.js-date').forEach(el=>{const d=new Date(el.dataset.ts);el.textContent=isNaN(d)?'—':fmtDate.format(d);});
+      document.querySelectorAll('.js-time').forEach(el=>{const d=new Date(el.dataset.ts);el.textContent=isNaN(d)?'—':fmtTime.format(d);});
+    }
+    render();
+    setInterval(render, 30000);
+  })();
+
+  async function approveVendorRequest(e, id) {
+    e.preventDefault();
+    if (!confirm("Yakin ingin menyetujui vendor ini?")) return;
+
+    const formData = new FormData();
+    formData.append("id", id);
+
+    const res = await fetch("<?= site_url('admin/vendorrequests/approve') ?>", {
+      method: "POST",
+      body: formData,
+      headers: { "X-Requested-With": "XMLHttpRequest" }
+    });
+
+    const data = await res.json();
+    alert(data.message);
+
+    if (data.status === "success") location.reload();
+  }
+
+  async function rejectVendorRequest(e, id) {
+    e.preventDefault();
+    const reason = prompt("Masukkan alasan penolakan:", "Pengajuan ditolak admin");
+    if (!reason) return;
+
+    const formData = new FormData();
+    formData.append("id", id);
+    formData.append("reason", reason);
+
+    const res = await fetch("<?= site_url('admin/vendorrequests/reject') ?>", {
+      method: "POST",
+      body: formData,
+      headers: { "X-Requested-With": "XMLHttpRequest" }
+    });
+
+    const data = await res.json();
+    alert(data.message);
+
+    if (data.status === "success") location.reload();
+  }
+</script>
 
 <?= $this->include('admin/layouts/footer'); ?>

@@ -7,12 +7,19 @@ use App\Models\VendorProfilesModel;
 use App\Models\LeadsModel;
 use App\Models\CommissionsModel;
 use App\Models\SeoKeywordTargetsModel;
+use App\Models\SeoProfilesModel;
 
 class Dashboard extends BaseController
 {
     public function index()
     {
-        $vendors   = (new VendorProfilesModel())->countAllResults();
+        // Total vendor yang sudah verified
+        $vendorModel = new VendorProfilesModel();
+        $totalVendors = $vendorModel->where('status', 'verified')->countAllResults();
+
+        // Total tim SEO yang aktif
+        $seoModel = new SeoProfilesModel();
+        $totalSeoTeam = $seoModel->where('status', 'active')->countAllResults();
 
         $leads     = new LeadsModel();
         $today     = date('Y-m-d');
@@ -32,12 +39,12 @@ class Dashboard extends BaseController
                               ->selectSum('jumlah_leads_closing', 'total_close')
                               ->first()['total_close'] ?? 0;
 
-        // Hitung komisi bulan ini (status paid)
+        // Hitung komisi bulan ini (status paid) - PERBAIKAN: Filter berdasarkan paid_at
         $commissionsModel = new CommissionsModel();
         $monthlyCommissionPaid = $commissionsModel
             ->where('status', 'paid')
-            ->where('created_at >=', $monthFrom)
-            ->where('created_at <=', $monthTo)
+            ->where('paid_at >=', $monthFrom . ' 00:00:00')
+            ->where('paid_at <=', $monthTo . ' 23:59:59')
             ->selectSum('amount', 'total_commission')
             ->first()['total_commission'] ?? 0;
 
@@ -83,6 +90,8 @@ class Dashboard extends BaseController
             $hasStatus   = in_array('status',               $vpFields, true);
             $hasIsVerif  = in_array('is_verified',          $vpFields, true);
             $hasReqCom   = in_array('requested_commission', $vpFields, true);
+            $hasReqComNom = in_array('requested_commission_nominal', $vpFields, true);
+            $hasCommType = in_array('commission_type', $vpFields, true);
             $hasCreated  = in_array('created_at',           $vpFields, true);
 
             // kandidat kolom untuk kontak
@@ -102,6 +111,8 @@ class Dashboard extends BaseController
                     {$phoneExpr},
                     {$waExpr},
                     ".($hasReqCom? "COALESCE(vp.requested_commission,0)" : "0")." AS komisi,
+                    ".($hasReqComNom? "COALESCE(vp.requested_commission_nominal,0)" : "0")." AS komisi_nominal,
+                    ".($hasCommType? "COALESCE(vp.commission_type,'percent')" : "'percent'")." AS commission_type,
                     ".($hasStatus? "COALESCE(vp.status,'pending')" : "'pending'")." AS status
                 ");
 
@@ -145,6 +156,8 @@ class Dashboard extends BaseController
                         {$phoneExpr},
                         {$waExpr},
                         {$commissionExpr} AS komisi,
+                        0 AS komisi_nominal,
+                        'percent' AS commission_type,
                         COALESCE(c.status,'pending') AS status
                     ")
                     ->join('vendor_profiles vp', 'vp.id = c.vendor_id', 'left')
@@ -159,7 +172,7 @@ class Dashboard extends BaseController
         return view('admin/dashboard', [
             'page'  => 'Dashboard',
             'stats' => [
-                'totalVendors' => (int) $vendors,
+                'totalVendors' => (int) $totalVendors,
                 'todayLeads'   => (int) $todayLeads,
                 'monthlyDeals' => (int) $monthlyDeals,
                 'monthlyCommissionPaid' => (float) $monthlyCommissionPaid,
@@ -167,6 +180,7 @@ class Dashboard extends BaseController
                 'totalLeadsIn' => (int) $totalLeadsIn,
                 'totalLeadsClosing' => (int) $totalLeadsClosing,
                 'leadsToday'   => (int) $todayLeads,
+                'totalSeoTeam' => (int) $totalSeoTeam,
             ],
             'commissionRequests' => $commissionRequests,
             'recentLeads' => $this->fetchRecentLeads(),
@@ -175,7 +189,13 @@ class Dashboard extends BaseController
 
     public function stats()
     {
-        $vendors   = (new VendorProfilesModel())->countAllResults();
+        // Total vendor yang sudah verified
+        $vendorModel = new VendorProfilesModel();
+        $totalVendors = $vendorModel->where('status', 'verified')->countAllResults();
+
+        // Total tim SEO yang aktif
+        $seoModel = new SeoProfilesModel();
+        $totalSeoTeam = $seoModel->where('status', 'active')->countAllResults();
 
         $leads     = new LeadsModel();
         $today     = date('Y-m-d');
@@ -194,12 +214,12 @@ class Dashboard extends BaseController
                               ->selectSum('jumlah_leads_closing', 'total_close')
                               ->first()['total_close'] ?? 0;
 
-        // Hitung komisi bulan ini (status paid)
+        // Hitung komisi bulan ini (status paid) - PERBAIKAN: Filter berdasarkan paid_at
         $commissionsModel = new CommissionsModel();
         $monthlyCommissionPaid = $commissionsModel
             ->where('status', 'paid')
-            ->where('created_at >=', $monthFrom)
-            ->where('created_at <=', $monthTo)
+            ->where('paid_at >=', $monthFrom . ' 00:00:00')
+            ->where('paid_at <=', $monthTo . ' 23:59:59')
             ->selectSum('amount', 'total_commission')
             ->first()['total_commission'] ?? 0;
 
@@ -212,11 +232,47 @@ class Dashboard extends BaseController
         $topKeyword = $topKeyword ? $topKeyword['keyword'] : '-';
 
         return $this->response->setJSON([
-            'totalVendors' => (int) $vendors,
+            'totalVendors' => (int) $totalVendors,
             'todayLeads'   => (int) $todayLeads,
             'monthlyDeals' => (int) $monthlyDeals,
             'monthlyCommissionPaid' => (float) $monthlyCommissionPaid,
             'topKeyword'   => $topKeyword,
+            'totalSeoTeam' => (int) $totalSeoTeam,
+        ]);
+    }
+
+    // Tambahkan metode baru untuk menampilkan detail leads dalam format JSON
+    public function getLeadDetail($id)
+    {
+        $leadsModel = new LeadsModel();
+        
+        // Get lead with vendor information
+        $lead = $leadsModel
+            ->select('leads.*, vendor_profiles.business_name')
+            ->join('vendor_profiles', 'vendor_profiles.id = leads.vendor_id', 'left')
+            ->find($id);
+            
+        if (!$lead) {
+            return $this->response->setJSON([
+                'status' => 'error',
+                'message' => 'Data leads tidak ditemukan'
+            ]);
+        }
+
+        // Format data untuk response
+        $data = [
+            'id' => $lead['id'],
+            'vendor' => $lead['business_name'] ?? '-',
+            'periode' => date('d M Y', strtotime($lead['tanggal_mulai'])) . ' - ' . date('d M Y', strtotime($lead['tanggal_selesai'])),
+            'leads_masuk' => $lead['jumlah_leads_masuk'],
+            'leads_closing' => $lead['jumlah_leads_closing'],
+            'reported_by' => $lead['reported_by_vendor'] ?? '-',
+            'updated_at' => date('d M Y H:i', strtotime($lead['updated_at'])),
+        ];
+        
+        return $this->response->setJSON([
+            'status' => 'success',
+            'data' => $data
         ]);
     }
 
@@ -234,9 +290,6 @@ class Dashboard extends BaseController
 
         // Normalisasi data untuk view
         return array_map(static function ($r) {
-            // Use tanggal_mulai as the primary date for display
-            $tanggal = $r['tanggal_mulai'] ?? '-';
-            
             return [
                 'id_leads'      => isset($r['id']) ? (string)$r['id'] : '-',               // ID leads
                 'vendor_id'     => isset($r['vendor_id']) ? (string)$r['vendor_id'] : '-', // ID vendor
@@ -246,7 +299,8 @@ class Dashboard extends BaseController
                 'diproses'      => 0,                                                      // Placeholder diproses
                 'ditolak'       => 0,                                                      // Placeholder ditolak
                 'closing'       => isset($r['jumlah_leads_closing']) ? (int)$r['jumlah_leads_closing'] : 0,
-                'tanggal'       => $tanggal,                                                // Tanggal leads (use tanggal_mulai)
+                'tanggal_mulai' => $r['tanggal_mulai'] ?? '-',                              // Tanggal mulai periode
+                'tanggal_selesai' => $r['tanggal_selesai'] ?? '-',                           // Tanggal selesai periode
                 'updated_at'    => $r['updated_at'] ?? '-',                                 // Update terakhir
                 'detail_url'    => isset($r['id']) ? site_url('admin/leads/'.$r['id']) : '#', // Link detail
             ];

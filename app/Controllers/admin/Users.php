@@ -69,10 +69,12 @@ class Users extends BaseController
                 $u['seo_status']    = null;
 
                 if (in_array('vendor', $u['groups'], true)) {
-                    $vp = $this->vendorModel->select('status')
+                    $vp = $this->vendorModel->select('status, is_verified, commission_rate')
                         ->where('user_id', (int) $u['id'])
                         ->first();
                     $u['vendor_status'] = $vp['status'] ?? 'pending';
+                    $u['is_verified'] = (int)($vp['is_verified'] ?? 0) === 1;
+                    $u['commission_rate'] = $vp['commission_rate'] ?? null;
                 }
 
                 if (in_array('seoteam', $u['groups'], true)) {
@@ -110,10 +112,17 @@ class Users extends BaseController
     {
         $role = $this->request->getGet('role') ?? 'seoteam';
 
-        return view('admin/users/create', [
-            'page' => 'Users',
-            'role' => $role,
-        ]);
+        if ($role === 'vendor') {
+            return view('admin/users/create_vendor', [
+                'page' => 'Users',
+                'role' => $role,
+            ]);
+        } else {
+            return view('admin/users/create_seo', [
+                'page' => 'Users',
+                'role' => $role,
+            ]);
+        }
     }
 
     public function store()
@@ -122,7 +131,7 @@ class Users extends BaseController
         $username = trim((string) $this->request->getPost('username'));
         $email    = trim((string) $this->request->getPost('email'));
         $password = (string) $this->request->getPost('password');
-        $name     = trim((string) $this->request->getPost('name'));
+        $name     = trim((string) $this->request->getPost('fullname'));
         $phone    = trim((string) $this->request->getPost('phone'));
 
         // buat user dasar
@@ -147,12 +156,17 @@ class Users extends BaseController
 
         // vendor profile
         if ($role === 'vendor') {
+            $vendorStatus = $this->request->getPost('vendor_status') ?? 'pending';
+            $isVerified = (int) $this->request->getPost('is_verified') === 1;
+            $commissionRate = $this->request->getPost('commission_rate');
+            
             $this->vendorModel->insert([
-                'user_id'     => $userId,
-                'status'      => 'pending',
-                'is_verified' => 0,
-                'created_at'  => date('Y-m-d H:i:s'),
-                'updated_at'  => date('Y-m-d H:i:s'),
+                'user_id'         => $userId,
+                'status'          => $vendorStatus,
+                'is_verified'     => $isVerified ? 1 : 0,
+                'commission_rate' => $commissionRate !== '' ? (float) $commissionRate : null,
+                'created_at'      => date('Y-m-d H:i:s'),
+                'updated_at'      => date('Y-m-d H:i:s'),
             ]);
         }
 
@@ -171,6 +185,7 @@ class Users extends BaseController
         $tab = $role === 'vendor' ? 'vendor' : 'seo';
         return redirect()->to(site_url('admin/users?tab=' . $tab))->with('success', 'User created.');
     }
+
     public function edit($id)
     {
         $role = $this->request->getGet('role') ?? 'seoteam';
@@ -209,14 +224,15 @@ class Users extends BaseController
             'vendorProfile' => $profile,
         ];
 
-        // Jika request AJAX, return hanya modal content
-        if ($this->request->isAJAX()) {
-            return view('admin/users/edit_modal', $data);
+        // Tampilkan view yang sesuai berdasarkan role
+        if ($role === 'vendor') {
+            return view('admin/users/edit_vendor', $data);
+        } else {
+            return view('admin/users/edit_seo', $data);
         }
-
-        return view('admin/users/edit', $data);
     }
-   // ========== UPDATE ==========
+
+    // ========== UPDATE ==========
     public function update($id)
     {
         $username = trim((string) $this->request->getPost('username'));
@@ -242,7 +258,7 @@ class Users extends BaseController
 
         if ($role === 'seoteam') {
             // Handle SEO profile
-            $name  = trim((string) $this->request->getPost('name'));
+            $name  = trim((string) $this->request->getPost('fullname'));
             $phone = trim((string) $this->request->getPost('phone'));
             
             $exists = $this->seoModel->where('user_id', $id)->first();

@@ -26,7 +26,9 @@ class VendorProfilesModel extends Model
         'rejection_reason',
         'inactive_reason', 
         'approved_at',
-        'action_by'
+        'action_by',
+        'is_verified',
+        'commission_rate'
     ];
 
     protected $validationRules = [
@@ -43,6 +45,8 @@ class VendorProfilesModel extends Model
         'rejection_reason'    => 'permit_empty|string',
         'inactive_reason'     => 'permit_empty|string', 
         'approved_at'         => 'permit_empty|valid_date',
-        'action_by'           => 'permit_empty|integer'
+        'action_by'           => 'permit_empty|integer',
+        'is_verified'         => 'permit_empty|in_list[0,1]',
+        'commission_rate'     => 'permit_empty|decimal'
     ];
 }

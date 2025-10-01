@@ -1,20 +1,38 @@
-<?= $this->include('admin/layouts/header'); ?>
-<?= $this->include('admin/layouts/sidebar'); ?>
-
-<div class="flex-1 flex flex-col overflow-hidden" :class="{ 'md:ml-64': sidebarOpen }">
-  <header class="bg-white shadow z-20 sticky top-0"><div class="p-4 font-semibold text-gray-700">Lead Detail</div></header>
-  <main class="flex-1 overflow-y-auto p-4 bg-gray-50">
-    <div class="bg-white rounded-lg shadow p-4 space-y-2">
-      <p><b>Waktu:</b> <?= esc($lead['created_at'] ?? '-') ?></p>
-      <p><b>Pelanggan:</b> <?= esc($lead['customer_name'] ?? '-') ?></p>
-      <p><b>Telepon:</b> <?= esc($lead['phone'] ?? '-') ?></p>
-      <p><b>Vendor:</b> <?= esc($lead['vendor_name'] ?? ($lead['vendor_id'] ?? '-')) ?></p>
-      <p><b>Service:</b> <?= esc($lead['service_name'] ?? ($lead['service_id'] ?? '-')) ?></p>
-      <p><b>Status:</b> <?= esc($lead['status'] ?? '-') ?></p>
-      <p><b>Source:</b> <?= esc($lead['source'] ?? '-') ?></p>
-      <p><b>Ringkasan:</b><br><?= esc($lead['summary'] ?? '-') ?></p>
+<div class="flex-1 md:ml-64 p-4">
+  <div class="bg-white rounded-xl p-6 shadow max-w-3xl">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-xl font-semibold">Detail Laporan Leads</h2>
+      <a href="<?= site_url('vendoruser/leads'); ?>" 
+         class="px-3 py-2 rounded-lg bg-gray-200 hover:bg-gray-300">Kembali</a>
     </div>
-  </main>
-</div>
 
-<?= $this->include('admin/layouts/footer'); ?>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+      <div>
+        <div class="text-gray-500">Periode Laporan</div>
+        <div class="font-medium">
+          <?= esc($lead['tanggal_mulai']); ?> – <?= esc($lead['tanggal_selesai']); ?>
+        </div>
+      </div>
+
+      <div>
+        <div class="text-gray-500">Leads Masuk</div>
+        <div class="font-medium"><?= esc($lead['jumlah_leads_masuk']); ?></div>
+      </div>
+
+      <div>
+        <div class="text-gray-500">Leads Closing</div>
+        <div class="font-medium"><?= esc($lead['jumlah_leads_closing']); ?></div>
+      </div>
+
+      <div>
+        <div class="text-gray-500">Dilaporkan Oleh Vendor</div>
+        <div class="font-medium"><?= esc($lead['reported_by_vendor']); ?></div>
+      </div>
+
+      <div>
+        <div class="text-gray-500">Terakhir Diperbarui</div>
+        <div class="font-medium"><?= esc($lead['updated_at']); ?></div>
+      </div>
+    </div>
+  </div>
+</div>

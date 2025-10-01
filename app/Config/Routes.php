@@ -31,9 +31,10 @@ $routes->post('reset-password',  'Auth\ForgotPasswordController::resetPassword')
 $routes->get('auth/remember-status', 'Auth\AuthController::checkRememberStatus');
 
 // ==================== ADMIN ====================
-$routes->group('admin', ['filter' => ['session', 'group:admin']], static function ($routes) {
+ $routes->group('admin', ['filter' => ['session', 'group:admin']], static function ($routes) {
     $routes->get('dashboard', 'Admin\Dashboard::index');
     $routes->get('api/stats', 'Admin\Dashboard::stats');
+    $routes->get('api/leads/(:num)', 'Admin\Dashboard::getLeadDetail/$1');
 
     // Users SEO
     $routes->group('users-seo', function($routes){
@@ -91,12 +92,19 @@ $routes->group('admin', ['filter' => ['session', 'group:admin']], static functio
     $routes->post('announcements/(:num)/update',  'Admin\Announcements::update/$1');
     $routes->post('announcements/(:num)/delete',  'Admin\Announcements::delete/$1');
 
+    // Notifications
+    $routes->get('notifications', 'Notifications::index');
+    $routes->post('notifications/markRead/(:num)', 'Notifications::markRead/$1');
+    $routes->post('notifications/markAllRead', 'Notifications::markAllRead');
+    $routes->post('notifications/delete/(:num)', 'Notifications::delete/$1');
+    $routes->post('notifications/deleteAll', 'Notifications::deleteAll');
+
     // Activity Logs
     $routes->get('activity-logs', 'Admin\ActivityLogs::index');
 
 });
-$routes->get('admin/dashboard/index', static fn () => redirect()->to('/admin/dashboard'));
-
+ $routes->get('admin/dashboard/index', static fn () => redirect()->to('/admin/dashboard'));
+ 
 // ---------- SEO ----------
 $routes->group('seo', [
     'namespace' => 'App\Controllers\Seo',

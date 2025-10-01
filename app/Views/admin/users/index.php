@@ -46,7 +46,7 @@ function row_key($role, $u, $index) {
 }
 
 /* ===== Ambil EMAIL dari Shield (auth_identities.secret) ===== */
-$emailById = [];
+ $emailById = [];
 try {
   $db = db_connect();
   if (!empty($users) && $db->tableExists('auth_identities')) {
@@ -68,7 +68,7 @@ try {
 } catch (\Throwable $e) {}
 
 /* ===== Ambil data SEO dari seo_profiles ===== */
-$seoProfilesById = [];
+ $seoProfilesById = [];
 try {
   if (!empty($users)) {
     $db = db_connect();
@@ -97,7 +97,10 @@ try {
 
 
 /* ===== Ambil NO. TLP Vendor dari vendor_profiles ===== */
-$vendorPhoneById = [];
+ $vendorPhoneById = [];
+ $vendorStatusById = [];
+ $vendorIsVerifiedById = [];
+ $vendorCommissionById = [];
 try {
   if (!empty($users)) {
     $db = db_connect();
@@ -116,12 +119,17 @@ try {
         if ($present) {
           $expr = 'COALESCE(' . implode(',', array_map(fn($c)=>"`$c`", $present)) . ') AS phone';
           $rows = $db->table('vendor_profiles')
-            ->select("user_id, $expr")
+            ->select("user_id, $expr, status, is_verified, commission_rate")
             ->whereIn('user_id', $vendorIds)
             ->get()->getResultArray();
 
           foreach ($rows as $r) {
             if (!empty($r['phone'])) $vendorPhoneById[(int)$r['user_id']] = (string)$r['phone'];
+            if (!empty($r['status'])) $vendorStatusById[(int)$r['user_id']] = (string)$r['status'];
+            $vendorIsVerifiedById[(int)$r['user_id']] = (int)($r['is_verified'] ?? 0) === 1;
+            if (isset($r['commission_rate']) && $r['commission_rate'] !== '') {
+              $vendorCommissionById[(int)$r['user_id']] = (float)$r['commission_rate'];
+            }
           }
         }
       }
@@ -130,21 +138,43 @@ try {
 } catch (\Throwable $e) {}
 
 // Inisialisasi variabel untuk menghindari error
-$users = $users ?? [];
-$usersSeo = [];
-$usersVendor = [];
-$currentTab = $currentTab ?? 'seo';
+ $users = $users ?? [];
+ $usersSeo = [];
+ $usersVendor = [];
+ $currentTab = $currentTab ?? 'seo';
 
 // Filter users based on groups
 if (!empty($users)) {
     foreach ($users as $user) {
-        $groups = $user['groups'] ?? [];
+        $groups = normalize_groups($user);
         
         if (in_array('seoteam', $groups, true)) {
+            // Tambahkan data dari seo_profiles jika ada
+            $id = (int)($user['id'] ?? 0);
+            if (isset($seoProfilesById[$id])) {
+                $profile = $seoProfilesById[$id];
+                $user['name'] = $profile['name'] ?? $user['name'] ?? '-';
+                $user['phone'] = $profile['phone'] ?? $user['phone'] ?? '-';
+                $user['seo_status'] = $profile['status'] ?? 'active';
+            }
             $usersSeo[] = $user;
         }
 
         if (in_array('vendor', $groups, true)) {
+            // Tambahkan data dari vendor_profiles jika ada
+            $id = (int)($user['id'] ?? 0);
+            if (isset($vendorPhoneById[$id])) {
+                $user['phone'] = $vendorPhoneById[$id];
+            }
+            if (isset($vendorStatusById[$id])) {
+                $user['vendor_status'] = $vendorStatusById[$id];
+            }
+            if (isset($vendorIsVerifiedById[$id])) {
+                $user['is_verified'] = $vendorIsVerifiedById[$id];
+            }
+            if (isset($vendorCommissionById[$id])) {
+                $user['commission_rate'] = $vendorCommissionById[$id];
+            }
             $usersVendor[] = $user;
         }
     }
@@ -177,6 +207,18 @@ if (!empty($users)) {
         <h1 class="text-lg md:text-xl font-bold text-gray-900">Users Management</h1>
         <p class="text-xs md:text-sm text-gray-500 mt-0.5">Kelola akun Tim SEO dan Vendor</p>
       </div>
+    </div>
+    
+    <!-- Tab Navigation -->
+    <div class="mt-4 flex space-x-1 bg-gray-100 p-1 rounded-lg w-fit">
+      <a href="<?= site_url('admin/users?tab=seo') ?>" 
+         class="px-4 py-2 text-sm font-medium rounded-md transition-colors <?= $currentTab === 'seo' ? 'tab-active' : 'text-gray-600 hover:text-gray-900' ?>">
+        Tim SEO
+      </a>
+      <a href="<?= site_url('admin/users?tab=vendor') ?>" 
+         class="px-4 py-2 text-sm font-medium rounded-md transition-colors <?= $currentTab === 'vendor' ? 'tab-active' : 'text-gray-600 hover:text-gray-900' ?>">
+        Vendor
+      </a>
     </div>
   </div>
 
@@ -215,7 +257,7 @@ if (!empty($users)) {
               <td class="px-2 md:px-4 py-2 md:py-3 text-gray-900"><?= esc($u['name'] ?? '-') ?></td>
               <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800"><?= esc($u['username'] ?? '-') ?></td>
               <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800"><?= esc($u['phone'] ?? '-') ?></td>
-              <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800"><?= esc($u['email'] ?? '-') ?></td>
+              <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800"><?= esc($emailById[$id] ?? ($u['email'] ?? '-')) ?></td>
               <td class="px-2 md:px-4 py-2 md:py-3">
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= ($u['seo_status'] ?? 'active') === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' ?>">
                   <?= esc(ucfirst($u['seo_status'] ?? 'active')) ?>
@@ -266,16 +308,20 @@ if (!empty($users)) {
         <h2 class="text-sm font-semibold text-gray-800 flex items-center gap-2">
           <i class="fa-solid fa-store text-blue-600"></i> User Vendor
         </h2>
+        <a href="<?= site_url('admin/users/create?role=vendor'); ?>" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs md:text-sm px-3 md:px-4 py-2 rounded-lg shadow-sm">
+          <i class="fa fa-plus text-[11px]"></i> Add Vendor
+        </a>
       </div>
       <div class="overflow-x-auto">
         <table class="min-w-full text-xs md:text-sm" data-table-role="vendor">
-          <thead class="bg-gradient-to-r from-blue-600 to-indigo-700">
+          <thead class="bg-gradient-to-r from-emerald-600 to-teal-700">
             <tr>
               <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">ID</th>
               <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">NAMA LENGKAP</th>
               <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">USERNAME</th>
               <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">NO. TLP</th>
               <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">EMAIL</th>
+              <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">STATUS</th>
               <th class="px-2 md:px-4 py-2 md:py-3 text-right font-semibold text-white uppercase tracking-wider">AKSI</th>
             </tr>
           </thead>
@@ -298,28 +344,42 @@ if (!empty($users)) {
                   <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800 js-username"><?= esc($u['username'] ?? '-') ?></td>
                   <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800"><span class="js-phone"><?= esc($phoneVal) ?></span></td>
                   <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800"><span class="js-email"><?= esc($emailVal) ?></span></td>
+                  <td class="px-2 md:px-4 py-2 md:py-3">
+                    <div class="flex items-center gap-2">
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= $status === 'active' ? 'bg-green-100 text-green-800' : ($status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') ?>">
+                        <?= esc(ucfirst($status)) ?>
+                      </span>
+                      <?php if (isset($u['is_verified']) && $u['is_verified']): ?>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          <i class="fa-solid fa-check-circle mr-1"></i> Verified
+                        </span>
+                      <?php endif; ?>
+                    </div>
+                  </td>
                   <td class="px-2 md:px-4 py-2 md:py-3 text-right">
                     <div class="inline-flex items-center gap-1.5">
-                        <a href="<?= site_url('admin/users/') . $id . '/edit?role=vendor'; ?>" 
-                          class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm edit-user-btn">
+                        <button type="button" 
+                          class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm edit-user-btn"
+                          onclick="loadEditForm('<?= site_url('admin/users/') . $id . '/edit?role=vendor'; ?>')">
                           <i class="fa-regular fa-pen-to-square text-[11px]"></i> Edit
-                        </a>
+                        </button>
                       <button type="button" class="inline-flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm"
                               data-user-name="<?= esc(full_name_of($u)) ?>" data-role="Vendor" onclick="UMDel.open(this)">
                         <i class="fa-regular fa-trash-can text-[11px]"></i> Delete
                       </button>
-                      <button type="button" class="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-800 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm"
-                              data-state="<?= $isSus ? 'suspended' : 'active' ?>"
-                              onclick="(function(btn){const i=btn.querySelector('i');const t=btn.querySelector('span');const st=btn.getAttribute('data-state')||'active';if(st==='active'){btn.setAttribute('data-state','suspended');if(i)i.className='fa-regular fa-circle-play text-[11px]';if(t)t.textContent='Unsuspend';}else{btn.setAttribute('data-state','active');if(i)i.className='fa-regular fa-circle-pause text-[11px]';if(t)t.textContent='Suspend';}})(this)">
-                        <i class="<?= $sIcon ?> text-[11px]"></i> <span><?= $sLbl ?></span>
-                      </button>
+                      <form method="post" action="<?= site_url('admin/users/toggle-suspend/' . $id) ?>" class="inline">
+                        <button type="submit" class="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-800 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm">
+                          <i class="<?= $sIcon ?> text-[11px]"></i> 
+                          <?= $sLbl ?>
+                        </button>
+                      </form>
                     </div>
                   </td>
                 </tr>
               <?php endforeach; ?>
             <?php else: ?>
               <tr data-empty-state="true" class="fade-up-soft" style="--delay:.22s">
-                <td colspan="6" class="px-4 md:px-6 py-16">
+                <td colspan="7" class="px-4 md:px-6 py-16">
                   <div class="flex flex-col items-center justify-center text-center">
                     <div class="w-14 h-14 rounded-2xl bg-gray-100 grid place-items-center"><i class="fa-solid fa-bullhorn text-xl text-gray-400"></i></div>
                     <p class="mt-3 text-base md:text-lg font-semibold text-gray-400">Tidak ada data Vendor</p>
@@ -356,6 +416,7 @@ if (!empty($users)) {
     </div>
   </div>
 </div>
+
 <!-- ================= MODAL EDIT INLINE ================= -->
 <div id="editUserModal" class="fixed inset-0 z-[9999] flex items-start justify-center p-3 sm:p-4 hidden"
      x-data="editUserModal()">
@@ -509,7 +570,7 @@ window.UMDel = (function () {
     const rows=[...tbody.querySelectorAll('tr[data-rowkey]')]; const empty=tbody.querySelector('[data-empty-state="true"]');
     if(rows.length===0 && !empty){
       const tr=document.createElement('tr'); tr.setAttribute('data-empty-state','true');
-      tr.innerHTML=`<td colspan="${roleOf(tbody)==='seo' ? 7 : 6}" class="px-4 md:px-6 py-16"><div class="flex flex-col items-center justify-center text-center"><div class="w-14 h-14 rounded-2xl bg-gray-100 grid place-items-center"><i class="fa-solid fa-bullhorn text-xl text-gray-400"></i></div><p class="mt-3 text-base md:text-lg font-semibold text-gray-400">${title}</p><p class="text-sm text-gray-400">${subtitle}</p></div></td>`;
+      tr.innerHTML=`<td colspan="${roleOf(tbody)==='seo' ? 7 : 7}" class="px-4 md:px-6 py-16"><div class="flex flex-col items-center justify-center text-center"><div class="w-14 h-14 rounded-2xl bg-gray-100 grid place-items-center"><i class="fa-solid fa-bullhorn text-xl text-gray-400"></i></div><p class="mt-3 text-base md:text-lg font-semibold text-gray-400">${title}</p><p class="text-sm text-gray-400">${subtitle}</p></div></td>`;
       tbody.appendChild(tr);
     } else if(rows.length>0 && empty){ empty.remove(); }
   }

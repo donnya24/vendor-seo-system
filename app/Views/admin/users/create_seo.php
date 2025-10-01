@@ -20,7 +20,7 @@
         <p class="text-xs md:text-sm text-gray-500 mt-1">Buat akun baru untuk Tim SEO</p>
       </div>
 
-      <a href="<?= site_url('admin/users'); ?>"
+      <a href="<?= site_url('admin/users?tab=seo'); ?>"
          class="inline-flex items-center gap-2 bg-white/80 border border-gray-200 hover:bg-white text-gray-700 font-medium text-sm px-3 md:px-4 py-2 rounded-lg shadow-sm">
         <i class="fa-solid fa-arrow-left text-[11px]"></i> Kembali
       </a>
@@ -182,7 +182,7 @@
           <div class="flex items-center justify-between">
             <div class="text-[11px] text-gray-500">Pastikan data sudah benar sebelum menyimpan.</div>
             <div class="flex items-center gap-2">
-              <a href="<?= site_url('admin/users'); ?>" class="px-4 py-2.5 rounded-xl border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-semibold shadow-sm">Batal</a>
+              <a href="<?= site_url('admin/users?tab=seo'); ?>" class="px-4 py-2.5 rounded-xl border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-semibold shadow-sm">Batal</a>
               <button type="submit" class="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md">Simpan User</button>
             </div>
           </div>
