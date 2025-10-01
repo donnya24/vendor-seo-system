@@ -60,8 +60,8 @@
               <td class="px-4 py-3 text-center text-gray-700">
                   <?= esc(date('d M Y', strtotime($l['tanggal_mulai']))) ?> s/d <?= esc(date('d M Y', strtotime($l['tanggal_selesai']))) ?>
               </td>
-              <td class="px-4 py-3 text-center font-semibold text-blue-600"><?= esc($l['jumlah_leads_masuk'] ?? 0) ?></td>
-              <td class="px-4 py-3 text-center font-semibold text-green-600"><?= esc($l['jumlah_leads_closing'] ?? 0) ?></td>
+              <td class="px-4 py-3 text-center font-semibold text-blue-600"><?= number_format($l['jumlah_leads_masuk'] ?? 0, 0, ',', '.') ?></td>
+              <td class="px-4 py-3 text-center font-semibold text-green-600"><?= number_format($l['jumlah_leads_closing'] ?? 0, 0, ',', '.') ?></td>
             </tr>
             <?php endforeach ?>
           <?php else: ?>
@@ -69,6 +69,7 @@
               <td colspan="5" class="px-4 py-10 text-center text-gray-500">
                 <i class="fas fa-inbox text-gray-300 text-3xl mb-2"></i>
                 <p>Tidak ada data leads pada periode yang dipilih.</p>
+                <p class="text-xs mt-2">Coba hapus filter untuk melihat semua data.</p>
               </td>
             </tr>
           <?php endif ?>
@@ -77,11 +78,13 @@
     </div>
 
     <!-- Pagination -->
+    <?php if (isset($pager) && $pager->getPageCount() > 1): ?>
     <div class="px-5 py-4 border-t border-gray-100">
       <div class="flex justify-center">
         <?= $pager->links() ?>
       </div>
     </div>
+    <?php endif; ?>
   </div>
 </div>
 

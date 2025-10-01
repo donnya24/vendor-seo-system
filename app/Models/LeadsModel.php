@@ -13,8 +13,8 @@ class LeadsModel extends Model
 
     protected $allowedFields    = [
         'vendor_id',
-        'tanggal_mulai',       // Tanggal mulai periode laporan
-        'tanggal_selesai',     // Tanggal selesai periode laporan
+        'tanggal_mulai',
+        'tanggal_selesai',
         'jumlah_leads_masuk',
         'jumlah_leads_diproses',
         'jumlah_leads_ditolak',
@@ -30,6 +30,7 @@ class LeadsModel extends Model
 
     /**
      * Ambil data leads dengan vendor, bisa difilter rentang tanggal
+     * Digunakan untuk halaman daftar leads
      */
     public function getLeadsWithVendor(int $vendorId, ?string $start = null, ?string $end = null)
     {
@@ -37,12 +38,10 @@ class LeadsModel extends Model
                         ->join('vendor_profiles', 'vendor_profiles.id = leads.vendor_id', 'left')
                         ->where('leads.vendor_id', $vendorId);
 
+        // Jika start dan end diberikan, filter berdasarkan periode
         if (!empty($start) && !empty($end)) {
-            // Ambil data yang overlap dengan periode filter
             $builder->where('leads.tanggal_mulai <=', $end)
                     ->where('leads.tanggal_selesai >=', $start);
-        } elseif (!empty($start)) {
-            $builder->where('leads.tanggal_mulai', $start);
         }
 
         return $builder->orderBy('leads.tanggal_mulai', 'DESC')->paginate(20);
@@ -50,6 +49,7 @@ class LeadsModel extends Model
 
     /**
      * Ambil statistik dashboard vendor berdasarkan rentang tanggal
+     * Method ini dikembalikan seperti semula agar tidak mengganggu controller lain
      */
     public function getDashboardStats(int $vendorId, string $start, string $end): array
     {
@@ -67,6 +67,34 @@ class LeadsModel extends Model
             'total'               => (int)($row['total'] ?? 0),
             'total_leads_masuk'   => (int)($row['total_leads_masuk'] ?? 0),
             'total_leads_closing' => (int)($row['total_leads_closing'] ?? 0),
+        ];
+    }
+
+    /**
+     * Method BARU: Ambil total keseluruhan leads untuk satu vendor
+     * Digunakan untuk dashboard yang menampilkan total tanpa filter tanggal
+     */
+    public function getTotalLeadsByVendor(int $vendorId): array
+    {
+        $row = $this->select("
+                    COALESCE(SUM(jumlah_leads_masuk), 0) AS total_leads_masuk,
+                    COALESCE(SUM(jumlah_leads_closing), 0) AS total_leads_closing
+                ")
+                ->where('vendor_id', $vendorId)
+                ->first();
+
+        $totalMasuk = (int)($row['total_leads_masuk'] ?? 0);
+        $totalClosing = (int)($row['total_leads_closing'] ?? 0);
+        
+        // Hitung konversi
+        $konversi = $totalMasuk > 0 ? round(($totalClosing / $totalMasuk) * 100, 1) : 0;
+
+        return [
+            'total' => $totalMasuk, // Untuk kompatibilitas dengan view
+            'closed' => $totalClosing, // Untuk kompatibilitas dengan view
+            'total_leads_masuk' => $totalMasuk,
+            'total_leads_closing' => $totalClosing,
+            'konversi' => $konversi,
         ];
     }
 

@@ -19,18 +19,46 @@
     </div>
 
     <!-- STATS CARDS -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <!-- Leads -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- Leads Masuk -->
         <div class="bg-gradient-to-br from-blue-50 to-white rounded-xl shadow border border-gray-200 overflow-hidden relative">
             <div class="p-5">
                 <div class="flex items-start justify-between">
                     <div>
-                        <p class="text-sm font-medium text-gray-500">Leads (Periode)</p>
-                        <p class="text-3xl font-bold text-gray-900"><?= (int)($leadStats['total'] ?? 0) ?></p>
+                        <p class="text-sm font-medium text-gray-500">Total Leads Masuk</p>
+                        <p class="text-3xl font-bold text-gray-900"><?= (int)($leadStats['total_leads_masuk'] ?? 0) ?></p>
                     </div>
                     <div class="p-3 bg-blue-100 rounded-xl">
-                        <i class="fas fa-user-friends text-blue-600 text-lg"></i>
+                        <i class="fas fa-user-plus text-blue-600 text-lg"></i>
                     </div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+                    <p class="text-sm text-gray-500">Status:</p>
+                    <span class="text-xs text-gray-600">Total Keseluruhan</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Leads Closing -->
+        <div class="bg-gradient-to-br from-green-50 to-white rounded-xl shadow border border-gray-200 overflow-hidden">
+            <div class="p-5">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">Total Leads Closing</p>
+                        <p class="text-3xl font-bold text-gray-900"><?= (int)($leadStats['total_leads_closing'] ?? 0) ?></p>
+                    </div>
+                    <div class="p-3 bg-green-100 rounded-xl">
+                        <i class="fas fa-handshake text-green-600 text-lg"></i>
+                    </div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+                    <p class="text-sm text-gray-500">Konversi:</p>
+                    <span class="text-xs font-medium 
+                        <?= ($leadStats['konversi'] ?? 0) >= 20 
+                            ? 'text-green-600' 
+                            : 'text-orange-600' ?>">
+                        <?= ($leadStats['konversi'] ?? 0) ?>%
+                    </span>
                 </div>
             </div>
         </div>
@@ -56,28 +84,28 @@
             </div>
         </div>
 
-        <!-- Komisi -->
-        <div class="bg-gradient-to-br from-green-50 to-white rounded-xl shadow border border-gray-200 overflow-hidden">
+        <!-- Komisi Paid -->
+        <div class="bg-gradient-to-br from-emerald-50 to-white rounded-xl shadow border border-gray-200 overflow-hidden">
             <div class="p-5">
                 <div class="flex items-start justify-between">
                     <div>
-                        <p class="text-sm font-medium text-gray-500">Komisi (Periode)</p>
+                        <p class="text-sm font-medium text-gray-500">Komisi Paid</p>
                         <p class="text-3xl font-bold text-gray-900">
-                            <?= ($commission && $commission['total_amount']>0)
-                                ? 'Rp'.number_format($commission['total_amount'],0,',','.')
+                            <?= ($paidCommission && $paidCommission['total_amount']>0)
+                                ? 'Rp'.number_format($paidCommission['total_amount'],0,',','.')
                                 : '—' ?>
                         </p>
                     </div>
-                    <div class="p-3 bg-green-100 rounded-xl">
-                        <i class="fas fa-money-bill-wave text-green-600 text-lg"></i>
+                    <div class="p-3 bg-emerald-100 rounded-xl">
+                        <i class="fas fa-money-bill-wave text-emerald-600 text-lg"></i>
                     </div>
                 </div>
-                <div class="mt-4 pt-4 border-t border-gray-100 flex items-center">
-                    <p class="text-sm text-gray-500"></p>
-                    <div class="ml-2">
-                        <?= $commission && $commission['total_amount']>0
-                            ? '<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">'.strtoupper($commission['status'] ?? 'draft').'</span>'
-                            : '<span class="text-gray-500 text-sm">Belum dihitung</span>' ?>
+                <div class="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+                    <p class="text-sm text-gray-500">Transaksi:</p>
+                    <div>
+                        <?= $paidCommission && $paidCommission['total_amount']>0
+                            ? '<span class="px-2 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-medium">'.$paidCommission['count'].' transaksi</span>'
+                            : '<span class="text-gray-500 text-sm">Belum ada komisi paid</span>' ?>
                     </div>
                 </div>
             </div>

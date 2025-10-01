@@ -21,8 +21,15 @@ class Leads extends BaseController
             ?? session()->get('vendor_id')
             ?? 1);
 
-        $start = $this->request->getGet('start') ?? date('Y-m-01');
-        $end   = $this->request->getGet('end')   ?? date('Y-m-t');
+        // Ambil tanggal dari request, jika kosong maka jadikan null
+        $start = $this->request->getGet('start');
+        $end   = $this->request->getGet('end');
+
+        // Jika salah satu tanggal kosong, tampilkan semua data
+        if (empty($start) || empty($end)) {
+            $start = null;
+            $end = null;
+        }
 
         $leads = $this->leadModel->getLeadsWithVendor($vendorId, $start, $end);
 
@@ -30,17 +37,17 @@ class Leads extends BaseController
             $vendorId,
             'leads',
             'view',
-            "User melihat daftar leads periode {$start} s/d {$end}"
+            "User melihat daftar leads" . ($start ? " periode {$start} s/d {$end}" : " seluruhnya")
         );
 
         return view('seo/leads/index', [
             'title'      => 'Pantau Leads',
             'activeMenu' => 'leads',
             'leads'      => $leads,
-            'pager'      => $this->leadModel->pager, // Pager otomatis dari model
+            'pager'      => $this->leadModel->pager,
             'vendorId'   => $vendorId,
-            'start'      => $start,
-            'end'        => $end
+            'start'      => $start ?? date('Y-m-01'), // Untuk nilai default di form
+            'end'        => $end ?? date('Y-m-t')     // Untuk nilai default di form
         ]);
     }
 
