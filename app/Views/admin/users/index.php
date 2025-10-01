@@ -448,7 +448,7 @@ if (!empty($users)) {
   </div>
 </div>
 
-<!-- MODAL EDIT USER -->
+<!-- ================= MODAL EDIT USER ================= -->
 <div id="editUserModal"
      class="fixed inset-0 z-[9999] flex items-start justify-center bg-black/50 p-4"
      x-data="editUserModal" 
@@ -538,6 +538,8 @@ document.addEventListener('alpine:init', () => {
         this.loading = true;
         document.body.style.overflow = 'hidden';
         
+        console.log('Loading edit form from:', url);
+        
         const response = await fetch(url, {
           headers: {
             'X-Requested-With': 'XMLHttpRequest'
@@ -572,7 +574,7 @@ document.addEventListener('alpine:init', () => {
     }
   }));
 
-  // SEO Form Component (akan digunakan di _form_seo.php)
+  // SEO Form Component (untuk create)
   Alpine.data('seoForm', () => ({
     loading: false,
     showPassword: false,
@@ -624,6 +626,145 @@ document.addEventListener('alpine:init', () => {
       }
     }
   }));
+
+  // SEO Edit Form Component
+  Alpine.data('editSeoForm', () => ({
+    loading: false,
+    showResetPassword: false,
+    
+    closeModal() {
+      const editModal = document.querySelector('#editUserModal');
+      if (editModal && editModal.__x) {
+        editModal.__x.close();
+      }
+    },
+    
+    async submitForm(e) {
+      e.preventDefault();
+      const form = e.target;
+      const formData = new FormData(form);
+      
+      this.loading = true;
+      
+      try {
+        const response = await fetch(form.action, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+        
+        if (response.ok) {
+          window.location.href = '<?= site_url('admin/users?tab=seo') ?>';
+        } else {
+          const result = await response.json();
+          alert(result.message || 'Gagal mengupdate user');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Terjadi kesalahan saat menyimpan data');
+      } finally {
+        this.loading = false;
+      }
+    }
+  }));
+
+  // Vendor Form Component (untuk create)
+  Alpine.data('vendorForm', () => ({
+    loading: false,
+    showPassword: false,
+    showConfirmPassword: false,
+    
+    closeModal() {
+      const createModal = document.querySelector('#createUserModal');
+      if (createModal && createModal.__x) {
+        createModal.__x.close();
+      }
+    },
+    
+    async submitForm(e) {
+      e.preventDefault();
+      const form = e.target;
+      const formData = new FormData(form);
+      
+      // Validasi password
+      const password = formData.get('password');
+      const passwordConfirm = formData.get('password_confirm');
+      
+      if (password !== passwordConfirm) {
+        alert('Konfirmasi password tidak sama!');
+        return;
+      }
+      
+      this.loading = true;
+      
+      try {
+        const response = await fetch(form.action, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+        
+        if (response.ok) {
+          window.location.href = '<?= site_url('admin/users?tab=vendor') ?>';
+        } else {
+          const result = await response.json();
+          alert(result.message || 'Gagal menyimpan user');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Terjadi kesalahan saat menyimpan data');
+      } finally {
+        this.loading = false;
+      }
+    }
+  }));
+
+  // Vendor Edit Form Component
+  Alpine.data('editVendorForm', () => ({
+    loading: false,
+    showResetPassword: false,
+    
+    closeModal() {
+      const editModal = document.querySelector('#editUserModal');
+      if (editModal && editModal.__x) {
+        editModal.__x.close();
+      }
+    },
+    
+    async submitForm(e) {
+      e.preventDefault();
+      const form = e.target;
+      const formData = new FormData(form);
+      
+      this.loading = true;
+      
+      try {
+        const response = await fetch(form.action, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+        
+        if (response.ok) {
+          window.location.href = '<?= site_url('admin/users?tab=vendor') ?>';
+        } else {
+          const result = await response.json();
+          alert(result.message || 'Gagal mengupdate user');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Terjadi kesalahan saat menyimpan data');
+      } finally {
+        this.loading = false;
+      }
+    }
+  }));
 });
 
 // ===== GLOBAL FUNCTIONS =====
@@ -640,7 +781,6 @@ function loadCreateForm(url) {
     modal.__x.loadCreateForm(url);
   } else {
     console.error('Alpine component untuk create modal tidak ditemukan');
-    // Fallback sederhana
     fallbackLoadCreateForm(url);
   }
 }
@@ -658,10 +798,11 @@ function loadEditForm(url) {
     modal.__x.loadEditForm(url);
   } else {
     console.error('Alpine component untuk edit modal tidak ditemukan');
+    fallbackLoadEditForm(url);
   }
 }
 
-// Fallback jika Alpine gagal
+// Fallback jika Alpine gagal (create)
 function fallbackLoadCreateForm(url) {
   console.log('Menggunakan fallback method untuk:', url);
   
@@ -670,7 +811,6 @@ function fallbackLoadCreateForm(url) {
   })
   .then(response => response.text())
   .then(html => {
-    // Buat modal sementara
     const tempModal = document.createElement('div');
     tempModal.innerHTML = `
       <div class="fixed inset-0 z-[9999] flex items-start justify-center bg-black/50 p-4">
@@ -687,6 +827,34 @@ function fallbackLoadCreateForm(url) {
   .catch(error => {
     console.error('Error:', error);
     alert('Gagal memuat form');
+  });
+}
+
+// Fallback untuk edit form
+function fallbackLoadEditForm(url) {
+  console.log('Menggunakan fallback method untuk edit form:', url);
+  
+  fetch(url, { 
+    headers: { 'X-Requested-With': 'XMLHttpRequest' } 
+  })
+  .then(response => response.text())
+  .then(html => {
+    const tempModal = document.createElement('div');
+    tempModal.innerHTML = `
+      <div class="fixed inset-0 z-[9999] flex items-start justify-center bg-black/50 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl relative mt-10 max-h-[90vh] overflow-y-auto">
+          <button type="button" class="absolute top-3 right-3 z-10 text-gray-400 hover:text-gray-600 bg-white rounded-full p-2" onclick="this.closest('.fixed').remove()">
+            <i class="fa-solid fa-times text-lg"></i>
+          </button>
+          <div class="p-6">${html}</div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(tempModal);
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Gagal memuat form edit');
   });
 }
 
@@ -712,6 +880,21 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
+  // Event listener untuk tombol edit
+  document.addEventListener('click', function(e) {
+    const editBtn = e.target.closest('button[onclick*="loadEditForm"]');
+    if (editBtn) {
+      e.preventDefault();
+      const onclickAttr = editBtn.getAttribute('onclick');
+      const urlMatch = onclickAttr.match(/loadEditForm\('([^']+)'\)/);
+      
+      if (urlMatch && urlMatch[1]) {
+        console.log('Edit button clicked, URL:', urlMatch[1]);
+        loadEditForm(urlMatch[1]);
+      }
+    }
+  });
+
   // Debug functions
   window.testLoadCreate = function(role = 'seoteam') {
     const url = `<?= site_url('admin/users/create?role=') ?>${role}`;
@@ -719,12 +902,157 @@ document.addEventListener('DOMContentLoaded', function() {
     loadCreateForm(url);
   };
   
+  window.testLoadEdit = function(userId, role = 'seoteam') {
+    const url = `<?= site_url('admin/users/') ?>${userId}/edit?role=${role}`;
+    console.log('Testing load edit form:', url);
+    loadEditForm(url);
+  };
+  
   window.debugModals = function() {
     console.log('=== MODAL DEBUG ===');
     const createModal = document.querySelector('#createUserModal');
+    const editModal = document.querySelector('#editUserModal');
     console.log('Create Modal Alpine instance:', createModal?.__x);
+    console.log('Edit Modal Alpine instance:', editModal?.__x);
   };
 });
+
+// ===== DELETE FUNCTIONALITY =====
+/* ========= User Management Delete (REAL DELETE) ========= */
+window.UMDel = (function () {
+  const modal = document.getElementById('confirmDelete');
+  const nameEl = document.getElementById('cdName');
+  const yesEl = document.getElementById('cdYes');
+  const noEl = document.getElementById('cdNo');
+  const xEl = document.getElementById('cdClose');
+  const overlay = modal?.querySelector('[data-overlay]');
+  
+  let targetRow = null;
+  let deleteUrl = '';
+  let currentTab = '<?= $currentTab ?? "seo" ?>';
+
+  function open(btn) {
+    const row = btn.closest('tr[data-rowkey]');
+    if (!row) return;
+    
+    targetRow = row;
+    const userName = btn.getAttribute('data-user-name') || 'User';
+    const userId = getUserIdFromRow(row);
+    
+    // Set delete URL berdasarkan role
+    deleteUrl = `<?= site_url('admin/users/') ?>${userId}/delete`;
+    
+    nameEl.textContent = userName;
+    document.documentElement.style.overflow = 'hidden';
+    modal.classList.remove('modal-hidden');
+  }
+
+  function getUserIdFromRow(row) {
+    // Ambil ID dari kolom pertama
+    const idCell = row.querySelector('td:first-child');
+    return idCell ? idCell.textContent.trim() : '';
+  }
+
+  function close() {
+    modal.classList.add('modal-hidden');
+    document.documentElement.style.overflow = '';
+    targetRow = null;
+    deleteUrl = '';
+  }
+
+  async function confirmDelete() {
+    if (!targetRow || !deleteUrl) return;
+
+    try {
+      const response = await fetch(deleteUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-TOKEN': getCsrfToken()
+        }
+      });
+
+      if (response.ok) {
+        // Hapus row dari tabel
+        targetRow.remove();
+        
+        // Tampilkan pesan sukses
+        showToast('User berhasil dihapus', 'success');
+        
+        // Redirect ke tab yang sesuai
+        setTimeout(() => {
+          window.location.href = `<?= site_url('admin/users?tab=') ?>${currentTab}`;
+        }, 1000);
+        
+      } else {
+        const result = await response.json();
+        showToast(result.message || 'Gagal menghapus user', 'error');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      showToast('Terjadi kesalahan saat menghapus user', 'error');
+    } finally {
+      close();
+    }
+  }
+
+  function getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
+           document.querySelector('input[name="csrf_token"]')?.value;
+  }
+
+  function showToast(message, type = 'info') {
+    // Buat toast notification sederhana
+    const toast = document.createElement('div');
+    toast.className = `fixed top-4 right-4 z-[10000] px-4 py-3 rounded-lg shadow-lg text-white font-medium ${
+      type === 'success' ? 'bg-green-500' : 
+      type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+    }`;
+    toast.textContent = message;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+      toast.remove();
+    }, 3000);
+  }
+
+  // Event listeners
+  if (yesEl) yesEl.addEventListener('click', (e) => {
+    e.stopPropagation();
+    confirmDelete();
+  }, true);
+
+  if (noEl) noEl.addEventListener('click', (e) => {
+    e.stopPropagation();
+    close();
+  }, true);
+
+  if (xEl) xEl.addEventListener('click', (e) => {
+    e.stopPropagation();
+    close();
+  }, true);
+
+  if (overlay) overlay.addEventListener('click', (e) => {
+    e.stopPropagation();
+    close();
+  }, true);
+
+  document.addEventListener('keydown', (e) => {
+    if (modal.classList.contains('modal-hidden')) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      close();
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      confirmDelete();
+    }
+  });
+
+  return { open, close };
+})();
 
 // ===== EXISTING FUNCTIONS =====
 /* Patch dari localStorage jika phone/email masih '-' */
@@ -746,11 +1074,6 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
   }catch(e){}
-})();
-
-/* ========= User Management Delete ========= */
-window.UMDel = (function () {
-  // ... kode UMDel yang sudah ada (tetap sama) ...
 })();
 </script>
 

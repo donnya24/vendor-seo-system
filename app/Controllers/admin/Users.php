@@ -198,51 +198,58 @@ public function create()
         return redirect()->to(site_url('admin/users?tab=' . $tab))->with('success', 'User created.');
     }
 
-    public function edit($id)
-    {
-        $role = $this->request->getGet('role') ?? 'seoteam';
+public function edit($id)
+{
+    $role = $this->request->getGet('role') ?? 'seoteam';
 
-        $user = $this->users->asArray()->find($id);
-        if (! $user) {
-            if ($this->request->isAJAX()) {
-                return $this->response->setStatusCode(404)->setJSON(['error' => 'User tidak ditemukan']);
-            }
-            return redirect()->to(site_url('admin/users'))->with('error', 'User tidak ditemukan');
+    $user = $this->users->asArray()->find($id);
+    if (!$user) {
+        if ($this->request->isAJAX()) {
+            return $this->response->setStatusCode(404)->setJSON(['error' => 'User tidak ditemukan']);
         }
+        return redirect()->to(site_url('admin/users'))->with('error', 'User tidak ditemukan');
+    }
 
-        $groups  = $this->getUserGroups((int) $id);
-        $profile = [];
+    $groups = $this->getUserGroups((int)$id);
+    $profile = [];
 
-        if ($role === 'vendor') {
-            $profile = $this->vendorModel->where('user_id', $id)->first();
-        } elseif ($role === 'seoteam') {
-            $profile = $this->seoModel->where('user_id', $id)->first();
-            if ($profile) {
-                $user['name'] = $profile['name'] ?? $user['username'];
-                $user['phone'] = $profile['phone'] ?? '';
-            }
-        }
-
-        // Ambil email dari auth_identities
-        $identity = $this->identityModel->where(['user_id' => $id, 'type' => 'email_password'])->first();
-        $user['email'] = $identity['secret'] ?? '';
-
-        $data = [
-            'page'          => 'Users',
-            'user'          => $user,
-            'groups'        => $groups,
-            'role'          => $role,
-            'profile'       => $profile,
-            'vendorProfile' => $profile,
-        ];
-
-        // Tampilkan view yang sesuai berdasarkan role
-        if ($role === 'vendor') {
-            return view('admin/users/edit_vendor', $data);
-        } else {
-            return view('admin/users/edit_seo', $data);
+    if ($role === 'vendor') {
+        $profile = $this->vendorModel->where('user_id', $id)->first();
+    } elseif ($role === 'seoteam') {
+        $profile = $this->seoModel->where('user_id', $id)->first();
+        if ($profile) {
+            $user['name'] = $profile['name'] ?? $user['username'];
+            $user['phone'] = $profile['phone'] ?? '';
         }
     }
+
+    // Ambil email dari auth_identities
+    $identity = $this->identityModel->where(['user_id' => $id, 'type' => 'email_password'])->first();
+    $user['email'] = $identity['secret'] ?? '';
+
+    $data = [
+        'user' => $user,
+        'groups' => $groups,
+        'role' => $role,
+        'profile' => $profile,
+    ];
+
+    // Return HTML untuk modal AJAX
+    if ($this->request->isAJAX()) {
+        if ($role === 'vendor') {
+            return view('admin/users/_form_edit_vendor', $data);
+        } else {
+            return view('admin/users/_form_edit_seo', $data);
+        }
+    }
+
+    // Fallback untuk non-AJAX
+    if ($role === 'vendor') {
+        return view('admin/users/edit_vendor', $data);
+    } else {
+        return view('admin/users/edit_seo', $data);
+    }
+}
 
     // ========== UPDATE ==========
     public function update($id)
