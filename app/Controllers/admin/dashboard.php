@@ -39,8 +39,14 @@ class Dashboard extends BaseController
                               ->selectSum('jumlah_leads_closing', 'total_close')
                               ->first()['total_close'] ?? 0;
 
-        // Hitung komisi bulan ini (status paid) - PERBAIKAN: Filter berdasarkan paid_at
+        // PERBAIKAN: Total komisi dengan status paid (tanpa filter tanggal)
         $commissionsModel = new CommissionsModel();
+        $totalCommissionPaid = $commissionsModel
+            ->where('status', 'paid')
+            ->selectSum('amount', 'total_commission')
+            ->first()['total_commission'] ?? 0;
+
+        // Total komisi bulan ini (status paid) - untuk informasi tambahan
         $monthlyCommissionPaid = $commissionsModel
             ->where('status', 'paid')
             ->where('paid_at >=', $monthFrom . ' 00:00:00')
@@ -175,7 +181,8 @@ class Dashboard extends BaseController
                 'totalVendors' => (int) $totalVendors,
                 'todayLeads'   => (int) $todayLeads,
                 'monthlyDeals' => (int) $monthlyDeals,
-                'monthlyCommissionPaid' => (float) $monthlyCommissionPaid,
+                'totalCommissionPaid' => (float) $totalCommissionPaid, // PERBAIKAN: Total komisi paid keseluruhan
+                'monthlyCommissionPaid' => (float) $monthlyCommissionPaid, // Total komisi paid bulan ini
                 'topKeyword'   => $topKeyword,
                 'totalLeadsIn' => (int) $totalLeadsIn,
                 'totalLeadsClosing' => (int) $totalLeadsClosing,
@@ -214,8 +221,14 @@ class Dashboard extends BaseController
                               ->selectSum('jumlah_leads_closing', 'total_close')
                               ->first()['total_close'] ?? 0;
 
-        // Hitung komisi bulan ini (status paid) - PERBAIKAN: Filter berdasarkan paid_at
+        // PERBAIKAN: Total komisi dengan status paid (tanpa filter tanggal)
         $commissionsModel = new CommissionsModel();
+        $totalCommissionPaid = $commissionsModel
+            ->where('status', 'paid')
+            ->selectSum('amount', 'total_commission')
+            ->first()['total_commission'] ?? 0;
+
+        // Total komisi bulan ini (status paid)
         $monthlyCommissionPaid = $commissionsModel
             ->where('status', 'paid')
             ->where('paid_at >=', $monthFrom . ' 00:00:00')
@@ -235,7 +248,8 @@ class Dashboard extends BaseController
             'totalVendors' => (int) $totalVendors,
             'todayLeads'   => (int) $todayLeads,
             'monthlyDeals' => (int) $monthlyDeals,
-            'monthlyCommissionPaid' => (float) $monthlyCommissionPaid,
+            'totalCommissionPaid' => (float) $totalCommissionPaid, // PERBAIKAN: Total komisi paid keseluruhan
+            'monthlyCommissionPaid' => (float) $monthlyCommissionPaid, // Total komisi paid bulan ini
             'topKeyword'   => $topKeyword,
             'totalSeoTeam' => (int) $totalSeoTeam,
         ]);

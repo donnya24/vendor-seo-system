@@ -151,11 +151,11 @@
         <div class="flex items-center justify-between">
           <div class="flex-1">
             <p class="text-[10px] font-semibold text-green-800 uppercase tracking-wider mb-0.5">TOTAL KOMISI</p>
-            <p class="text-lg font-bold text-green-900">Rp <?= number_format($stats['monthlyCommissionPaid'] ?? 0, 0, ',', '.'); ?></p>
+            <p class="text-lg font-bold text-green-900">Rp <?= number_format($stats['totalCommissionPaid'] ?? 0, 0, ',', '.'); ?></p>
           </div>
           <div class="flex items-center justify-center w-8 h-8 bg-green-600 rounded-md text-white ml-2"><i class="fas fa-money-bill-wave text-xs"></i></div>
         </div>
-        <div class="mt-1.5 pt-1.5 border-t border-green-200/50"><div class="flex items-center text-green-700 text-[10px] font-medium"><i class="fas fa-check-circle mr-0.5"></i><span class="font-semibold">Status paid</span></div></div>
+        <div class="mt-1.5 pt-1.5 border-t border-green-200/50"><div class="flex items-center text-green-700 text-[10px] font-medium"><i class="fas fa-check-circle mr-0.5"></i><span class="font-semibold">Status paid (Semua)</span></div></div>
       </div>
 
       <!-- 3. Top keyword -->
