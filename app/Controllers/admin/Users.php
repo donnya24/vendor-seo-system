@@ -69,12 +69,14 @@ class Users extends BaseController
                 $u['seo_status']    = null;
 
                 if (in_array('vendor', $u['groups'], true)) {
-                    $vp = $this->vendorModel->select('status, is_verified, commission_rate')
+                    $vp = $this->vendorModel->select('status, requested_commission, requested_commission_nominal, commission_type')
                         ->where('user_id', (int) $u['id'])
                         ->first();
-                    $u['vendor_status'] = $vp['status'] ?? 'pending';
-                    $u['is_verified'] = (int)($vp['is_verified'] ?? 0) === 1;
-                    $u['commission_rate'] = $vp['commission_rate'] ?? null;
+
+                    $u['vendor_status']     = $vp['status'] ?? 'pending';
+                    $u['requested_commission'] = $vp['requested_commission'] ?? null;
+                    $u['requested_commission_nominal'] = $vp['requested_commission_nominal'] ?? null;
+                    $u['commission_type']   = $vp['commission_type'] ?? null;
                 }
 
                 if (in_array('seoteam', $u['groups'], true)) {
@@ -107,23 +109,33 @@ class Users extends BaseController
         ]);
     }
 
-    // ========== CREATE ==========
-    public function create()
-    {
-        $role = $this->request->getGet('role') ?? 'seoteam';
+// ========== CREATE ==========
+public function create()
+{
+    $role = $this->request->getGet('role') ?? 'seoteam';
 
+    // Handle AJAX request untuk modal - return HTML langsung
+    if ($this->request->isAJAX()) {
         if ($role === 'vendor') {
-            return view('admin/users/create_vendor', [
-                'page' => 'Users',
-                'role' => $role,
-            ]);
+            return view('admin/users/_form_vendor', ['role' => $role]);
         } else {
-            return view('admin/users/create_seo', [
-                'page' => 'Users',
-                'role' => $role,
-            ]);
+            return view('admin/users/_form_seo', ['role' => $role]);
         }
     }
+
+    // fallback untuk non-AJAX
+    if ($role === 'vendor') {
+        return view('admin/users/create_vendor', [
+            'page' => 'Users',
+            'role' => $role,
+        ]);
+    } else {
+        return view('admin/users/create_seo', [
+            'page' => 'Users',
+            'role' => $role,
+        ]);
+    }
+}
 
     public function store()
     {
@@ -156,17 +168,17 @@ class Users extends BaseController
 
         // vendor profile
         if ($role === 'vendor') {
-            $vendorStatus = $this->request->getPost('vendor_status') ?? 'pending';
-            $isVerified = (int) $this->request->getPost('is_verified') === 1;
-            $commissionRate = $this->request->getPost('commission_rate');
-            
+            $vendorStatus   = $this->request->getPost('vendor_status') ?? 'pending';
+            $commissionType = $this->request->getPost('commission_type') ?? 'nominal';
+            $requestedCommissionNominal = $this->request->getPost('requested_commission_nominal');
+
             $this->vendorModel->insert([
-                'user_id'         => $userId,
-                'status'          => $vendorStatus,
-                'is_verified'     => $isVerified ? 1 : 0,
-                'commission_rate' => $commissionRate !== '' ? (float) $commissionRate : null,
-                'created_at'      => date('Y-m-d H:i:s'),
-                'updated_at'      => date('Y-m-d H:i:s'),
+                'user_id'                   => $userId,
+                'status'                    => $vendorStatus,
+                'commission_type'           => $commissionType,
+                'requested_commission_nominal' => $requestedCommissionNominal !== '' ? (float) $requestedCommissionNominal : null,
+                'created_at'                => date('Y-m-d H:i:s'),
+                'updated_at'                => date('Y-m-d H:i:s'),
             ]);
         }
 
@@ -281,15 +293,15 @@ class Users extends BaseController
             $fullname       = trim((string) $this->request->getPost('fullname'));
             $phone          = trim((string) $this->request->getPost('phone'));
             $vendorStatus   = (string) $this->request->getPost('vendor_status');
-            $isVerified     = (int) $this->request->getPost('is_verified') === 1;
-            $commissionRate = $this->request->getPost('commission_rate');
+            $commissionType = $this->request->getPost('commission_type');
+            $requestedCommissionNominal = $this->request->getPost('requested_commission_nominal');
 
             $exists = $this->vendorModel->where('user_id', $id)->first();
             $data = [
-                'status'         => $vendorStatus,
-                'is_verified'    => $isVerified ? 1 : 0,
-                'commission_rate' => $commissionRate !== '' ? (float) $commissionRate : null,
-                'updated_at'     => date('Y-m-d H:i:s'),
+                'status'                    => $vendorStatus,
+                'commission_type'           => $commissionType,
+                'requested_commission_nominal' => $requestedCommissionNominal !== '' ? (float) $requestedCommissionNominal : null,
+                'updated_at'                => date('Y-m-d H:i:s'),
             ];
 
             if ($exists) {

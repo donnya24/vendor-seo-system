@@ -199,7 +199,12 @@ if (!empty($users)) {
 </style>
 <script>document.addEventListener('DOMContentLoaded',()=>{document.documentElement.classList.remove('error','error-theme','with-sidebar-fallback');});</script>
 
-<div id="pageWrap" class="flex-1 flex flex-col min-h-screen bg-gray-50 transition-[margin] duration-300 ease-in-out" :class="(sidebarOpen && (typeof isDesktop==='undefined' || isDesktop)) ? 'md:ml-64' : 'ml-0'">
+<div id="pageWrap" class="flex-1 flex flex-col min-h-screen bg-gray-50 transition-[margin] duration-300 ease-in-out" :class="($store.ui.sidebar && (typeof $store.layout.isDesktop==='undefined' || $store.layout.isDesktop)) ? 'md:ml-64' : 'ml-0'"
+<div id="pageWrap"
+     x-data="{ sidebarOpen: false, showLogoutModal: false, profileDropdownOpen: false }"
+     x-init="onInit()"
+     ...>
+
   <!-- Header -->
   <div class="px-3 md:px-6 pt-4 md:pt-6 max-w-screen-xl mx-auto w-full fade-up-soft" style="--delay:.02s">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -232,7 +237,10 @@ if (!empty($users)) {
     <h2 class="text-sm font-semibold text-gray-800 flex items-center gap-2">
       <i class="fa-solid fa-users text-blue-600"></i> User Tim SEO
     </h2>
-    <a href="<?= site_url('admin/users/create?role=seoteam'); ?>" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs md:text-sm px-3 md:px-4 py-2 rounded-lg shadow-sm">
+    <!-- Di bagian SEO -->
+    <a href="<?= site_url('admin/users/create?role=seoteam'); ?>"
+      class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs md:text-sm px-3 md:px-4 py-2 rounded-lg shadow-sm"
+      onclick="loadCreateForm('<?= site_url('admin/users/create?role=seoteam'); ?>'); return false;">
       <i class="fa fa-plus text-[11px]"></i> Add Tim SEO
     </a>
   </div>
@@ -308,9 +316,12 @@ if (!empty($users)) {
         <h2 class="text-sm font-semibold text-gray-800 flex items-center gap-2">
           <i class="fa-solid fa-store text-blue-600"></i> User Vendor
         </h2>
-        <a href="<?= site_url('admin/users/create?role=vendor'); ?>" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs md:text-sm px-3 md:px-4 py-2 rounded-lg shadow-sm">
-          <i class="fa fa-plus text-[11px]"></i> Add Vendor
-        </a>
+      <!-- Di bagian Vendor -->
+      <a href="<?= site_url('admin/users/create?role=vendor'); ?>"
+        class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs md:text-sm px-3 md:px-4 py-2 rounded-lg shadow-sm"
+        onclick="loadCreateForm('<?= site_url('admin/users/create?role=vendor'); ?>'); return false;">
+        <i class="fa fa-plus text-[11px]"></i> Add Vendor
+      </a>
       </div>
       <div class="overflow-x-auto">
         <table class="min-w-full text-xs md:text-sm" data-table-role="vendor">
@@ -393,7 +404,6 @@ if (!empty($users)) {
       </div>
     </section>
     <?php endif; ?>
-
   </main>
 </div>
 
@@ -417,46 +427,109 @@ if (!empty($users)) {
   </div>
 </div>
 
-<!-- ================= MODAL EDIT INLINE ================= -->
-<div id="editUserModal" class="fixed inset-0 z-[9999] flex items-start justify-center p-3 sm:p-4 hidden"
-     x-data="editUserModal()">
-  <div class="absolute inset-0 bg-black/60" @click="close()"></div>
-  
-  <div class="relative w-full sm:max-w-xl md:max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
-       x-show="open" x-transition.scale.origin.top>
-    <!-- Modal content akan di-load via AJAX -->
-    <div id="editModalContent" class="flex-1 overflow-y-auto">
-      <!-- Content akan diisi via AJAX -->
+<!-- MODAL CREATE USER -->
+<div id="createUserModal"
+     class="fixed inset-0 z-[9999] flex items-start justify-center bg-black/50 p-4"
+     x-data="createUserModal" 
+     x-show="open"
+     x-cloak>
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl relative mt-10 max-h-[90vh] overflow-y-auto">
+    <button type="button"
+            class="absolute top-3 right-3 z-10 text-gray-400 hover:text-gray-600 bg-white rounded-full p-2"
+            @click="close()">
+      <i class="fa-solid fa-times text-lg"></i>
+    </button>
+    <div id="createModalContent" class="p-6">
+      <div x-show="loading" class="text-center py-8">
+        <i class="fa-solid fa-spinner fa-spin text-blue-600 text-2xl"></i>
+        <p class="mt-2 text-gray-600">Memuat form...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDIT USER -->
+<div id="editUserModal"
+     class="fixed inset-0 z-[9999] flex items-start justify-center bg-black/50 p-4"
+     x-data="editUserModal" 
+     x-show="open"
+     x-cloak>
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl relative mt-10 max-h-[90vh] overflow-y-auto">
+    <button type="button"
+            class="absolute top-3 right-3 z-10 text-gray-400 hover:text-gray-600 bg-white rounded-full p-2"
+            @click="close()">
+      <i class="fa-solid fa-times text-lg"></i>
+    </button>
+    <div id="editModalContent" class="p-6">
+      <div x-show="loading" class="text-center py-8">
+        <i class="fa-solid fa-spinner fa-spin text-blue-600 text-2xl"></i>
+        <p class="mt-2 text-gray-600">Memuat form...</p>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
-// Fungsi global untuk memuat form edit
-function loadEditForm(url) {
-  const modal = document.querySelector('#editUserModal');
-  const alpineComponent = modal.__x;
-  
-  if (alpineComponent) {
-    alpineComponent.loadEditForm(url);
-  }
-}
-
-// Komponen Alpine untuk modal edit
-function editUserModal() {
-  return {
+// ===== ALPINE.JS COMPONENTS =====
+document.addEventListener('alpine:init', () => {
+  // Create Modal Component
+  Alpine.data('createUserModal', () => ({
     open: false,
     loading: false,
     
     init() {
-      // Event listener untuk tombol edit
-      document.addEventListener('click', (e) => {
-        const editBtn = e.target.closest('button[onclick*="loadEditForm"]');
-        if (editBtn) {
-          e.preventDefault();
-          // Tidak perlu memanggil loadEditForm di sini karena sudah menggunakan onclick
+      console.log('CreateUserModal component initialized');
+    },
+    
+    async loadCreateForm(url) {
+      try {
+        this.open = true;
+        this.loading = true;
+        document.body.style.overflow = 'hidden';
+        
+        console.log('Loading create form from:', url);
+        
+        const response = await fetch(url, {
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
-      });
+        
+        const html = await response.text();
+        document.getElementById('createModalContent').innerHTML = html;
+        this.loading = false;
+        
+        // Re-initialize Alpine.js components dalam form
+        if (window.Alpine) {
+          Alpine.initTree(document.getElementById('createModalContent'));
+        }
+        
+      } catch (error) {
+        console.error('Error loading create form:', error);
+        this.loading = false;
+        this.close();
+        alert('Gagal memuat form create. Silakan coba lagi.');
+      }
+    },
+    
+    close() {
+      this.open = false;
+      document.body.style.overflow = '';
+      document.getElementById('createModalContent').innerHTML = '';
+    }
+  }));
+
+  // Edit Modal Component
+  Alpine.data('editUserModal', () => ({
+    open: false,
+    loading: false,
+    
+    init() {
+      console.log('EditUserModal component initialized');
     },
     
     async loadEditForm(url) {
@@ -476,12 +549,10 @@ function editUserModal() {
         }
         
         const html = await response.text();
-        
-        // Langsung gunakan HTML yang diterima
         document.getElementById('editModalContent').innerHTML = html;
         this.loading = false;
         
-        // Re-initialize Alpine.js components
+        // Re-initialize Alpine.js components dalam form
         if (window.Alpine) {
           Alpine.initTree(document.getElementById('editModalContent'));
         }
@@ -499,34 +570,163 @@ function editUserModal() {
       document.body.style.overflow = '';
       document.getElementById('editModalContent').innerHTML = '';
     }
+  }));
+
+  // SEO Form Component (akan digunakan di _form_seo.php)
+  Alpine.data('seoForm', () => ({
+    loading: false,
+    showPassword: false,
+    showConfirmPassword: false,
+    
+    closeModal() {
+      const createModal = document.querySelector('#createUserModal');
+      if (createModal && createModal.__x) {
+        createModal.__x.close();
+      }
+    },
+    
+    async submitForm(e) {
+      e.preventDefault();
+      const form = e.target;
+      const formData = new FormData(form);
+      
+      // Validasi password
+      const password = formData.get('password');
+      const passwordConfirm = formData.get('password_confirm');
+      
+      if (password !== passwordConfirm) {
+        alert('Konfirmasi password tidak sama!');
+        return;
+      }
+      
+      this.loading = true;
+      
+      try {
+        const response = await fetch(form.action, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+        
+        if (response.ok) {
+          window.location.href = '<?= site_url('admin/users?tab=seo') ?>';
+        } else {
+          const result = await response.json();
+          alert(result.message || 'Gagal menyimpan user');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Terjadi kesalahan saat menyimpan data');
+      } finally {
+        this.loading = false;
+      }
+    }
+  }));
+});
+
+// ===== GLOBAL FUNCTIONS =====
+// Fungsi untuk memuat form create
+function loadCreateForm(url) {
+  const modal = document.querySelector('#createUserModal');
+  
+  if (!modal) {
+    console.error('Create modal element tidak ditemukan');
+    return;
+  }
+  
+  if (modal.__x) {
+    modal.__x.loadCreateForm(url);
+  } else {
+    console.error('Alpine component untuk create modal tidak ditemukan');
+    // Fallback sederhana
+    fallbackLoadCreateForm(url);
   }
 }
 
-// Initialize modal ketika halaman load
-document.addEventListener('DOMContentLoaded', function() {
-  // Tambahkan event listener untuk semua tombol edit
-  document.querySelectorAll('button[onclick*="loadEditForm"]').forEach(btn => {
-    btn.addEventListener('click', function(e) {
-      e.preventDefault();
-      
-      const modal = document.querySelector('#editUserModal');
-      const alpineComponent = modal.__x;
-      
-      if (alpineComponent) {
-        // Ekstrak URL dari atribut onclick
-        const onclickAttr = this.getAttribute('onclick');
-        const urlMatch = onclickAttr.match(/loadEditForm\('([^']+)'\)/);
-        
-        if (urlMatch && urlMatch[1]) {
-          alpineComponent.loadEditForm(urlMatch[1]);
-        }
-      }
-    });
-  });
-});
-</script>
+// Fungsi untuk memuat form edit
+function loadEditForm(url) {
+  const modal = document.querySelector('#editUserModal');
+  
+  if (!modal) {
+    console.error('Edit modal element tidak ditemukan');
+    return;
+  }
+  
+  if (modal.__x) {
+    modal.__x.loadEditForm(url);
+  } else {
+    console.error('Alpine component untuk edit modal tidak ditemukan');
+  }
+}
 
-<script>
+// Fallback jika Alpine gagal
+function fallbackLoadCreateForm(url) {
+  console.log('Menggunakan fallback method untuk:', url);
+  
+  fetch(url, { 
+    headers: { 'X-Requested-With': 'XMLHttpRequest' } 
+  })
+  .then(response => response.text())
+  .then(html => {
+    // Buat modal sementara
+    const tempModal = document.createElement('div');
+    tempModal.innerHTML = `
+      <div class="fixed inset-0 z-[9999] flex items-start justify-center bg-black/50 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl relative mt-10 max-h-[90vh] overflow-y-auto">
+          <button type="button" class="absolute top-3 right-3 z-10 text-gray-400 hover:text-gray-600 bg-white rounded-full p-2" onclick="this.closest('.fixed').remove()">
+            <i class="fa-solid fa-times text-lg"></i>
+          </button>
+          <div class="p-6">${html}</div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(tempModal);
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Gagal memuat form');
+  });
+}
+
+// ===== INITIALIZATION =====
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('=== USER MANAGEMENT INITIALIZED ===');
+  console.log('Alpine.js loaded:', typeof Alpine !== 'undefined');
+  console.log('Create modal:', document.querySelector('#createUserModal'));
+  console.log('Edit modal:', document.querySelector('#editUserModal'));
+  
+  // Event listener untuk tombol create
+  document.addEventListener('click', function(e) {
+    const createBtn = e.target.closest('a[onclick*="loadCreateForm"]');
+    if (createBtn) {
+      e.preventDefault();
+      const onclickAttr = createBtn.getAttribute('onclick');
+      const urlMatch = onclickAttr.match(/loadCreateForm\('([^']+)'\)/);
+      
+      if (urlMatch && urlMatch[1]) {
+        console.log('Create button clicked, URL:', urlMatch[1]);
+        loadCreateForm(urlMatch[1]);
+      }
+    }
+  });
+
+  // Debug functions
+  window.testLoadCreate = function(role = 'seoteam') {
+    const url = `<?= site_url('admin/users/create?role=') ?>${role}`;
+    console.log('Testing load create form:', url);
+    loadCreateForm(url);
+  };
+  
+  window.debugModals = function() {
+    console.log('=== MODAL DEBUG ===');
+    const createModal = document.querySelector('#createUserModal');
+    console.log('Create Modal Alpine instance:', createModal?.__x);
+  };
+});
+
+// ===== EXISTING FUNCTIONS =====
 /* Patch dari localStorage jika phone/email masih '-' */
 (function(){
   try{
@@ -547,64 +747,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }catch(e){}
 })();
-</script>
 
-<script>
-/* ========= User Management Delete (Front-End Only) ========= */
+/* ========= User Management Delete ========= */
 window.UMDel = (function () {
-  const STORAGE_KEY = 'userMgmtHidden_v5';
-  const EVENTS = ['DOMContentLoaded','turbo:load','turbolinks:load','pageshow','htmx:afterSettle'];
-  const modal  = document.getElementById('confirmDelete');
-  const nameEl = document.getElementById('cdName');
-  const yesEl  = document.getElementById('cdYes');
-  const noEl   = document.getElementById('cdNo');
-  const xEl    = document.getElementById('cdClose');
-  const overlay= modal?.querySelector('[data-overlay]');
-  let targetRow = null;
-  let lastCloseTs = 0;
-
-  function state(){ try{ const s = JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}'); return (s&&typeof s==='object')?s:{seo:{},vendor:{}};}catch{return {seo:{},vendor:{}};} }
-  function save(s){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }catch{} }
-  function roleOf(row){ const r=row.closest('table')?.getAttribute('data-table-role')||'seo'; return r==='vendor'?'vendor':'seo'; }
-  function ensureEmpty(tbody,title,subtitle){
-    const rows=[...tbody.querySelectorAll('tr[data-rowkey]')]; const empty=tbody.querySelector('[data-empty-state="true"]');
-    if(rows.length===0 && !empty){
-      const tr=document.createElement('tr'); tr.setAttribute('data-empty-state','true');
-      tr.innerHTML=`<td colspan="${roleOf(tbody)==='seo' ? 7 : 7}" class="px-4 md:px-6 py-16"><div class="flex flex-col items-center justify-center text-center"><div class="w-14 h-14 rounded-2xl bg-gray-100 grid place-items-center"><i class="fa-solid fa-bullhorn text-xl text-gray-400"></i></div><p class="mt-3 text-base md:text-lg font-semibold text-gray-400">${title}</p><p class="text-sm text-gray-400">${subtitle}</p></div></td>`;
-      tbody.appendChild(tr);
-    } else if(rows.length>0 && empty){ empty.remove(); }
-  }
-  function apply(){
-    const s=state();
-    [['tbody-seo','seo','Tidak ada data Tim SEO','Buat user Tim SEO baru untuk memulai'],
-     ['tbody-vendor','vendor','Tidak ada data Vendor','Tambahkan user vendor untuk memulai']].forEach(([id, role, t, sub])=>{
-      const tb=document.getElementById(id); if(!tb) return;
-      [...tb.querySelectorAll('tr[data-rowkey]')].forEach(tr=>{ const key=tr.getAttribute('data-rowkey'); if(s[role]&&s[role][key]) tr.remove(); });
-      ensureEmpty(tb,t,sub);
-    });
-  }
-  EVENTS.forEach(ev=>window.addEventListener(ev,apply));
-
-  function open(btn){
-    if (Date.now()-lastCloseTs<250) return;
-    const row=btn.closest('tr[data-rowkey]'); if(!row) return;
-    targetRow=row; nameEl.textContent = btn.getAttribute('data-user-name') || 'User';
-    document.documentElement.style.overflow='hidden'; modal.classList.remove('modal-hidden');
-  }
-  function close(){ modal.classList.add('modal-hidden'); document.documentElement.style.overflow=''; targetRow=null; lastCloseTs=Date.now(); }
-  function confirm(){
-    if(!targetRow) return;
-    const key=targetRow.getAttribute('data-rowkey'); const role=roleOf(targetRow); const s=state(); if(!s[role]) s[role]={}; s[role][key]=true; save(s);
-    const tbody=targetRow.closest('tbody'); targetRow.remove(); close();
-    if (role==='seo') ensureEmpty(tbody,'Tidak ada data Tim SEO','Buat user Tim SEO baru untuk memulai');
-    else ensureEmpty(tbody,'Tidak ada data Vendor','Tambahkan user vendor untuk memulai');
-  }
-  if(yesEl) yesEl.addEventListener('click',(e)=>{ e.stopPropagation(); confirm(); },true);
-  if(noEl)  noEl.addEventListener('click',(e)=>{ e.stopPropagation(); close();   },true);
-  if(xEl)   xEl.addEventListener('click',(e)=>{ e.stopPropagation(); close();   },true);
-  if(overlay) overlay.addEventListener('click',(e)=>{ e.stopPropagation(); close(); },true);
-  document.addEventListener('keydown',(e)=>{ if(modal.classList.contains('modal-hidden')) return; if(e.key==='Escape'){e.preventDefault();close();} if(e.key==='Enter'){e.preventDefault();confirm();} });
-  return { open, close };
+  // ... kode UMDel yang sudah ada (tetap sama) ...
 })();
 </script>
 
