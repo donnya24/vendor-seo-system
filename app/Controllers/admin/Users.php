@@ -521,58 +521,119 @@ class Users extends BaseController
         ]);
     }
 
-    // ========== TOGGLE SUSPEND VENDOR ==========
-    public function toggleSuspend($id)
-    {
-        // Handle AJAX request
-        if ($this->request->isAJAX()) {
-            try {
-                $groups = $this->getUserGroups((int) $id);
-                if (!in_array('vendor', $groups, true)) {
-                    return $this->response->setStatusCode(400)->setJSON([
-                        'success' => false,
-                        'message' => 'Hanya vendor yang bisa di-nonaktifkan.'
-                    ]);
-                }
-
-                $vp = $this->vendorModel->where('user_id', $id)->first();
-                if (!$vp) {
-                    return $this->response->setStatusCode(404)->setJSON([
-                        'success' => false,
-                        'message' => 'Profil vendor tidak ditemukan.'
-                    ]);
-                }
-
-                $currentStatus = $vp['status'] ?? 'active';
-                $newStatus = ($currentStatus === 'suspended') ? 'active' : 'suspended';
-                
-                $this->vendorModel->where('user_id', $id)
-                    ->set(['status' => $newStatus, 'updated_at' => date('Y-m-d H:i:s')])
-                    ->update();
-
-                $message = $newStatus === 'suspended' ? 'Vendor dinonaktifkan.' : 'Vendor diaktifkan kembali.';
-                
+// ========== TOGGLE SUSPEND VENDOR ==========
+public function toggleSuspend($id)
+{
+    // Handle AJAX request
+    if ($this->request->isAJAX()) {
+        try {
+            log_message('debug', '=== TOGGLE SUSPEND VENDOR START ===');
+            log_message('debug', 'Vendor ID: ' . $id);
+            
+            $groups = $this->getUserGroups((int) $id);
+            log_message('debug', 'User groups: ' . json_encode($groups));
+            
+            if (!in_array('vendor', $groups, true)) {
                 return $this->response->setJSON([
-                    'success' => true,
-                    'message' => $message,
-                    'new_status' => $newStatus,
-                    'new_label' => ucfirst($newStatus)
-                ]);
-
-            } catch (\Exception $e) {
-                return $this->response->setStatusCode(500)->setJSON([
                     'success' => false,
-                    'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                    'message' => 'Hanya vendor yang bisa di-nonaktifkan.'
                 ]);
             }
-        }
 
-        // Fallback untuk non-AJAX
-        return $this->response->setStatusCode(400)->setJSON([
-            'success' => false,
-            'message' => 'Request harus AJAX'
-        ]);
+            $vp = $this->db->table('vendor_profiles')
+                ->where('user_id', $id)
+                ->get()
+                ->getRowArray();
+                
+            if (!$vp) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Profil vendor tidak ditemukan.'
+                ]);
+            }
+
+            log_message('debug', 'Current vendor status: ' . ($vp['status'] ?? 'pending'));
+            
+            $currentStatus = $vp['status'] ?? 'pending';
+            
+            // ⭐⭐ LOGIC BARU: Simpan status asli dan toggle active/inactive ⭐⭐
+            if ($currentStatus === 'inactive') {
+                // Kembalikan ke status sebelumnya (dari inactive_reason atau default 'pending')
+                $previousStatus = $vp['inactive_reason'] ?? 'pending';
+                $newStatus = $previousStatus !== 'inactive' ? $previousStatus : 'pending';
+                $message = 'Vendor diaktifkan kembali.';
+            } else {
+                // Simpan status saat ini di inactive_reason dan set ke inactive
+                $newStatus = 'inactive';
+                $message = 'Vendor dinonaktifkan.';
+            }
+            
+            log_message('debug', 'New vendor status: ' . $newStatus);
+            
+            // Update database
+            $updateData = [
+                'status' => $newStatus, 
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
+            
+            // ⭐⭐ SIMPAN STATUS SEBELUMNYA JIKA SEDANG DINONAKTIFKAN ⭐⭐
+            if ($newStatus === 'inactive') {
+                $updateData['inactive_reason'] = $currentStatus; // Simpan status sebelumnya
+            }
+            
+            $updateResult = $this->db->table('vendor_profiles')
+                ->where('user_id', $id)
+                ->update($updateData);
+            
+            log_message('debug', 'Update result: ' . ($updateResult ? 'true' : 'false'));
+            
+            // Cek error database
+            $error = $this->db->error();
+            if ($error['code'] != 0) {
+                log_message('error', 'Database error: ' . json_encode($error));
+                throw new \Exception('Database error: ' . $error['message']);
+            }
+            
+            log_message('debug', 'Toggle suspend completed: ' . $message);
+            log_message('debug', '=== TOGGLE SUSPEND VENDOR END ===');
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => $message,
+                'new_status' => $newStatus,
+                'new_label' => $this->getStatusLabel($newStatus), // ⭐⭐ GUNAKAN FUNCTION LABEL ⭐⭐
+                'should_refresh' => true // ⭐⭐ TANDA UNTUK REFRESH PAGE ⭐⭐
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Toggle suspend vendor error: ' . $e->getMessage());
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
     }
+
+    return $this->response->setJSON([
+        'success' => false,
+        'message' => 'Request harus AJAX'
+    ]);
+}
+
+// ⭐⭐ FUNCTION BARU: Get Status Label ⭐⭐
+private function getStatusLabel($status)
+{
+    $labels = [
+        'verified' => 'Verified',
+        'pending' => 'Pending', 
+        'active' => 'Active',
+        'inactive' => 'Inactive',
+        'rejected' => 'Rejected'
+    ];
+    
+    return $labels[$status] ?? ucfirst($status);
+}
 
     // ========== HELPER METHODS ==========
     private function getUserGroups(int $userId): array

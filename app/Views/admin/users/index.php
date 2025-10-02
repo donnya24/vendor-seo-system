@@ -261,7 +261,7 @@ if (!empty($users)) {
             $suspendLabel = $isSuspended ? 'Unsuspend' : 'Suspend';
             $suspendIcon = $isSuspended ? 'fa-regular fa-circle-play' : 'fa-regular fa-circle-pause';
           ?>
-            <tr class="hover:bg-gray-50 fade-up-soft" style="--delay: <?= number_format(0.16 + 0.03*$i, 2, '.', '') ?>s" data-rowkey="seo_<?= $id ?>">
+            <tr class="hover:bg-gray-50 fade-up-soft" style="--delay: <?= number_format(0.22 + 0.03*$i, 2, '.', '') ?>s" data-rowkey="vendor_<?= $id ?>">
               <td class="px-2 md:px-4 py-2 md:py-3 font-semibold text-gray-900"><?= esc($id ?: '-') ?></td>
               <td class="px-2 md:px-4 py-2 md:py-3 text-gray-900"><?= esc($u['name'] ?? '-') ?></td>
               <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800"><?= esc($u['username'] ?? '-') ?></td>
@@ -284,8 +284,8 @@ if (!empty($users)) {
                     <i class="fa-regular fa-trash-can text-[11px]"></i> Delete
                   </button>
                   <button type="button" 
-                          onclick="toggleSuspendSeo(<?= $id ?>, this)"
-                          class="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-800 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm">
+                      onclick="toggleSuspendVendor(<?= $id ?>, this)"
+                      class="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-800 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm">
                       <i class="<?= $suspendIcon ?> text-[11px]"></i> 
                       <span><?= $suspendLabel ?></span>
                   </button>
@@ -341,63 +341,67 @@ if (!empty($users)) {
       </thead>
       <tbody id="tbody-vendor" class="divide-y divide-gray-100">
         <?php if (!empty($usersVendor)): ?>
-          <?php foreach ($usersVendor as $i => $u): 
+        <!-- Dalam loop vendor -->
+        <?php foreach ($usersVendor as $i => $u): 
             $id = (int)($u['id'] ?? 0); 
             $status = strtolower((string)($u['vendor_status'] ?? 'pending'));
-            $isSuspended = in_array($status, ['suspended','nonaktif','inactive'], true);
+            $isSuspended = $status === 'inactive';
             $suspendLabel = $isSuspended ? 'Unsuspend' : 'Suspend';
             $suspendIcon = $isSuspended ? 'fa-regular fa-circle-play' : 'fa-regular fa-circle-pause';
-
+            
             // Format komisi
             $commission = '-';
-            if ($u['commission_type'] === 'nominal' && !empty($u['requested_commission_nominal'])) {
-                $commission = 'Rp ' . number_format($u['requested_commission_nominal'], 0, ',', '.');
-            } elseif ($u['commission_type'] === 'percent' && !empty($u['requested_commission'])) {
-                $commission = number_format($u['requested_commission'], 1) . '%';
+            if (isset($u['commission_type'])) {
+                if ($u['commission_type'] === 'nominal' && !empty($u['requested_commission_nominal'])) {
+                    $commission = 'Rp ' . number_format($u['requested_commission_nominal'], 0, ',', '.');
+                } elseif ($u['commission_type'] === 'percent' && !empty($u['requested_commission'])) {
+                    $commission = number_format($u['requested_commission'], 1) . '%';
+                }
             }
-          ?>
-            <tr class="hover:bg-gray-50 fade-up-soft" style="--delay: <?= number_format(0.22 + 0.03*$i, 2, '.', '') ?>s" data-rowkey="vendor_<?= $id ?>">
-              <td class="px-2 md:px-4 py-2 md:py-3 font-semibold text-gray-900"><?= esc($id ?: '-') ?></td>
-              <td class="px-2 md:px-4 py-2 md:py-3 text-gray-900"><?= esc($u['business_name'] ?? '-') ?></td>
-              <td class="px-2 md:px-4 py-2 md:py-3 text-gray-900"><?= esc($u['owner_name'] ?? '-') ?></td>
-              <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800"><?= esc($u['username'] ?? '-') ?></td>
-              <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800"><?= esc($u['phone'] ?? '-') ?></td>
-              <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800"><?= esc($u['whatsapp_number'] ?? '-') ?></td>
-              <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800"><?= esc($u['email'] ?? '-') ?></td>
-              <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800 font-medium"><?= $commission ?></td>
-              <td class="px-2 md:px-4 py-2 md:py-3">
+        ?>
+        <tr class="hover:bg-gray-50 fade-up-soft" style="--delay: <?= number_format(0.22 + 0.03*$i, 2, '.', '') ?>s" data-rowkey="vendor_<?= $id ?>">
+            <td class="px-2 md:px-4 py-2 md:py-3 font-semibold text-gray-900"><?= esc($id ?: '-') ?></td>
+            <td class="px-2 md:px-4 py-2 md:py-3 text-gray-900"><?= esc($u['business_name'] ?? '-') ?></td>
+            <td class="px-2 md:px-4 py-2 md:py-3 text-gray-900"><?= esc($u['owner_name'] ?? '-') ?></td>
+            <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800"><?= esc($u['username'] ?? '-') ?></td>
+            <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800"><?= esc($u['phone'] ?? '-') ?></td>
+            <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800"><?= esc($u['whatsapp_number'] ?? '-') ?></td>
+            <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800"><?= esc($u['email'] ?? '-') ?></td>
+            <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800 font-medium"><?= $commission ?></td>
+            <td class="px-2 md:px-4 py-2 md:py-3">
                 <div class="flex items-center gap-2">
-                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= $status === 'verified' ? 'bg-green-100 text-green-800' : ($status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') ?>">
-                    <?= esc(ucfirst($status)) ?>
-                  </span>
-                  <?php if (isset($u['is_verified']) && $u['is_verified']): ?>
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      <i class="fa-solid fa-check-circle mr-1"></i> Verified
+                    <!-- ⭐⭐ TAMPILKAN STATUS ASLI: verified, pending, active, inactive ⭐⭐ -->
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= $status === 'verified' ? 'bg-green-100 text-green-800' : ($status === 'pending' ? 'bg-yellow-100 text-yellow-800' : ($status === 'active' ? 'bg-blue-100 text-blue-800' : ($status === 'inactive' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'))) ?>">
+                        <?= esc(ucfirst($status)) ?>
                     </span>
-                  <?php endif; ?>
+                    <?php if (isset($u['is_verified']) && $u['is_verified'] && $status !== 'inactive'): ?>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            <i class="fa-solid fa-check-circle mr-1"></i> Verified
+                        </span>
+                    <?php endif; ?>
                 </div>
-              </td>
-              <td class="px-2 md:px-4 py-2 md:py-3 text-right">
+            </td>
+            <td class="px-2 md:px-4 py-2 md:py-3 text-right">
                 <div class="inline-flex items-center gap-1.5">
-                  <button type="button" 
-                    class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm edit-user-btn"
-                    onclick="loadEditForm('<?= site_url('admin/users/') . $id . '/edit?role=vendor'; ?>')">
-                    <i class="fa-regular fa-pen-to-square text-[11px]"></i> Edit
-                  </button>
-                  <button type="button" class="inline-flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm"
-                          data-user-name="<?= esc($u['business_name'] ?? 'Vendor') ?>" data-role="Vendor" onclick="UMDel.open(this)">
-                    <i class="fa-regular fa-trash-can text-[11px]"></i> Delete
-                  </button>
-                  <button type="button" 
-                    onclick="toggleSuspendVendor(<?= $id ?>, this)"
-                    class="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-800 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm">
-                    <i class="<?= $suspendIcon ?> text-[11px]"></i> 
-                    <span><?= $suspendLabel ?></span>
-                  </button>
+                    <button type="button" 
+                        class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm edit-user-btn"
+                        onclick="loadEditForm('<?= site_url('admin/users/') . $id . '/edit?role=vendor'; ?>')">
+                        <i class="fa-regular fa-pen-to-square text-[11px]"></i> Edit
+                    </button>
+                    <button type="button" class="inline-flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm"
+                            data-user-name="<?= esc($u['business_name'] ?? 'Vendor') ?>" data-role="Vendor" onclick="UMDel.open(this)">
+                        <i class="fa-regular fa-trash-can text-[11px]"></i> Delete
+                    </button>
+                    <button type="button" 
+                        onclick="toggleSuspendVendor(<?= $id ?>, this)"
+                        class="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-800 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm">
+                        <i class="<?= $suspendIcon ?> text-[11px]"></i> 
+                        <span><?= $suspendLabel ?></span>
+                    </button>
                 </div>
-              </td>
-            </tr>
-          <?php endforeach; ?>
+            </td>
+        </tr>
+        <?php endforeach; ?>
         <?php else: ?>
           <tr data-empty-state="true" class="fade-up-soft" style="--delay:.22s">
             <td colspan="10" class="px-4 md:px-6 py-16">
@@ -954,18 +958,25 @@ async function toggleSuspendSeo(userId, button) {
     }
 }
 
+// ===== SUSPEND FUNCTIONALITY =====
 // Fungsi untuk toggle suspend Vendor
 async function toggleSuspendVendor(userId, button) {
     console.log('Toggle suspend Vendor called for user:', userId);
     
-    const originalText = button.innerHTML;
+    const originalHTML = button.innerHTML;
     
     try {
-        button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+        // Disable semua tombol sementara
+        disableAllSuspendButtons(true);
+        
+        // Tampilkan loading
+        button.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-[11px]"></i> <span>Loading...</span>';
         button.disabled = true;
         
         const formData = new FormData();
         formData.append('<?= csrf_token() ?>', '<?= csrf_hash() ?>');
+        
+        console.log('Sending request to toggle suspend vendor:', userId);
         
         const response = await fetch(`<?= site_url('admin/users/toggle-suspend/') ?>${userId}`, {
             method: 'POST',
@@ -977,89 +988,126 @@ async function toggleSuspendVendor(userId, button) {
         
         console.log('Response status:', response.status);
         
-        if (response.ok) {
-            const result = await response.json();
-            console.log('Success result:', result);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('Server response:', result);
+        
+        if (result.success) {
+            // Update UI sementara
+            await updateSuspendUIVendor(userId, result.new_status, result.new_label, button);
+            showToast(result.message, 'success');
             
-            if (result.success) {
-                updateSuspendUI(userId, result.new_status, result.new_label, 'vendor', button);
-                showToast(result.message, 'success');
-            } else {
-                showToast(result.message, 'error');
+            // ⭐⭐ AUTO REFRESH SETELAH 1.5 DETIK ⭐⭐
+            if (result.should_refresh) {
+                setTimeout(() => {
+                    window.location.reload();
+                }, 10);
             }
+            
         } else {
-            const errorText = await response.text();
-            console.error('Server error:', errorText);
-            showToast('Terjadi kesalahan server', 'error');
+            showToast(result.message, 'error');
+            button.innerHTML = originalHTML;
         }
         
     } catch (error) {
-        console.error('Network error:', error);
-        showToast('Terjadi kesalahan jaringan', 'error');
+        console.error('Error:', error);
+        showToast('Terjadi kesalahan: ' + error.message, 'error');
+        button.innerHTML = originalHTML;
     } finally {
-        button.innerHTML = originalText;
+        disableAllSuspendButtons(false);
         button.disabled = false;
     }
 }
 
-// Update UI setelah suspend
-function updateSuspendUI(userId, newStatus, newLabel, type, button) {
-    console.log('Updating UI for user:', userId, 'New status:', newStatus);
-    
-    // Update status badge
-    // Untuk Tim SEO, kita menggunakan data-rowkey dengan format "seo_[id]"
-    let row = document.querySelector(`tr[data-rowkey="seo_${userId}"]`);
-    if (!row) {
-        // Jika tidak ditemukan, coba cari dengan contains
-        const rows = document.querySelectorAll(`tr[data-rowkey*="${userId}"]`);
-        if (rows.length > 0) {
-            row = rows[0];
+// ⭐⭐ FUNGSI UNTUK DISABLE/ENABLE SEMUA TOMBOL SUSPEND ⭐⭐
+function disableAllSuspendButtons(disabled) {
+    const allSuspendButtons = document.querySelectorAll('button[onclick*="toggleSuspendVendor"]');
+    allSuspendButtons.forEach(btn => {
+        if (disabled) {
+            btn.disabled = true;
+            btn.style.opacity = '0.6';
+        } else {
+            btn.disabled = false;
+            btn.style.opacity = '1';
         }
-    }
+    });
+}
+
+// ⭐⭐ FUNGSI UPDATE UI YANG LEBIH ROBUST ⭐⭐
+async function updateSuspendUIVendor(userId, newStatus, newLabel, button) {
+    console.log('Updating UI for vendor:', userId, 'New status:', newStatus);
+    
+    return new Promise((resolve) => {
+        // ⭐⭐ UPDATE BADGE STATUS ⭐⭐
+        const row = document.querySelector(`tr[data-rowkey="vendor_${userId}"]`);
+        if (row) {
+            const statusCell = row.querySelector('td:nth-child(9)'); // Kolom status
+            
+            if (statusCell) {
+                let badge = statusCell.querySelector('span:first-child');
+                if (badge) {
+                    // Update class badge berdasarkan status
+                    let badgeClass = 'bg-gray-100 text-gray-800';
+                    if (newStatus === 'verified') {
+                        badgeClass = 'bg-green-100 text-green-800';
+                    } else if (newStatus === 'pending') {
+                        badgeClass = 'bg-yellow-100 text-yellow-800';
+                    } else if (newStatus === 'inactive') {
+                        badgeClass = 'bg-red-100 text-red-800';
+                    } else if (newStatus === 'active') {
+                        badgeClass = 'bg-green-100 text-green-800';
+                    }
+                    
+                    badge.className = `inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeClass}`;
+                    badge.textContent = newLabel;
+                    console.log('Updated badge:', newLabel);
+                }
+            }
+        }
+        
+        // ⭐⭐ UPDATE TOMBOL SUSPEND ⭐⭐
+        if (button) {
+            const isSuspended = newStatus === 'inactive';
+            const newText = isSuspended ? 'Unsuspend' : 'Suspend';
+            const newIcon = isSuspended ? 'fa-regular fa-circle-play' : 'fa-regular fa-circle-pause';
+            
+            console.log('Updating button to:', newText);
+            
+            // Update tombol yang diklik
+            button.innerHTML = `<i class="${newIcon} text-[11px]"></i> <span>${newText}</span>`;
+            
+            // ⭐⭐ UPDATE SEMUA TOMBOL SUSPEND UNTUK USER INI ⭐⭐
+            const allButtonsForUser = document.querySelectorAll(`button[onclick*="toggleSuspendVendor(${userId}"]`);
+            allButtonsForUser.forEach(btn => {
+                if (btn !== button) {
+                    btn.innerHTML = `<i class="${newIcon} text-[11px]"></i> <span>${newText}</span>`;
+                }
+            });
+        }
+        
+        resolve();
+    });
+}
+
+// Test function untuk debug
+window.debugSuspend = function(userId) {
+    console.log('=== DEBUG SUSPEND ===');
+    console.log('User ID:', userId);
+    console.log('CSRF Token:', '<?= csrf_hash() ?>');
+    console.log('Toggle URL:', `<?= site_url('admin/users/toggle-suspend/') ?>${userId}`);
+    
+    // Cek apakah row ditemukan
+    const row = document.querySelector(`tr[data-rowkey="vendor_${userId}"]`);
+    console.log('Row found:', !!row);
     
     if (row) {
-        const statusCell = row.querySelector('td:nth-child(6)'); // Kolom status adalah kolom ke-6
-        if (statusCell) {
-            let badge = statusCell.querySelector('span');
-            if (!badge) {
-                // Jika tidak ada span, buat yang baru
-                badge = document.createElement('span');
-                statusCell.innerHTML = '';
-                statusCell.appendChild(badge);
-            }
-            
-            // Update class berdasarkan status
-            const badgeClass = newStatus === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
-            badge.className = `inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeClass}`;
-            badge.textContent = newLabel;
-            console.log('Updated badge:', badgeClass, newLabel);
-        }
+        const statusCell = row.querySelector('td:nth-child(9)');
+        console.log('Status cell:', statusCell);
     }
-    
-    // Update suspend button yang diklik
-    if (button) {
-        const isSuspended = newStatus === 'suspended' || newStatus === 'inactive';
-        const newText = isSuspended ? 'Unsuspend' : 'Suspend';
-        const newIcon = isSuspended ? 'fa-regular fa-circle-play' : 'fa-regular fa-circle-pause';
-        
-        console.log('Updating button:', newText, newIcon);
-        
-        // Update icon
-        const icon = button.querySelector('i');
-        if (icon) {
-            icon.className = `${newIcon} text-[11px]`;
-        }
-        
-        // Update text
-        let textSpan = button.querySelector('span');
-        if (textSpan) {
-            textSpan.textContent = newText;
-        } else {
-            // Jika tidak ada span, update seluruh innerHTML
-            button.innerHTML = `<i class="${newIcon} text-[11px]"></i> <span>${newText}</span>`;
-        }
-    }
-}
+};
 
 // ===== DELETE FUNCTIONALITY =====
 /* ========= User Management Delete (REAL DELETE) ========= */
