@@ -51,12 +51,12 @@ $routes->get('auth/remember-status', 'Auth\AuthController::checkRememberStatus')
         $routes->post('store', 'Admin\Users::store');      // simpan user baru
 
         $routes->get('(:num)/edit', 'Admin\Users::edit/$1');   // form edit
-        $routes->post('(:num)/update', 'Admin\Users::update/$1'); // simpan update
+        $routes->post('update/(:num)', 'Admin\Users::update/$1'); // PERBAIKI INI
         $routes->post('(:num)/delete', 'Admin\Users::delete/$1'); // hapus
 
-        // Toggle suspend vendor/seo
-        $routes->post('(:num)/toggle-suspend', 'Admin\Users::toggleSuspend/$1');
-        $routes->post('(:num)/toggle-suspend-seo', 'Admin\Users::toggleSuspendSeo/$1');
+        // Suspend Routes - FIXED (TAMBAHKAN Admin\)
+        $routes->post('toggle-suspend/(:num)', 'Admin\Users::toggleSuspend/$1');
+        $routes->post('toggle-suspend-seo/(:num)', 'Admin\Users::toggleSuspendSeo/$1');
     });
 
     // Vendors
@@ -104,6 +104,7 @@ $routes->get('auth/remember-status', 'Auth\AuthController::checkRememberStatus')
 
 });
  $routes->get('admin/dashboard/index', static fn () => redirect()->to('/admin/dashboard'));
+
  
 // ---------- SEO ----------
 $routes->group('seo', [

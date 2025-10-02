@@ -117,7 +117,7 @@ try {
         $present    = array_values(array_intersect($candidates, $fieldNames));
 
         if ($present) {
-          $expr = 'COALESCE(' . implode(',', array_map(fn($c)=>"`$c`", $present)) . ') AS phone';
+          $expr = 'COALESCE(' . implode(',', array_map(fn($c)=>"$c", $present)) . ') AS phone';
           $rows = $db->table('vendor_profiles')
             ->select("user_id, $expr, status, is_verified, commission_rate")
             ->whereIn('user_id', $vendorIds)
@@ -199,12 +199,8 @@ if (!empty($users)) {
 </style>
 <script>document.addEventListener('DOMContentLoaded',()=>{document.documentElement.classList.remove('error','error-theme','with-sidebar-fallback');});</script>
 
-<div id="pageWrap" class="flex-1 flex flex-col min-h-screen bg-gray-50 transition-[margin] duration-300 ease-in-out" :class="($store.ui.sidebar && (typeof $store.layout.isDesktop==='undefined' || $store.layout.isDesktop)) ? 'md:ml-64' : 'ml-0'"
-<div id="pageWrap"
-     x-data="{ sidebarOpen: false, showLogoutModal: false, profileDropdownOpen: false }"
-     x-init="onInit()"
-     ...>
-
+<div id="pageWrap" class="flex-1 flex flex-col min-h-screen bg-gray-50 transition-[margin] duration-300 ease-in-out" :class="($store.ui.sidebar && (typeof $store.layout.isDesktop==='undefined' || $store.layout.isDesktop)) ? 'md:ml-64' : 'ml-0'">
+  
   <!-- Header -->
   <div class="px-3 md:px-6 pt-4 md:pt-6 max-w-screen-xl mx-auto w-full fade-up-soft" style="--delay:.02s">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -230,14 +226,13 @@ if (!empty($users)) {
   <!-- Main -->
   <main id="pageMain" class="flex-1 px-3 md:px-6 pb-6 mt-3 space-y-6 max-w-screen-xl mx-auto w-full fade-up" style="--dur:.60s; --delay:.06s">
 
-   <!-- Dalam bagian tabel SEO -->
+   <!-- Tabel SEO -->
 <?php if ($currentTab == 'seo'): ?>
 <section class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 fade-up" style="--delay:.12s">
   <div class="px-3 py-2 md:px-4 md:py-3 border-b border-gray-100 flex items-center justify-between">
     <h2 class="text-sm font-semibold text-gray-800 flex items-center gap-2">
       <i class="fa-solid fa-users text-blue-600"></i> User Tim SEO
     </h2>
-    <!-- Di bagian SEO -->
     <a href="<?= site_url('admin/users/create?role=seoteam'); ?>"
       class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs md:text-sm px-3 md:px-4 py-2 rounded-lg shadow-sm"
       onclick="loadCreateForm('<?= site_url('admin/users/create?role=seoteam'); ?>'); return false;">
@@ -259,7 +254,13 @@ if (!empty($users)) {
       </thead>
       <tbody id="tbody-seo" class="divide-y divide-gray-100">
         <?php if (!empty($usersSeo)): ?>
-          <?php foreach ($usersSeo as $i => $u): $id = (int)($u['id'] ?? 0); ?>
+          <?php foreach ($usersSeo as $i => $u): 
+            $id = (int)($u['id'] ?? 0); 
+            $status = strtolower((string)($u['seo_status'] ?? 'active'));
+            $isSuspended = $status === 'inactive';
+            $suspendLabel = $isSuspended ? 'Unsuspend' : 'Suspend';
+            $suspendIcon = $isSuspended ? 'fa-regular fa-circle-play' : 'fa-regular fa-circle-pause';
+          ?>
             <tr class="hover:bg-gray-50 fade-up-soft" style="--delay: <?= number_format(0.16 + 0.03*$i, 2, '.', '') ?>s" data-rowkey="seo_<?= $id ?>">
               <td class="px-2 md:px-4 py-2 md:py-3 font-semibold text-gray-900"><?= esc($id ?: '-') ?></td>
               <td class="px-2 md:px-4 py-2 md:py-3 text-gray-900"><?= esc($u['name'] ?? '-') ?></td>
@@ -267,27 +268,27 @@ if (!empty($users)) {
               <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800"><?= esc($u['phone'] ?? '-') ?></td>
               <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800"><?= esc($emailById[$id] ?? ($u['email'] ?? '-')) ?></td>
               <td class="px-2 md:px-4 py-2 md:py-3">
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= ($u['seo_status'] ?? 'active') === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' ?>">
-                  <?= esc(ucfirst($u['seo_status'] ?? 'active')) ?>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= $status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' ?>">
+                  <?= esc(ucfirst($status)) ?>
                 </span>
               </td>
               <td class="px-2 md:px-4 py-2 md:py-3 text-right">
                 <div class="inline-flex items-center gap-1.5">
-                    <button type="button" 
-                      class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm edit-user-btn"
-                      onclick="loadEditForm('<?= site_url('admin/users/') . $id . '/edit?role=seoteam'; ?>')">
-                      <i class="fa-regular fa-pen-to-square text-[11px]"></i> Edit
-                    </button>
+                  <button type="button" 
+                    class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm edit-user-btn"
+                    onclick="loadEditForm('<?= site_url('admin/users/') . $id . '/edit?role=seoteam'; ?>')">
+                    <i class="fa-regular fa-pen-to-square text-[11px]"></i> Edit
+                  </button>
                   <button type="button" class="inline-flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm"
                           data-user-name="<?= esc($u['name'] ?? 'User SEO') ?>" data-role="Tim SEO" onclick="UMDel.open(this)">
                     <i class="fa-regular fa-trash-can text-[11px]"></i> Delete
                   </button>
-                  <form method="post" action="<?= site_url('admin/users/toggle-suspend-seo/' . $id) ?>" class="inline">
-                    <button type="submit" class="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-800 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm">
-                      <i class="fa-regular fa-<?= ($u['seo_status'] ?? 'active') === 'active' ? 'pause' : 'play' ?> text-[11px]"></i> 
-                      <?= ($u['seo_status'] ?? 'active') === 'active' ? 'Suspend' : 'Unsuspend' ?>
-                    </button>
-                  </form>
+                  <button type="button" 
+                          onclick="toggleSuspendSeo(<?= $id ?>, this)"
+                          class="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-800 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm">
+                      <i class="<?= $suspendIcon ?> text-[11px]"></i> 
+                      <span><?= $suspendLabel ?></span>
+                  </button>
                 </div>
               </td>
             </tr>
@@ -309,105 +310,114 @@ if (!empty($users)) {
 </section>
 <?php endif; ?>
 
-    <!-- User Vendor -->
-    <?php if ($currentTab == 'vendor'): ?>
-    <section class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 fade-up" style="--delay:.12s">
-      <div class="px-3 py-2 md:px-4 md:py-3 border-b border-gray-100 flex items-center justify-between">
-        <h2 class="text-sm font-semibold text-gray-800 flex items-center gap-2">
-          <i class="fa-solid fa-store text-blue-600"></i> User Vendor
-        </h2>
-      <!-- Di bagian Vendor -->
-      <a href="<?= site_url('admin/users/create?role=vendor'); ?>"
-        class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs md:text-sm px-3 md:px-4 py-2 rounded-lg shadow-sm"
-        onclick="loadCreateForm('<?= site_url('admin/users/create?role=vendor'); ?>'); return false;">
-        <i class="fa fa-plus text-[11px]"></i> Add Vendor
-      </a>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="min-w-full text-xs md:text-sm" data-table-role="vendor">
-          <thead class="bg-gradient-to-r from-emerald-600 to-teal-700">
-            <tr>
-              <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">ID</th>
-              <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">NAMA LENGKAP</th>
-              <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">USERNAME</th>
-              <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">NO. TLP</th>
-              <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">EMAIL</th>
-              <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">STATUS</th>
-              <th class="px-2 md:px-4 py-2 md:py-3 text-right font-semibold text-white uppercase tracking-wider">AKSI</th>
-            </tr>
-          </thead>
-          <tbody id="tbody-vendor" class="divide-y divide-gray-100">
-            <?php if (!empty($usersVendor)): ?>
-              <?php foreach ($usersVendor as $i => $u): $id = (int)user_id($u); $rk = row_key('vendor',$u,$i);
-                $status= strtolower((string)($u['vendor_status'] ?? 'active'));
-                $isSus = in_array($status, ['suspended','nonaktif','inactive'], true);
-                $sLbl  = $isSus ? 'Unsuspend' : 'Suspend';
-                $sIcon = $isSus ? 'fa-regular fa-circle-play' : 'fa-regular fa-circle-pause';
+<!-- User Vendor -->
+<?php if ($currentTab == 'vendor'): ?>
+<section class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 fade-up" style="--delay:.12s">
+  <div class="px-3 py-2 md:px-4 md:py-3 border-b border-gray-100 flex items-center justify-between">
+    <h2 class="text-sm font-semibold text-gray-800 flex items-center gap-2">
+      <i class="fa-solid fa-store text-blue-600"></i> User Vendor
+    </h2>
+    <a href="<?= site_url('admin/users/create?role=vendor'); ?>"
+      class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs md:text-sm px-3 md:px-4 py-2 rounded-lg shadow-sm"
+      onclick="loadCreateForm('<?= site_url('admin/users/create?role=vendor'); ?>'); return false;">
+      <i class="fa fa-plus text-[11px]"></i> Add Vendor
+    </a>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="min-w-full text-xs md:text-sm" data-table-role="vendor">
+      <thead class="bg-gradient-to-r from-emerald-600 to-teal-700">
+        <tr>
+          <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">ID</th>
+          <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">NAMA VENDOR</th>
+          <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">PEMILIK</th>
+          <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">USERNAME</th>
+          <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">NO. TLP</th>
+          <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">WHATSAPP</th>
+          <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">EMAIL</th>
+          <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">KOMISI</th>
+          <th class="px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-white uppercase tracking-wider">STATUS</th>
+          <th class="px-2 md:px-4 py-2 md:py-3 text-right font-semibold text-white uppercase tracking-wider">AKSI</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-vendor" class="divide-y divide-gray-100">
+        <?php if (!empty($usersVendor)): ?>
+          <?php foreach ($usersVendor as $i => $u): 
+            $id = (int)($u['id'] ?? 0); 
+            $status = strtolower((string)($u['vendor_status'] ?? 'pending'));
+            $isSuspended = in_array($status, ['suspended','nonaktif','inactive'], true);
+            $suspendLabel = $isSuspended ? 'Unsuspend' : 'Suspend';
+            $suspendIcon = $isSuspended ? 'fa-regular fa-circle-play' : 'fa-regular fa-circle-pause';
 
-                // Phone: dari users(phone/no_telp) -> vendor_profiles -> '-'
-                $phoneVal = $u['phone'] ?? ($u['no_tlp'] ?? ($vendorPhoneById[$id] ?? '-'));
-                // Email: dari auth_identities
-                $emailVal = $emailById[$id] ?? ($u['email'] ?? '-');
-              ?>
-                <tr class="hover:bg-gray-50 fade-up-soft" style="--delay: <?= number_format(0.22 + 0.03*$i, 2, '.', '') ?>s" data-rowkey="<?= esc($rk) ?>">
-                  <td class="px-2 md:px-4 py-2 md:py-3 font-semibold text-gray-900"><?= esc($id ?: '-') ?></td>
-                  <td class="px-2 md:px-4 py-2 md:py-3 text-gray-900"><?= esc(full_name_of($u)) ?></td>
-                  <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800 js-username"><?= esc($u['username'] ?? '-') ?></td>
-                  <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800"><span class="js-phone"><?= esc($phoneVal) ?></span></td>
-                  <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800"><span class="js-email"><?= esc($emailVal) ?></span></td>
-                  <td class="px-2 md:px-4 py-2 md:py-3">
-                    <div class="flex items-center gap-2">
-                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= $status === 'active' ? 'bg-green-100 text-green-800' : ($status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') ?>">
-                        <?= esc(ucfirst($status)) ?>
-                      </span>
-                      <?php if (isset($u['is_verified']) && $u['is_verified']): ?>
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          <i class="fa-solid fa-check-circle mr-1"></i> Verified
-                        </span>
-                      <?php endif; ?>
-                    </div>
-                  </td>
-                  <td class="px-2 md:px-4 py-2 md:py-3 text-right">
-                    <div class="inline-flex items-center gap-1.5">
-                        <button type="button" 
-                          class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm edit-user-btn"
-                          onclick="loadEditForm('<?= site_url('admin/users/') . $id . '/edit?role=vendor'; ?>')">
-                          <i class="fa-regular fa-pen-to-square text-[11px]"></i> Edit
-                        </button>
-                      <button type="button" class="inline-flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm"
-                              data-user-name="<?= esc(full_name_of($u)) ?>" data-role="Vendor" onclick="UMDel.open(this)">
-                        <i class="fa-regular fa-trash-can text-[11px]"></i> Delete
-                      </button>
-                      <form method="post" action="<?= site_url('admin/users/toggle-suspend/' . $id) ?>" class="inline">
-                        <button type="submit" class="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-800 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm">
-                          <i class="<?= $sIcon ?> text-[11px]"></i> 
-                          <?= $sLbl ?>
-                        </button>
-                      </form>
-                    </div>
-                  </td>
-                </tr>
-              <?php endforeach; ?>
-            <?php else: ?>
-              <tr data-empty-state="true" class="fade-up-soft" style="--delay:.22s">
-                <td colspan="7" class="px-4 md:px-6 py-16">
-                  <div class="flex flex-col items-center justify-center text-center">
-                    <div class="w-14 h-14 rounded-2xl bg-gray-100 grid place-items-center"><i class="fa-solid fa-bullhorn text-xl text-gray-400"></i></div>
-                    <p class="mt-3 text-base md:text-lg font-semibold text-gray-400">Tidak ada data Vendor</p>
-                    <p class="text-sm text-gray-400">Tambahkan user vendor untuk memulai</p>
-                  </div>
-                </td>
-              </tr>
-            <?php endif; ?>
-          </tbody>
-        </table>
-      </div>
-    </section>
-    <?php endif; ?>
+            // Format komisi
+            $commission = '-';
+            if ($u['commission_type'] === 'nominal' && !empty($u['requested_commission_nominal'])) {
+                $commission = 'Rp ' . number_format($u['requested_commission_nominal'], 0, ',', '.');
+            } elseif ($u['commission_type'] === 'percent' && !empty($u['requested_commission'])) {
+                $commission = number_format($u['requested_commission'], 1) . '%';
+            }
+          ?>
+            <tr class="hover:bg-gray-50 fade-up-soft" style="--delay: <?= number_format(0.22 + 0.03*$i, 2, '.', '') ?>s" data-rowkey="vendor_<?= $id ?>">
+              <td class="px-2 md:px-4 py-2 md:py-3 font-semibold text-gray-900"><?= esc($id ?: '-') ?></td>
+              <td class="px-2 md:px-4 py-2 md:py-3 text-gray-900"><?= esc($u['business_name'] ?? '-') ?></td>
+              <td class="px-2 md:px-4 py-2 md:py-3 text-gray-900"><?= esc($u['owner_name'] ?? '-') ?></td>
+              <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800"><?= esc($u['username'] ?? '-') ?></td>
+              <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800"><?= esc($u['phone'] ?? '-') ?></td>
+              <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800"><?= esc($u['whatsapp_number'] ?? '-') ?></td>
+              <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800"><?= esc($u['email'] ?? '-') ?></td>
+              <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800 font-medium"><?= $commission ?></td>
+              <td class="px-2 md:px-4 py-2 md:py-3">
+                <div class="flex items-center gap-2">
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= $status === 'verified' ? 'bg-green-100 text-green-800' : ($status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') ?>">
+                    <?= esc(ucfirst($status)) ?>
+                  </span>
+                  <?php if (isset($u['is_verified']) && $u['is_verified']): ?>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      <i class="fa-solid fa-check-circle mr-1"></i> Verified
+                    </span>
+                  <?php endif; ?>
+                </div>
+              </td>
+              <td class="px-2 md:px-4 py-2 md:py-3 text-right">
+                <div class="inline-flex items-center gap-1.5">
+                  <button type="button" 
+                    class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm edit-user-btn"
+                    onclick="loadEditForm('<?= site_url('admin/users/') . $id . '/edit?role=vendor'; ?>')">
+                    <i class="fa-regular fa-pen-to-square text-[11px]"></i> Edit
+                  </button>
+                  <button type="button" class="inline-flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm"
+                          data-user-name="<?= esc($u['business_name'] ?? 'Vendor') ?>" data-role="Vendor" onclick="UMDel.open(this)">
+                    <i class="fa-regular fa-trash-can text-[11px]"></i> Delete
+                  </button>
+                  <button type="button" 
+                    onclick="toggleSuspendVendor(<?= $id ?>, this)"
+                    class="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-800 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm">
+                    <i class="<?= $suspendIcon ?> text-[11px]"></i> 
+                    <span><?= $suspendLabel ?></span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          <?php endforeach; ?>
+        <?php else: ?>
+          <tr data-empty-state="true" class="fade-up-soft" style="--delay:.22s">
+            <td colspan="10" class="px-4 md:px-6 py-16">
+              <div class="flex flex-col items-center justify-center text-center">
+                <div class="w-14 h-14 rounded-2xl bg-gray-100 grid place-items-center"><i class="fa-solid fa-bullhorn text-xl text-gray-400"></i></div>
+                <p class="mt-3 text-base md:text-lg font-semibold text-gray-400">Tidak ada data Vendor</p>
+                <p class="text-sm text-gray-400">Tambahkan user vendor untuk memulai</p>
+              </div>
+            </td>
+          </tr>
+        <?php endif; ?>
+      </tbody>
+    </table>
+  </div>
+</section>
+<?php endif; ?>
   </main>
 </div>
 
-<!-- POPUP DELETE (single sentence) -->
+<!-- POPUP DELETE -->
 <div id="confirmDelete" class="modal-hidden fixed inset-0 z-[9999] flex items-center justify-center p-4">
   <button type="button" class="absolute inset-0 z-10 bg-black/40 backdrop-blur-[1.5px]" data-overlay aria-label="Tutup"></button>
   <div class="relative z-20 w-full max-w-sm rounded-2xl bg-white shadow-xl ring-1 ring-black/5">
@@ -448,7 +458,7 @@ if (!empty($users)) {
   </div>
 </div>
 
-<!-- ================= MODAL EDIT USER ================= -->
+<!-- MODAL EDIT USER -->
 <div id="editUserModal"
      class="fixed inset-0 z-[9999] flex items-start justify-center bg-black/50 p-4"
      x-data="editUserModal" 
@@ -467,6 +477,13 @@ if (!empty($users)) {
       </div>
     </div>
   </div>
+</div>
+
+<!-- Tambahkan di index.php sebelum script -->
+<div id="csrfData" style="display: none;">
+    <input type="hidden" id="csrfTokenName" value="<?= csrf_token() ?>">
+    <input type="hidden" id="csrfTokenValue" value="<?= csrf_hash() ?>">
+    <input type="hidden" id="csrfHeaderName" value="<?= csrf_header() ?>">
 </div>
 
 <script>
@@ -573,6 +590,30 @@ document.addEventListener('alpine:init', () => {
       document.getElementById('editModalContent').innerHTML = '';
     }
   }));
+
+  // Tambahkan di bagian script form vendor (create dan edit)
+function toggleCommissionFields() {
+    const commissionType = document.getElementById('commission_type').value;
+    const percentField = document.getElementById('percent_commission_field');
+    const nominalField = document.getElementById('nominal_commission_field');
+    
+    if (commissionType === 'percent') {
+        percentField.style.display = 'block';
+        nominalField.style.display = 'none';
+        // Clear nominal field when switching to percent
+        document.getElementById('requested_commission_nominal').value = '';
+    } else {
+        percentField.style.display = 'none';
+        nominalField.style.display = 'block';
+        // Clear percent field when switching to nominal
+        document.getElementById('requested_commission').value = '';
+    }
+}
+
+// Panggil saat halaman load untuk set initial state
+document.addEventListener('DOMContentLoaded', function() {
+    toggleCommissionFields();
+});
 
   // SEO Form Component (untuk create)
   Alpine.data('seoForm', () => ({
@@ -858,64 +899,167 @@ function fallbackLoadEditForm(url) {
   });
 }
 
-// ===== INITIALIZATION =====
-document.addEventListener('DOMContentLoaded', function() {
-  console.log('=== USER MANAGEMENT INITIALIZED ===');
-  console.log('Alpine.js loaded:', typeof Alpine !== 'undefined');
-  console.log('Create modal:', document.querySelector('#createUserModal'));
-  console.log('Edit modal:', document.querySelector('#editUserModal'));
-  
-  // Event listener untuk tombol create
-  document.addEventListener('click', function(e) {
-    const createBtn = e.target.closest('a[onclick*="loadCreateForm"]');
-    if (createBtn) {
-      e.preventDefault();
-      const onclickAttr = createBtn.getAttribute('onclick');
-      const urlMatch = onclickAttr.match(/loadCreateForm\('([^']+)'\)/);
-      
-      if (urlMatch && urlMatch[1]) {
-        console.log('Create button clicked, URL:', urlMatch[1]);
-        loadCreateForm(urlMatch[1]);
-      }
+// ===== SUSPEND FUNCTIONALITY =====
+// Fungsi untuk toggle suspend SEO
+async function toggleSuspendSeo(userId, button) {
+    console.log('Toggle suspend SEO called for user:', userId);
+    
+    const originalText = button.innerHTML;
+    
+    try {
+        // Tampilkan loading
+        button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+        button.disabled = true;
+        
+        // Gunakan FormData dengan nama field yang benar
+        const formData = new FormData();
+        // Perbaiki: gunakan nama CSRF token yang benar
+        formData.append('<?= csrf_token() ?>', '<?= csrf_hash() ?>');
+        
+        console.log('CSRF Token Name:', '<?= csrf_token() ?>');
+        console.log('CSRF Token Value:', '<?= csrf_hash() ?>');
+        
+        const response = await fetch(`<?= site_url('admin/users/toggle-suspend/') ?>${userId}`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+        
+        console.log('Response status:', response.status);
+        
+        if (response.ok) {
+            const result = await response.json();
+            console.log('Success result:', result);
+            
+            if (result.success) {
+                updateSuspendUI(userId, result.new_status, result.new_label, 'seo', button);
+                showToast(result.message, 'success');
+            } else {
+                showToast(result.message, 'error');
+            }
+        } else {
+            const errorText = await response.text();
+            console.error('Server error:', errorText);
+            showToast('Terjadi kesalahan server', 'error');
+        }
+        
+    } catch (error) {
+        console.error('Network error:', error);
+        showToast('Terjadi kesalahan jaringan', 'error');
+    } finally {
+        button.innerHTML = originalText;
+        button.disabled = false;
     }
-  });
+}
 
-  // Event listener untuk tombol edit
-  document.addEventListener('click', function(e) {
-    const editBtn = e.target.closest('button[onclick*="loadEditForm"]');
-    if (editBtn) {
-      e.preventDefault();
-      const onclickAttr = editBtn.getAttribute('onclick');
-      const urlMatch = onclickAttr.match(/loadEditForm\('([^']+)'\)/);
-      
-      if (urlMatch && urlMatch[1]) {
-        console.log('Edit button clicked, URL:', urlMatch[1]);
-        loadEditForm(urlMatch[1]);
-      }
+// Fungsi untuk toggle suspend Vendor
+async function toggleSuspendVendor(userId, button) {
+    console.log('Toggle suspend Vendor called for user:', userId);
+    
+    const originalText = button.innerHTML;
+    
+    try {
+        button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+        button.disabled = true;
+        
+        const formData = new FormData();
+        formData.append('<?= csrf_token() ?>', '<?= csrf_hash() ?>');
+        
+        const response = await fetch(`<?= site_url('admin/users/toggle-suspend/') ?>${userId}`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+        
+        console.log('Response status:', response.status);
+        
+        if (response.ok) {
+            const result = await response.json();
+            console.log('Success result:', result);
+            
+            if (result.success) {
+                updateSuspendUI(userId, result.new_status, result.new_label, 'vendor', button);
+                showToast(result.message, 'success');
+            } else {
+                showToast(result.message, 'error');
+            }
+        } else {
+            const errorText = await response.text();
+            console.error('Server error:', errorText);
+            showToast('Terjadi kesalahan server', 'error');
+        }
+        
+    } catch (error) {
+        console.error('Network error:', error);
+        showToast('Terjadi kesalahan jaringan', 'error');
+    } finally {
+        button.innerHTML = originalText;
+        button.disabled = false;
     }
-  });
+}
 
-  // Debug functions
-  window.testLoadCreate = function(role = 'seoteam') {
-    const url = `<?= site_url('admin/users/create?role=') ?>${role}`;
-    console.log('Testing load create form:', url);
-    loadCreateForm(url);
-  };
-  
-  window.testLoadEdit = function(userId, role = 'seoteam') {
-    const url = `<?= site_url('admin/users/') ?>${userId}/edit?role=${role}`;
-    console.log('Testing load edit form:', url);
-    loadEditForm(url);
-  };
-  
-  window.debugModals = function() {
-    console.log('=== MODAL DEBUG ===');
-    const createModal = document.querySelector('#createUserModal');
-    const editModal = document.querySelector('#editUserModal');
-    console.log('Create Modal Alpine instance:', createModal?.__x);
-    console.log('Edit Modal Alpine instance:', editModal?.__x);
-  };
-});
+// Update UI setelah suspend
+function updateSuspendUI(userId, newStatus, newLabel, type, button) {
+    console.log('Updating UI for user:', userId, 'New status:', newStatus);
+    
+    // Update status badge
+    // Untuk Tim SEO, kita menggunakan data-rowkey dengan format "seo_[id]"
+    let row = document.querySelector(`tr[data-rowkey="seo_${userId}"]`);
+    if (!row) {
+        // Jika tidak ditemukan, coba cari dengan contains
+        const rows = document.querySelectorAll(`tr[data-rowkey*="${userId}"]`);
+        if (rows.length > 0) {
+            row = rows[0];
+        }
+    }
+    
+    if (row) {
+        const statusCell = row.querySelector('td:nth-child(6)'); // Kolom status adalah kolom ke-6
+        if (statusCell) {
+            let badge = statusCell.querySelector('span');
+            if (!badge) {
+                // Jika tidak ada span, buat yang baru
+                badge = document.createElement('span');
+                statusCell.innerHTML = '';
+                statusCell.appendChild(badge);
+            }
+            
+            // Update class berdasarkan status
+            const badgeClass = newStatus === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+            badge.className = `inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeClass}`;
+            badge.textContent = newLabel;
+            console.log('Updated badge:', badgeClass, newLabel);
+        }
+    }
+    
+    // Update suspend button yang diklik
+    if (button) {
+        const isSuspended = newStatus === 'suspended' || newStatus === 'inactive';
+        const newText = isSuspended ? 'Unsuspend' : 'Suspend';
+        const newIcon = isSuspended ? 'fa-regular fa-circle-play' : 'fa-regular fa-circle-pause';
+        
+        console.log('Updating button:', newText, newIcon);
+        
+        // Update icon
+        const icon = button.querySelector('i');
+        if (icon) {
+            icon.className = `${newIcon} text-[11px]`;
+        }
+        
+        // Update text
+        let textSpan = button.querySelector('span');
+        if (textSpan) {
+            textSpan.textContent = newText;
+        } else {
+            // Jika tidak ada span, update seluruh innerHTML
+            button.innerHTML = `<i class="${newIcon} text-[11px]"></i> <span>${newText}</span>`;
+        }
+    }
+}
 
 // ===== DELETE FUNCTIONALITY =====
 /* ========= User Management Delete (REAL DELETE) ========= */
@@ -997,27 +1141,6 @@ window.UMDel = (function () {
     }
   }
 
-  function getCsrfToken() {
-    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
-           document.querySelector('input[name="csrf_token"]')?.value;
-  }
-
-  function showToast(message, type = 'info') {
-    // Buat toast notification sederhana
-    const toast = document.createElement('div');
-    toast.className = `fixed top-4 right-4 z-[10000] px-4 py-3 rounded-lg shadow-lg text-white font-medium ${
-      type === 'success' ? 'bg-green-500' : 
-      type === 'error' ? 'bg-red-500' : 'bg-blue-500'
-    }`;
-    toast.textContent = message;
-    
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-      toast.remove();
-    }, 3000);
-  }
-
   // Event listeners
   if (yesEl) yesEl.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -1054,6 +1177,65 @@ window.UMDel = (function () {
   return { open, close };
 })();
 
+// ===== INITIALIZATION =====
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('=== USER MANAGEMENT INITIALIZED ===');
+  console.log('Alpine.js loaded:', typeof Alpine !== 'undefined');
+  console.log('Create modal:', document.querySelector('#createUserModal'));
+  console.log('Edit modal:', document.querySelector('#editUserModal'));
+  
+  // Event listener untuk tombol create
+  document.addEventListener('click', function(e) {
+    const createBtn = e.target.closest('a[onclick*="loadCreateForm"]');
+    if (createBtn) {
+      e.preventDefault();
+      const onclickAttr = createBtn.getAttribute('onclick');
+      const urlMatch = onclickAttr.match(/loadCreateForm\('([^']+)'\)/);
+      
+      if (urlMatch && urlMatch[1]) {
+        console.log('Create button clicked, URL:', urlMatch[1]);
+        loadCreateForm(urlMatch[1]);
+      }
+    }
+  });
+
+  // Event listener untuk tombol edit
+  document.addEventListener('click', function(e) {
+    const editBtn = e.target.closest('button[onclick*="loadEditForm"]');
+    if (editBtn) {
+      e.preventDefault();
+      const onclickAttr = editBtn.getAttribute('onclick');
+      const urlMatch = onclickAttr.match(/loadEditForm\('([^']+)'\)/);
+      
+      if (urlMatch && urlMatch[1]) {
+        console.log('Edit button clicked, URL:', urlMatch[1]);
+        loadEditForm(urlMatch[1]);
+      }
+    }
+  });
+
+  // Debug functions
+  window.testLoadCreate = function(role = 'seoteam') {
+    const url = `<?= site_url('admin/users/create?role=') ?>${role}`;
+    console.log('Testing load create form:', url);
+    loadCreateForm(url);
+  };
+  
+  window.testLoadEdit = function(userId, role = 'seoteam') {
+    const url = `<?= site_url('admin/users/') ?>${userId}/edit?role=${role}`;
+    console.log('Testing load edit form:', url);
+    loadEditForm(url);
+  };
+  
+  window.debugModals = function() {
+    console.log('=== MODAL DEBUG ===');
+    const createModal = document.querySelector('#createUserModal');
+    const editModal = document.querySelector('#editUserModal');
+    console.log('Create Modal Alpine instance:', createModal?.__x);
+    console.log('Edit Modal Alpine instance:', editModal?.__x);
+  };
+});
+
 // ===== EXISTING FUNCTIONS =====
 /* Patch dari localStorage jika phone/email masih '-' */
 (function(){
@@ -1075,6 +1257,52 @@ window.UMDel = (function () {
     });
   }catch(e){}
 })();
+
+// ===== TOAST NOTIFICATION =====
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    const types = {
+        success: 'bg-green-500',
+        error: 'bg-red-500',
+        warning: 'bg-yellow-500',
+        info: 'bg-blue-500'
+    };
+    
+    toast.className = `fixed top-4 right-4 z-[10000] px-6 py-3 rounded-lg text-white shadow-lg ${types[type] || types.info} transition-all duration-300 transform translate-x-full`;
+    toast.innerHTML = `
+        <div class="flex items-center gap-2">
+            <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation-triangle' : 'info'}"></i>
+            <span>${message}</span>
+        </div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Animate in
+    setTimeout(() => {
+        toast.classList.remove('translate-x-full');
+    }, 10);
+    
+    // Auto remove
+    setTimeout(() => {
+        toast.classList.add('translate-x-full');
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 300);
+    }, 4000);
+}
+
+// Helper function untuk mendapatkan CSRF token
+function getCsrfToken() {
+    return document.getElementById('csrfTokenValue')?.value || '<?= csrf_hash() ?>';
+}
+
+// Helper function untuk mendapatkan CSRF header name
+function getCsrfHeaderName() {
+    return document.getElementById('csrfHeaderName')?.value || 'X-CSRF-TOKEN';
+}
 </script>
 
 <?= $this->include('admin/layouts/footer'); ?>
