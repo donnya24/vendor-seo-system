@@ -57,6 +57,10 @@ $routes->get('auth/remember-status', 'Auth\AuthController::checkRememberStatus')
         // Suspend Routes - FIXED (TAMBAHKAN Admin\)
         $routes->post('toggle-suspend/(:num)', 'Admin\Users::toggleSuspend/$1');
         $routes->post('toggle-suspend-seo/(:num)', 'Admin\Users::toggleSuspendSeo/$1');
+
+        // ⭐⭐ VERIFY & REJECT VENDOR ROUTES ⭐⭐
+        $routes->post('verify-vendor/(:num)', 'Admin\Users::verifyVendor/$1');
+        $routes->post('reject-vendor/(:num)', 'Admin\Users::rejectVendor/$1');
     });
 
     // Vendors

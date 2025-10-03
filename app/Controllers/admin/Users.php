@@ -468,58 +468,106 @@ class Users extends BaseController
         return redirect()->to(site_url('admin/users?tab=' . $tab))->with('success', 'User deleted.');
     }
 
-    // ========== TOGGLE SUSPEND SEO ==========
-    public function toggleSuspendSeo($id)
-    {
-        // Handle AJAX request
-        if ($this->request->isAJAX()) {
-            try {
-                $groups = $this->getUserGroups((int) $id);
-                if (!in_array('seoteam', $groups, true)) {
-                    return $this->response->setStatusCode(400)->setJSON([
-                        'success' => false,
-                        'message' => 'Hanya Tim SEO yang bisa di-nonaktifkan.'
-                    ]);
-                }
-
-                $sp = $this->seoModel->where('user_id', $id)->first();
-                if (!$sp) {
-                    return $this->response->setStatusCode(404)->setJSON([
-                        'success' => false,
-                        'message' => 'Profil SEO tidak ditemukan.'
-                    ]);
-                }
-
-                $currentStatus = $sp['status'] ?? 'active';
-                $newStatus = ($currentStatus === 'inactive') ? 'active' : 'inactive';
-                
-                $this->seoModel->where('user_id', $id)
-                    ->set(['status' => $newStatus, 'updated_at' => date('Y-m-d H:i:s')])
-                    ->update();
-
-                $message = $newStatus === 'inactive' ? 'Tim SEO dinonaktifkan.' : 'Tim SEO diaktifkan kembali.';
-                
+// ========== TOGGLE SUSPEND SEO ==========
+public function toggleSuspendSeo($id)
+{
+    // Handle AJAX request
+    if ($this->request->isAJAX()) {
+        try {
+            log_message('debug', 'Toggle suspend SEO called for ID: ' . $id);
+            
+            $groups = $this->getUserGroups((int) $id);
+            log_message('debug', 'User groups: ' . json_encode($groups));
+            
+            if (!in_array('seoteam', $groups, true)) {
                 return $this->response->setJSON([
-                    'success' => true,
-                    'message' => $message,
-                    'new_status' => $newStatus,
-                    'new_label' => ucfirst($newStatus)
-                ]);
-
-            } catch (\Exception $e) {
-                return $this->response->setStatusCode(500)->setJSON([
                     'success' => false,
-                    'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                    'message' => 'Hanya Tim SEO yang bisa di-nonaktifkan.'
                 ]);
             }
-        }
 
-        // Fallback untuk non-AJAX
-        return $this->response->setStatusCode(400)->setJSON([
-            'success' => false,
-            'message' => 'Request harus AJAX'
-        ]);
+            $sp = $this->seoModel->where('user_id', $id)->first();
+            if (!$sp) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Profil SEO tidak ditemukan.'
+                ]);
+            }
+
+            log_message('debug', 'Current SEO status: ' . ($sp['status'] ?? 'active'));
+            
+            $currentStatus = $sp['status'] ?? 'active';
+            
+            // Tentukan status baru
+            if ($currentStatus === 'inactive') {
+                $newStatus = 'active';
+                $message = 'Tim SEO diaktifkan kembali.';
+            } else {
+                $newStatus = 'inactive';
+                $message = 'Tim SEO dinonaktifkan.';
+            }
+            
+            log_message('debug', 'New SEO status: ' . $newStatus);
+            
+            // ⭐⭐ PERBAIKAN: Gunakan save() dengan primary key atau update() dengan kondisi yang tepat ⭐⭐
+            $updateData = [
+                'status' => $newStatus, 
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
+            
+            // Cara 1: Gunakan save() dengan menyertakan primary key
+            if (isset($sp['id'])) {
+                $updateData['id'] = $sp['id'];
+                $updateResult = $this->seoModel->save($updateData);
+            } 
+            // Cara 2: Gunakan where() dengan update()
+            else {
+                $updateResult = $this->seoModel->where('user_id', $id)->set($updateData)->update();
+            }
+            
+            log_message('debug', 'Update result: ' . ($updateResult ? 'true' : 'false'));
+            
+            // Jika updateResult false, cek apakah karena tidak ada perubahan data
+            if (!$updateResult) {
+                // Cek apakah data sudah sama dengan yang ingin diupdate
+                $currentData = $this->seoModel->where('user_id', $id)->first();
+                if ($currentData && $currentData['status'] === $newStatus) {
+                    log_message('debug', 'No data changes detected, considering as success');
+                    $updateResult = true; // Anggap sukses jika tidak ada perubahan
+                }
+            }
+            
+            // Cek error database
+            $error = $this->seoModel->errors();
+            if ($error) {
+                log_message('error', 'Model errors: ' . json_encode($error));
+                throw new \Exception('Database error: ' . json_encode($error));
+            }
+            
+            log_message('debug', 'Toggle suspend SEO success: ' . $message);
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => $message,
+                'new_status' => $newStatus,
+                'new_label' => ucfirst($newStatus)
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Toggle suspend SEO error: ' . $e->getMessage());
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ]);
+        }
     }
+
+    return $this->response->setJSON([
+        'success' => false,
+        'message' => 'Request harus AJAX'
+    ]);
+}
 
 // ========== TOGGLE SUSPEND VENDOR ==========
 public function toggleSuspend($id)
@@ -556,16 +604,20 @@ public function toggleSuspend($id)
             
             $currentStatus = $vp['status'] ?? 'pending';
             
-            // ⭐⭐ LOGIC BARU: Simpan status asli dan toggle active/inactive ⭐⭐
-            if ($currentStatus === 'inactive') {
-                // Kembalikan ke status sebelumnya (dari inactive_reason atau default 'pending')
-                $previousStatus = $vp['inactive_reason'] ?? 'pending';
-                $newStatus = $previousStatus !== 'inactive' ? $previousStatus : 'pending';
+            // ⭐⭐ LOGIC BARU: Pisahkan status verification dan active/inactive ⭐⭐
+            $isCurrentlyActive = !in_array($currentStatus, ['inactive', 'suspended']);
+            
+            if (!$isCurrentlyActive) {
+                // Aktifkan vendor - kembalikan ke status verification sebelumnya
+                $previousVerificationStatus = $vp['inactive_reason'] ?? 'pending';
+                $newStatus = $previousVerificationStatus;
                 $message = 'Vendor diaktifkan kembali.';
+                $isActive = true;
             } else {
-                // Simpan status saat ini di inactive_reason dan set ke inactive
+                // Nonaktifkan vendor - simpan status verification saat ini
                 $newStatus = 'inactive';
                 $message = 'Vendor dinonaktifkan.';
+                $isActive = false;
             }
             
             log_message('debug', 'New vendor status: ' . $newStatus);
@@ -576,9 +628,13 @@ public function toggleSuspend($id)
                 'updated_at' => date('Y-m-d H:i:s')
             ];
             
-            // ⭐⭐ SIMPAN STATUS SEBELUMNYA JIKA SEDANG DINONAKTIFKAN ⭐⭐
-            if ($newStatus === 'inactive') {
-                $updateData['inactive_reason'] = $currentStatus; // Simpan status sebelumnya
+            // ⭐⭐ SIMPAN STATUS VERIFICATION SEBELUMNYA JIKA DINONAKTIFKAN ⭐⭐
+            if (!$isCurrentlyActive) {
+                // Sedang mengaktifkan - hapus inactive_reason
+                $updateData['inactive_reason'] = null;
+            } else {
+                // Sedang menonaktifkan - simpan status verification saat ini
+                $updateData['inactive_reason'] = $currentStatus;
             }
             
             $updateResult = $this->db->table('vendor_profiles')
@@ -601,8 +657,8 @@ public function toggleSuspend($id)
                 'success' => true,
                 'message' => $message,
                 'new_status' => $newStatus,
-                'new_label' => $this->getStatusLabel($newStatus), // ⭐⭐ GUNAKAN FUNCTION LABEL ⭐⭐
-                'should_refresh' => true // ⭐⭐ TANDA UNTUK REFRESH PAGE ⭐⭐
+                'is_active' => !$isCurrentlyActive, // Status aktif setelah update
+                'should_refresh' => true
             ]);
 
         } catch (\Exception $e) {
@@ -621,18 +677,151 @@ public function toggleSuspend($id)
     ]);
 }
 
-// ⭐⭐ FUNCTION BARU: Get Status Label ⭐⭐
-private function getStatusLabel($status)
+// ========== VERIFY VENDOR ==========
+public function verifyVendor($id)
 {
-    $labels = [
-        'verified' => 'Verified',
-        'pending' => 'Pending', 
-        'active' => 'Active',
-        'inactive' => 'Inactive',
-        'rejected' => 'Rejected'
-    ];
-    
-    return $labels[$status] ?? ucfirst($status);
+    // Handle AJAX request
+    if ($this->request->isAJAX()) {
+        try {
+            log_message('debug', 'Verify vendor called for ID: ' . $id);
+
+            $vp = $this->db->table('vendor_profiles')
+                ->where('user_id', $id)
+                ->get()
+                ->getRowArray();
+                
+            if (!$vp) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Profil vendor tidak ditemukan.'
+                ]);
+            }
+
+            $currentStatus = $vp['status'] ?? 'pending';
+            
+            if ($currentStatus !== 'pending') {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Hanya vendor dengan status pending yang bisa diverifikasi.'
+                ]);
+            }
+
+            // Update status menjadi verified
+            $updateData = [
+                'status' => 'verified',
+                'approved_at' => date('Y-m-d H:i:s'),
+                'action_by' => service('auth')->id(), // ID admin yang melakukan approve
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
+            
+            $updateResult = $this->db->table('vendor_profiles')
+                ->where('user_id', $id)
+                ->update($updateData);
+            
+            if (!$updateResult) {
+                throw new \Exception('Gagal mengupdate status vendor');
+            }
+
+            log_message('debug', 'Vendor verified successfully: ' . $id);
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Vendor berhasil diverifikasi.',
+                'new_status' => 'verified'
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Verify vendor error: ' . $e->getMessage());
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    return $this->response->setJSON([
+        'success' => false,
+        'message' => 'Request harus AJAX'
+    ]);
+}
+
+// ========== REJECT VENDOR ==========
+public function rejectVendor($id)
+{
+    // Handle AJAX request
+    if ($this->request->isAJAX()) {
+        try {
+            log_message('debug', 'Reject vendor called for ID: ' . $id);
+
+            $rejectReason = $this->request->getPost('reject_reason');
+            
+            if (empty($rejectReason)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Alasan penolakan harus diisi.'
+                ]);
+            }
+
+            $vp = $this->db->table('vendor_profiles')
+                ->where('user_id', $id)
+                ->get()
+                ->getRowArray();
+                
+            if (!$vp) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Profil vendor tidak ditemukan.'
+                ]);
+            }
+
+            $currentStatus = $vp['status'] ?? 'pending';
+            
+            if ($currentStatus !== 'pending') {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Hanya vendor dengan status pending yang bisa ditolak.'
+                ]);
+            }
+
+            // Update status menjadi rejected dan simpan alasan
+            $updateData = [
+                'status' => 'rejected',
+                'rejection_reason' => $rejectReason,
+                'action_by' => service('auth')->id(), // ID admin yang melakukan reject
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
+            
+            $updateResult = $this->db->table('vendor_profiles')
+                ->where('user_id', $id)
+                ->update($updateData);
+            
+            if (!$updateResult) {
+                throw new \Exception('Gagal mengupdate status vendor');
+            }
+
+            log_message('debug', 'Vendor rejected successfully: ' . $id);
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Vendor berhasil ditolak.',
+                'new_status' => 'rejected'
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Reject vendor error: ' . $e->getMessage());
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    return $this->response->setJSON([
+        'success' => false,
+        'message' => 'Request harus AJAX'
+    ]);
 }
 
     // ========== HELPER METHODS ==========
