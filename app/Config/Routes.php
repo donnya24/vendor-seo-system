@@ -79,7 +79,6 @@ $routes->post('logout','Auth\AuthController::logout'); // POST logout (untuk for
         // Edit - GET request untuk menampilkan form edit
         $routes->get('(:num)/edit', 'Admin\Users::edit/$1');
 
-<<<<<<< HEAD
         $routes->post('(:num)/update', 'Admin\Users::update/$1');
         $routes->post('update', 'Admin\Users::update');
         
@@ -95,19 +94,6 @@ $routes->post('logout','Auth\AuthController::logout'); // POST logout (untuk for
         $routes->post('(:num)/toggle-suspend-seo', 'Admin\Users::toggleSuspendSeo/$1');
         $routes->post('(:num)/verify-vendor', 'Admin\Users::verifyVendor/$1');
         $routes->post('(:num)/reject-vendor', 'Admin\Users::rejectVendor/$1');
-=======
-        $routes->get('(:num)/edit', 'Admin\Users::edit/$1');   // form edit
-        $routes->post('update/(:num)', 'Admin\Users::update/$1'); // PERBAIKI INI
-        $routes->post('(:num)/delete', 'Admin\Users::delete/$1'); // hapus
-
-        // Suspend Routes - FIXED (TAMBAHKAN Admin\)
-        $routes->post('toggle-suspend/(:num)', 'Admin\Users::toggleSuspend/$1');
-        $routes->post('toggle-suspend-seo/(:num)', 'Admin\Users::toggleSuspendSeo/$1');
-
-        // ⭐⭐ VERIFY & REJECT VENDOR ROUTES ⭐⭐
-        $routes->post('verify-vendor/(:num)', 'Admin\Users::verifyVendor/$1');
-        $routes->post('reject-vendor/(:num)', 'Admin\Users::rejectVendor/$1');
->>>>>>> 5620e9ef5b9dcc016f302099c9a1eb329f12ba2a
     });
 
     // Vendors
@@ -161,10 +147,6 @@ $routes->post('logout','Auth\AuthController::logout'); // POST logout (untuk for
 // Redirect untuk dashboard yang lebih spesifik
  $routes->get('admin/dashboard/index', static fn () => redirect()->to('/admin/dashboard'));
 
-<<<<<<< HEAD
-=======
- 
->>>>>>> 5620e9ef5b9dcc016f302099c9a1eb329f12ba2a
 // ---------- SEO ----------
  $routes->group('seo', [
     'namespace' => 'App\Controllers\Seo',
