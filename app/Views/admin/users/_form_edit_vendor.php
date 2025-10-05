@@ -1,0 +1,189 @@
+<!-- app/Views/admin/users/_form_edit_vendor.php -->
+
+<form id="editVendorForm" 
+      action="<?= site_url('admin/users/update/'.($user['id'] ?? 0)) ?>" 
+      method="post"
+      x-data="editVendorForm()"
+      @submit.prevent="submitForm($event)">
+    <?= csrf_field() ?>
+    <input type="hidden" name="role" value="vendor">
+    <input type="hidden" name="user_id" value="<?= $user['id'] ?? 0 ?>">
+    
+    <div class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Username -->
+            <div>
+                <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
+                <input type="text" 
+                       id="username" 
+                       name="username" 
+                       value="<?= esc($user['username'] ?? '') ?>"
+                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500" 
+                       required>
+            </div>
+            
+            <!-- Email -->
+            <div>
+                <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+                <input type="email" 
+                       id="email" 
+                       name="email" 
+                       value="<?= esc($user['email'] ?? '') ?>"
+                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500" 
+                       required>
+            </div>
+            
+            <!-- Nama Vendor -->
+            <div>
+                <label for="business_name" class="block text-sm font-medium text-gray-700">Nama Vendor</label>
+                <input type="text" 
+                       id="business_name" 
+                       name="business_name" 
+                       value="<?= esc($user['business_name'] ?? '') ?>"
+                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500" 
+                       required>
+            </div>
+            
+            <!-- Nama Lengkap -->
+            <div>
+                <label for="owner_name" class="block text-sm font-medium text-gray-700">Nama Lengkap</label>
+                <input type="text" 
+                       id="owner_name" 
+                       name="owner_name" 
+                       value="<?= esc($user['owner_name'] ?? '') ?>"
+                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500" 
+                       required>
+            </div>
+            
+            <!-- No. Telepon -->
+            <div>
+                <label for="phone" class="block text-sm font-medium text-gray-700">No. Telepon</label>
+                <input type="text" 
+                       id="phone" 
+                       name="phone" 
+                       value="<?= esc($user['phone'] ?? '') ?>"
+                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            
+            <!-- No. WhatsApp -->
+            <div>
+                <label for="whatsapp_number" class="block text-sm font-medium text-gray-700">No. WhatsApp</label>
+                <input type="text" 
+                       id="whatsapp_number" 
+                       name="whatsapp_number" 
+                       value="<?= esc($user['whatsapp_number'] ?? '') ?>"
+                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            
+            <!-- Tipe Komisi -->
+            <div>
+                <label for="commission_type" class="block text-sm font-medium text-gray-700">Tipe Komisi</label>
+                <select id="commission_type" 
+                        name="commission_type" 
+                        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="percent" <?= ($user['commission_type'] ?? 'nominal') === 'percent' ? 'selected' : '' ?>>Persentase (%)</option>
+                    <option value="nominal" <?= ($user['commission_type'] ?? 'nominal') === 'nominal' ? 'selected' : '' ?>>Nominal (Rp)</option>
+                </select>
+            </div>
+            
+            <!-- Komisi yang Diajukan -->
+            <div>
+                <label for="requested_commission_nominal" class="block text-sm font-medium text-gray-700">Komisi yang Diajukan</label>
+                <input type="number" 
+                       id="requested_commission_nominal" 
+                       name="requested_commission_nominal" 
+                       value="<?= esc($user['requested_commission_nominal'] ?? '') ?>"
+                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            
+            <!-- Status -->
+            <div>
+                <label for="vendor_status" class="block text-sm font-medium text-gray-700">Status</label>
+                <select id="vendor_status" 
+                        name="vendor_status" 
+                        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="pending" <?= ($user['vendor_status'] ?? 'pending') === 'pending' ? 'selected' : '' ?>>Pending</option>
+                    <option value="verified" <?= ($user['vendor_status'] ?? 'pending') === 'verified' ? 'selected' : '' ?>>Verified</option>
+                    <option value="rejected" <?= ($user['vendor_status'] ?? 'pending') === 'rejected' ? 'selected' : '' ?>>Rejected</option>
+                    <option value="inactive" <?= ($user['vendor_status'] ?? 'pending') === 'inactive' ? 'selected' : '' ?>>Inactive</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Password -->
+        <div>
+            <label for="password" class="block text-sm font-medium text-gray-700">Password (kosongkan jika tidak ingin mengubah)</label>
+            <input type="password" 
+                   id="password" 
+                   name="password" 
+                   value=""
+                   placeholder="Kosongkan jika tidak ingin mengubah"
+                   class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+        </div>
+    </div>
+    
+    <div class="flex justify-end mt-6 space-x-3">
+        <button type="button" 
+                @click="closeModal()" 
+                class="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+            Batal
+        </button>
+        <button type="submit" 
+                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" 
+                :disabled="loading">
+            <span x-show="!loading">Simpan</span>
+            <span x-show="loading">
+                <i class="fas fa-spinner fa-spin"></i> Menyimpan...
+            </span>
+        </button>
+    </div>
+</form>
+
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('editVendorForm', () => ({
+        loading: false,
+        
+        submitForm(event) {
+            this.loading = true;
+            
+            const form = event.target;
+            const formData = new FormData(form);
+            
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    this.closeModal();
+                    window.location.reload();
+                } else {
+                    alert(data.message || 'Gagal mengupdate data');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Terjadi kesalahan saat menyimpan data');
+            })
+            .finally(() => {
+                this.loading = false;
+            });
+        },
+        
+        closeModal() {
+            const modal = document.querySelector('#editUserModal');
+            if (modal && modal.__x) {
+                modal.__x.close();
+            } else {
+                document.getElementById('editUserModal').classList.add('modal-hidden');
+                document.body.style.overflow = '';
+            }
+        }
+    }));
+});
+</script>

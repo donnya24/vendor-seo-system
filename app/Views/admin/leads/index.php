@@ -1,7 +1,7 @@
 <?= $this->include('admin/layouts/header'); ?>
 <?= $this->include('admin/layouts/sidebar'); ?>
 
-<div id="pageWrap" class="flex-1 flex flex-col overflow-hidden">
+<div id="pageWrap" class="flex-1 flex flex-col overflow-hidden relative z-10">
   <header class="bg-white shadow-md z-20 sticky top-0">
     <div class="px-4 sm:px-6 py-3 flex items-center justify-between">
       <div>
@@ -13,7 +13,7 @@
     </div>
   </header>
 
-  <main class="flex-1 overflow-y-auto bg-gray-50">
+  <main class="flex-1 overflow-y-auto bg-gray-50 pt-4">
     <div class="px-4 sm:px-6 py-6">
       <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
         <table class="min-w-full divide-y divide-gray-200">

@@ -17,6 +17,37 @@ class SeoProfilesModel extends Model
         'created_at',
         'updated_at'
     ];
-    protected $useTimestamps = false; // handle manual
+    protected $useTimestamps = true; // Aktifkan timestamps otomatis
     protected $returnType    = 'array';
+    protected $dateFormat    = 'datetime';
+
+    /**
+     * Mendapatkan profil SEO berdasarkan user_id
+     */
+    public function getByUserId($userId)
+    {
+        return $this->where('user_id', $userId)->first();
+    }
+
+    /**
+     * Mendapatkan profil SEO berdasarkan user_id atau buat baru jika belum ada
+     */
+    public function getOrCreateByUserId($userId, $data = [])
+    {
+        $profile = $this->getByUserId($userId);
+        
+        if ($profile) {
+            // Update profil yang ada
+            $this->update($userId, $data);
+            return $profile;
+        } else {
+            // Buat profil baru
+            $data['user_id'] = $userId;
+            $data['created_at'] = date('Y-m-d H:i:s');
+            $data['updated_at'] = date('Y-m-d H:i:s');
+            
+            $this->insert($data);
+            return $this->find($this->insertID());
+        }
+    }
 }

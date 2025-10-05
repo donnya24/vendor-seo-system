@@ -11,10 +11,8 @@ class AdminProfileModel extends Model
     protected $allowedFields = [
         'user_id',
         'name',
-        'email',
         'phone',
         'profile_image',
-        'status',
         'created_at',
         'updated_at'
     ];

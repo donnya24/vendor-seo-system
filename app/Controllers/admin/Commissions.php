@@ -4,135 +4,194 @@ namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
 use App\Models\CommissionsModel;
+use App\Models\VendorProfilesModel;
+use App\Models\ActivityLogsModel;
 
 class Commissions extends BaseController
 {
     public function index()
     {
-        $m = new CommissionsModel();
+        $commissionModel = new CommissionsModel();
+        $vendorModel = new VendorProfilesModel();
 
-        // Filter bulan (opsional)
-        $month = $this->request->getGet('month'); // format YYYY-MM
-        if ($month) {
-            $m->where("DATE_FORMAT(period,'%Y-%m')", $month);
+        // Filter by vendor jika ada
+        $vendorId = $this->request->getGet('vendor_id');
+        $status = $this->request->getGet('status');
+
+        $builder = $commissionModel
+            ->select('commissions.*, vendor_profiles.business_name as vendor_name, vendor_profiles.owner_name')
+            ->join('vendor_profiles', 'vendor_profiles.id = commissions.vendor_id', 'left');
+
+        if ($vendorId && $vendorId !== 'all') {
+            $builder->where('commissions.vendor_id', $vendorId);
         }
 
-        $rows = $m->orderBy('period','DESC')->findAll();
+        if ($status && $status !== 'all') {
+            $builder->where('commissions.status', $status);
+        }
+
+        $commissions = $builder->orderBy('commissions.created_at', 'DESC')
+            ->paginate(20);
+
+        // Ambil daftar vendor untuk dropdown filter
+        $vendors = $vendorModel
+            ->select('id, business_name')
+            ->where('status', 'verified')
+            ->orderBy('business_name', 'ASC')
+            ->findAll();
 
         return view('admin/commissions/index', [
-            'page' => 'Commissions',
-            'rows' => $rows,
-            'month'=> $month,
+            'title'       => 'Manajemen Komisi Vendor',
+            'activeMenu'  => 'commissions',
+            'commissions' => $commissions,
+            'pager'       => $commissionModel->pager,
+            'vendors'     => $vendors,
+            'vendorId'    => $vendorId,
+            'status'      => $status
         ]);
     }
 
-    public function markPaid($id)
+    public function verify($id)
     {
-        $note = (string) $this->request->getPost('verify_note');
-        (new CommissionsModel())->update($id, [
-            'status'  => 'paid',
-            'paid_at' => date('Y-m-d H:i:s'),
-            'verify_note' => $note,
+        $commissionModel = new CommissionsModel();
+        $commission = $commissionModel->find($id);
+
+        if (!$commission) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Komisi tidak ditemukan.']);
+            }
+            return redirect()->back()->with('error', 'Komisi tidak ditemukan.');
+        }
+
+        // PERBAIKAN: Update status menjadi 'paid' karena hanya ada unpaid dan paid
+        $commissionModel->update($id, [
+            'status'      => 'paid',
+            'verified_at' => date('Y-m-d H:i:s'),
+            'verified_by' => session('user_id'),
+            'paid_at'     => date('Y-m-d H:i:s')
         ]);
-        return redirect()->back()->with('success','Commission marked as PAID.');
+
+        $this->logActivity($commission['vendor_id'], 'commissions', 'verify', "Komisi #{$id} telah diverifikasi dan ditandai sebagai dibayar.");
+
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => true, 'message' => 'Komisi berhasil diverifikasi dan ditandai sebagai dibayar.']);
+        }
+        return redirect()->back()->with('success', 'Komisi telah diverifikasi dan ditandai sebagai dibayar.');
     }
 
-    /**
-     * APPROVE pengajuan vendor (dipakai tombol Setujui di dashboard).
-     * - Update di vendor_profiles: status -> verified (opsional: is_verified=1, commission_rate=requested_commission)
-     * - Masukkan user ke group 'vendor' jika user_id ada.
-     * Response: JSON { ok: true|false, msg?: string }
-     */
-    public function approve()
+    public function delete($id)
     {
-        $id = (int)($this->request->getPost('id') ?? 0);
-        if (!$id) {
-            return $this->response->setStatusCode(400)->setJSON(['ok' => false, 'msg' => 'ID tidak valid']);
+        $commissionModel = new CommissionsModel();
+        $commission = $commissionModel->find($id);
+
+        if (!$commission) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Komisi tidak ditemukan.']);
+            }
+            return redirect()->back()->with('error', 'Komisi tidak ditemukan.');
         }
 
-        $db = db_connect();
-        $db->transStart();
+        $commissionModel->delete($id);
 
-        // Pastikan pengajuan ada
-        $vp = $db->table('vendor_profiles')->where('id',$id)->get()->getRowArray();
-        if (!$vp) {
-            $db->transComplete();
-            return $this->response->setStatusCode(404)->setJSON(['ok'=>false,'msg'=>'Pengajuan tidak ditemukan']);
+        $this->logActivity(
+            $commission['vendor_id'],
+            'commissions',
+            'delete',
+            "Komisi #{$id} telah dihapus."
+        );
+
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => true, 'message' => 'Komisi berhasil dihapus.']);
+        }
+        return redirect()->back()->with('success', 'Komisi telah dihapus.');
+    }
+
+    public function bulkAction()
+    {
+        $action = $this->request->getPost('action');
+        $commissionIds = $this->request->getPost('commission_ids');
+
+        if (empty($commissionIds)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Tidak ada komisi yang dipilih.']);
         }
 
-        // Deteksi kolom vendor_profiles
-        $vpFields = $db->getFieldNames('vendor_profiles');
-
-        // Siapkan update status
-        $update = [
-            'status'     => 'verified',
-            'updated_at' => date('Y-m-d H:i:s'),
-        ];
-        if (in_array('is_verified', $vpFields, true)) {
-            $update['is_verified'] = 1;
-        }
-        if (!empty($vp['requested_commission']) && in_array('commission_rate', $vpFields, true)) {
-            $update['commission_rate'] = $vp['requested_commission'];
-        }
-        if (in_array('requested_commission', $vpFields, true)) {
-            $update['requested_commission'] = null; // bersihkan permintaan
+        // Jika commission_ids adalah string, convert ke array
+        if (is_string($commissionIds)) {
+            $commissionIds = json_decode($commissionIds, true) ?? explode(',', $commissionIds);
         }
 
-        $db->table('vendor_profiles')->where('id',$id)->update($update);
+        $commissionModel = new CommissionsModel();
+        $successCount = 0;
+        $errorCount = 0;
 
-        // Pastikan user termasuk group 'vendor' agar muncul di Management User
-        if (!empty($vp['user_id'])) {
-            $exists = $db->table('auth_groups_users')
-                ->where('user_id', (int)$vp['user_id'])
-                ->where('group', 'vendor')
-                ->countAllResults();
+        foreach ($commissionIds as $id) {
+            try {
+                $commission = $commissionModel->find($id);
+                if (!$commission) {
+                    $errorCount++;
+                    continue;
+                }
 
-            if (!$exists) {
-                $db->table('auth_groups_users')->insert([
-                    'user_id' => (int)$vp['user_id'],
-                    'group'   => 'vendor',
-                ]);
+                switch ($action) {
+                    case 'verify':
+                        // PERBAIKAN: Update status menjadi 'paid'
+                        $commissionModel->update($id, [
+                            'status' => 'paid',
+                            'verified_at' => date('Y-m-d H:i:s'),
+                            'verified_by' => session('user_id'),
+                            'paid_at' => date('Y-m-d H:i:s')
+                        ]);
+                        break;
+
+                    case 'delete':
+                        $commissionModel->delete($id);
+                        break;
+
+                    default:
+                        $errorCount++;
+                        continue 2; // Skip ke komisi berikutnya
+                }
+
+                // Log activity
+                $this->logActivity(
+                    $commission['vendor_id'],
+                    'commissions',
+                    $action,
+                    "Komisi #{$id} telah diproses dengan aksi: {$action}"
+                );
+
+                $successCount++;
+
+            } catch (\Exception $e) {
+                $errorCount++;
             }
         }
 
-        $db->transComplete();
-        if ($db->transStatus() === false) {
-            return $this->response->setStatusCode(500)->setJSON(['ok' => false, 'msg' => 'Gagal menyetujui pengajuan']);
+        if ($successCount > 0) {
+            $message = "Berhasil memproses {$successCount} komisi.";
+            if ($errorCount > 0) {
+                $message .= " {$errorCount} komisi gagal diproses.";
+            }
+            return $this->response->setJSON(['success' => true, 'message' => $message]);
+        } else {
+            return $this->response->setJSON(['success' => false, 'message' => 'Gagal memproses komisi yang dipilih.']);
         }
-
-        return $this->response->setJSON(['ok' => true]);
     }
 
-    /**
-     * REJECT / Tidak Setuju pengajuan vendor (dipakai tombol Tidak Setuju di dashboard).
-     * Requirement: data pengajuan dihapus sehingga hilang dari daftar.
-     * Response: JSON { ok: true|false, msg?: string }
-     */
-    public function reject()
+    private function logActivity($vendorId, $module, $action, $description)
     {
-        $id = (int)($this->request->getPost('id') ?? 0);
-        if (!$id) {
-            return $this->response->setStatusCode(400)->setJSON(['ok' => false, 'msg' => 'ID tidak valid']);
-        }
+        $vendorId = $vendorId ?? 0;
 
-        $db = db_connect();
-        $db->transStart();
-
-        // Pastikan pengajuan ada
-        $found = $db->table('vendor_profiles')->select('id')->where('id',$id)->get()->getRowArray();
-        if (!$found) {
-            $db->transComplete();
-            return $this->response->setStatusCode(404)->setJSON(['ok'=>false,'msg'=>'Pengajuan tidak ditemukan']);
-        }
-
-        // Hapus pengajuan sesuai requirement
-        $db->table('vendor_profiles')->where('id',$id)->delete();
-
-        $db->transComplete();
-        if ($db->transStatus() === false) {
-            return $this->response->setStatusCode(500)->setJSON(['ok' => false, 'msg' => 'Gagal menolak pengajuan']);
-        }
-
-        return $this->response->setJSON(['ok' => true]);
+        $activityLogsModel = new ActivityLogsModel();
+        $activityLogsModel->insert([
+            'user_id'     => session('user_id'),
+            'vendor_id'   => $vendorId,
+            'module'      => $module,
+            'action'      => $action,
+            'description' => $description,
+            'ip_address'  => $this->request->getIPAddress(),
+            'user_agent'  => (string) $this->request->getUserAgent(),
+            'created_at'  => date('Y-m-d H:i:s'),
+        ]);
     }
 }

@@ -12,7 +12,7 @@
     </div>
   </div>
 
-    <!-- Stats Cards -->
+  <!-- Stats Cards -->
   <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
       <div class="flex items-center">
@@ -97,16 +97,13 @@
           <?php if (!empty($commissions) && is_array($commissions)): ?>
             <?php $no = 1; foreach ($commissions as $c): ?>
               <tr class="hover:bg-gray-50 transition">
-                <!-- No -->
                 <td class="px-5 py-4 text-center text-gray-600"><?= $no++ ?></td>
 
-                <!-- Periode -->
                 <td class="px-5 py-4">
                   <div class="text-sm font-medium text-gray-900"><?= esc($c['period_start']) ?></div>
                   <div class="text-xs text-gray-500">— <?= esc($c['period_end']) ?></div>
                 </td>
 
-                <!-- Vendor -->
                 <td class="px-5 py-4">
                   <div class="flex items-center">
                     <div class="flex-shrink-0 h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
@@ -118,12 +115,10 @@
                   </div>
                 </td>
 
-                <!-- Jumlah -->
                 <td class="px-5 py-4 text-right font-semibold text-gray-900">
                   Rp <?= number_format($c['amount'] ?? 0, 0, ',', '.') ?>
                 </td>
 
-                <!-- Bukti -->
                 <td class="px-5 py-4 text-center">
                   <?php if (!empty($c['proof'])): ?>
                     <?php 
@@ -147,7 +142,6 @@
                   <?php endif; ?>
                 </td>
 
-                <!-- Status -->
                 <td class="px-5 py-4 text-center">
                   <?php 
                     $status = strtolower($c['status'] ?? '-');
@@ -158,10 +152,6 @@
                       $badgeClass = 'bg-green-100 text-green-800';
                       $label = 'Approved';
                       $icon = '<i class="fas fa-check-circle mr-1"></i>';
-                    } elseif ($status === 'rejected') {
-                      $badgeClass = 'bg-red-100 text-red-800';
-                      $label = 'Rejected';
-                      $icon = '<i class="fas fa-times-circle mr-1"></i>';
                     } elseif ($status === 'unpaid') {
                       $badgeClass = 'bg-yellow-100 text-yellow-800';
                       $label = 'Unpaid';
@@ -173,25 +163,16 @@
                   </span>
                 </td>
 
-                <!-- Aksi -->
                 <td class="px-5 py-4 text-center">
                   <div class="flex flex-col sm:flex-row gap-2 justify-center">
                     <?php if ($status === 'unpaid'): ?>
-                      <button @click="confirmAction('verify', <?= $c['id'] ?>)"
+                      <button @click="confirmAction(<?= $c['id'] ?>)"
                               class="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-md text-xs font-medium shadow-sm transition flex items-center justify-center">
                         <i class="fas fa-check mr-1"></i> Verify
                       </button>
-                      <button @click="confirmAction('reject', <?= $c['id'] ?>)"
-                              class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md text-xs font-medium shadow-sm transition flex items-center justify-center">
-                        <i class="fas fa-times mr-1"></i> Reject
-                      </button>
-                    <?php elseif ($status === 'paid'): ?>
+                    <?php elseif ($status === 'paid' || $status === 'approved'): ?>
                       <span class="px-3 py-1 inline-flex items-center text-xs leading-5 font-medium rounded-full bg-green-100 text-green-800">
-                        <i class="fas fa-check-double mr-1"></i> Sudah Dibayar
-                      </span>
-                    <?php elseif ($status === 'rejected'): ?>
-                      <span class="px-3 py-1 inline-flex items-center text-xs leading-5 font-medium rounded-full bg-red-100 text-red-800">
-                        <i class="fas fa-ban mr-1"></i> Ditolak
+                        <i class="fas fa-check-double mr-1"></i> Sudah Diverifikasi
                       </span>
                     <?php else: ?>
                       <span class="text-gray-400 text-sm">-</span>
@@ -219,31 +200,17 @@
   <!-- Modal Konfirmasi -->
   <div x-show="showConfirmModal" x-cloak
        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
-       x-transition:enter="transition ease-out duration-300"
-       x-transition:enter-start="opacity-0"
-       x-transition:enter-end="opacity-100"
-       x-transition:leave="transition ease-in duration-200"
-       x-transition:leave-start="opacity-100"
-       x-transition:leave-end="opacity-0">
-    <div class="bg-white rounded-xl shadow-xl w-full max-w-md"
-         @click.stop
-         x-transition:enter="transition ease-out duration-300"
-         x-transition:enter-start="opacity-0 scale-95 translate-y-1"
-         x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-         x-transition:leave="transition ease-in duration-200"
-         x-transition:leave-start="opacity-100 scale-100 translate-y-0"
-         x-transition:leave-end="opacity-0 scale-95 translate-y-1">
+       x-transition>
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-md" @click.stop x-transition>
       <div class="p-6">
-        <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full"
-             :class="actionType === 'verify' ? 'bg-green-100' : 'bg-red-100'">
-          <i class="text-2xl"
-             :class="actionType === 'verify' ? 'fas fa-check text-green-600' : 'fas fa-times text-red-600'"></i>
+        <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-green-100">
+          <i class="fas fa-check text-green-600 text-2xl"></i>
         </div>
         <h3 class="text-lg font-semibold text-center text-gray-900 mb-2">
-          Konfirmasi <span x-text="actionType === 'verify' ? 'Verifikasi' : 'Penolakan'"></span>
+          Konfirmasi Verifikasi
         </h3>
         <p class="text-gray-600 text-center mb-6">
-          Apakah Anda yakin ingin <span x-text="actionType === 'verify' ? 'menyetujui' : 'menolak'"></span> komisi ini?
+          Apakah Anda yakin ingin menyetujui komisi ini?
         </p>
         
         <div class="flex flex-col sm:flex-row gap-3 justify-center">
@@ -252,9 +219,8 @@
             Batal
           </button>
           <button @click="executeAction()"
-                  class="px-4 py-2 rounded-lg text-white font-medium transition"
-                  :class="actionType === 'verify' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'">
-            <span x-text="actionType === 'verify' ? 'Verify' : 'Reject'"></span>
+                  class="px-4 py-2 rounded-lg text-white font-medium bg-green-600 hover:bg-green-700 transition">
+            Verify
           </button>
         </div>
       </div>
@@ -262,25 +228,13 @@
   </div>
 
   <!-- Notification Toast -->
-  <div x-show="notification.show" x-cloak
-       x-transition:enter="transition ease-out duration-300"
-       x-transition:enter-start="opacity-0 transform translate-y-2"
-       x-transition:enter-end="opacity-100 transform translate-y-0"
-       x-transition:leave="transition ease-in duration-200"
-       x-transition:leave-start="opacity-100 transform translate-y-0"
-       x-transition:leave-end="opacity-0 transform translate-y-2"
+  <div x-show="notification.show" x-cloak x-transition
        class="fixed bottom-4 right-4 z-50 bg-white rounded-lg shadow-lg border-l-4 p-4 max-w-md"
-       :class="{
-         'border-green-500': notification.type === 'success',
-         'border-red-500': notification.type === 'error'
-       }">
+       :class="{'border-green-500': notification.type === 'success', 'border-red-500': notification.type === 'error'}">
     <div class="flex items-start">
       <div class="flex-shrink-0">
         <i class="fas text-xl"
-           :class="{
-             'fa-check-circle text-green-500': notification.type === 'success',
-             'fa-exclamation-circle text-red-500': notification.type === 'error'
-           }"></i>
+           :class="{'fa-check-circle text-green-500': notification.type === 'success', 'fa-exclamation-circle text-red-500': notification.type === 'error'}"></i>
       </div>
       <div class="ml-3">
         <p class="text-sm font-medium text-gray-900" x-text="notification.title"></p>
@@ -302,88 +256,64 @@
       <p class="text-gray-700 font-medium">Memproses...</p>
     </div>
   </div>
+</div>
 
 <script>
 function commissionManager() {
-    return {
-        showConfirmModal: false,
-        actionType: '',
-        commissionId: null,
-        loading: false,
-        notification: {
-            show: false,
-            type: 'success',
-            title: '',
-            message: '',
-            timeout: null
-        },
-        
-        confirmAction(action, id) {
-            this.actionType = action;
-            this.commissionId = id;
-            this.showConfirmModal = true;
-        },
-        
-        async executeAction() {
-            this.showConfirmModal = false;
-            this.loading = true;
+  return {
+    showConfirmModal: false,
+    commissionId: null,
+    loading: false,
+    notification: {
+      show: false,
+      type: 'success',
+      title: '',
+      message: '',
+      timeout: null
+    },
 
-            const url = this.actionType === 'verify' 
-                ? `<?= site_url('seo/commissions/approve') ?>/${this.commissionId}?vendor_id=<?= esc($vendorId) ?>`
-                : `<?= site_url('seo/commissions/reject') ?>/${this.commissionId}?vendor_id=<?= esc($vendorId) ?>`;
+    confirmAction(id) {
+      this.commissionId = id;
+      this.showConfirmModal = true;
+    },
 
-            try {
-                const formData = new FormData();
-                formData.append('<?= csrf_token() ?>', '<?= csrf_hash() ?>');
+    async executeAction() {
+      this.showConfirmModal = false;
+      this.loading = true;
 
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                    body: formData
-                });
+      const url = `<?= site_url('seo/commissions/approve') ?>/${this.commissionId}?vendor_id=<?= esc($vendorId) ?>`;
 
-                const data = await response.json();
+      try {
+        const formData = new FormData();
+        formData.append('<?= csrf_token() ?>', '<?= csrf_hash() ?>');
 
-                if (data.success) {
-                    this.showNotification(
-                        'success',
-                        'Berhasil',
-                        `Komisi berhasil ${this.actionType === 'verify' ? 'diverifikasi' : 'ditolak'}`
-                    );
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+          body: formData
+        });
 
-                    setTimeout(() => window.location.reload(), 1500);
-                } else {
-                    throw new Error(data.message || 'Terjadi kesalahan');
-                }
-            } catch (error) {
-                this.showNotification(
-                    'error',
-                    'Gagal',
-                    error.message || 'Terjadi kesalahan saat memproses permintaan'
-                );
-            } finally {
-                this.loading = false;
-            }
-        },
+        const data = await response.json();
 
-        showNotification(type, title, message) {
-            // Clear any existing timeout
-            if (this.notification.timeout) {
-                clearTimeout(this.notification.timeout);
-            }
-            
-            // Set notification properties
-            this.notification.type = type;
-            this.notification.title = title;
-            this.notification.message = message;
-            this.notification.show = true;
-            
-            // Auto hide after 5 seconds
-            this.notification.timeout = setTimeout(() => {
-                this.notification.show = false;
-            }, 5000);
+        if (data.success) {
+          this.showNotification('success', 'Berhasil', 'Komisi berhasil diverifikasi');
+          setTimeout(() => window.location.reload(), 1500);
+        } else {
+          throw new Error(data.message || 'Terjadi kesalahan');
         }
+      } catch (error) {
+        this.showNotification('error', 'Gagal', error.message || 'Terjadi kesalahan saat memproses permintaan');
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    showNotification(type, title, message) {
+      if (this.notification.timeout) clearTimeout(this.notification.timeout);
+      this.notification = { show: true, type, title, message, timeout: null };
+      this.notification.timeout = setTimeout(() => this.notification.show = false, 5000);
     }
+  };
 }
 </script>
 

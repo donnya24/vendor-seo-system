@@ -10,21 +10,19 @@ class AreasModel extends Model
     protected $primaryKey = 'id';
     protected $returnType = 'array';
 
-    // Kolom di tabel: id, name, type, created_at, updated_at
-    protected $allowedFields = ['name', 'type', 'created_at', 'updated_at'];
+    // Kolom di tabel: id, name, type, code, parent_id, parent_key, created_at, updated_at
+    protected $allowedFields = ['name', 'type', 'code', 'parent_id', 'parent_key', 'created_at', 'updated_at'];
 
     // Timestamps tidak di-auto (controller sudah set created_at sendiri)
     protected $useTimestamps = false;
     protected $dateFormat    = 'datetime';
 
-    // ---- Helper opsional agar controller rapih ----
-
     /** Cari nama (LIKE) untuk auto-suggest. */
     public function searchByName(string $q, int $limit = 30): array
     {
-        $builder = $this->select('id, name, type')->orderBy('name', 'ASC');
+        $builder = $this->select('id, name, type, parent_id')->orderBy('name', 'ASC');
         if ($q !== '') {
-            $builder->like('name', $q);
+            $builder->like('name', $q, 'both');
         }
         // PENTING: findAll(limit) agar LIKE/ORDER diterapkan
         return $builder->findAll($limit);
@@ -39,6 +37,9 @@ class AreasModel extends Model
         $this->insert([
             'name'       => 'Seluruh Indonesia',
             'type'       => 'region',
+            'code'       => 'ID-ALL',
+            'parent_id'  => null,
+            'parent_key' => 0,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
         return (int) $this->getInsertID();

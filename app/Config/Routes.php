@@ -3,60 +3,97 @@
 use CodeIgniter\Router\RouteCollection;
 
 /** @var RouteCollection $routes */
-$routes->setDefaultNamespace('App\Controllers');
-$routes->setDefaultController('Home');
-$routes->setDefaultMethod('index');
-$routes->set404Override();
-$routes->setAutoRoute(true);
+ $routes->setDefaultNamespace('App\Controllers');
+ $routes->setDefaultController('Home');
+ $routes->setDefaultMethod('index');
+ $routes->set404Override();
+ $routes->setAutoRoute(true);
 
 // ==================== PUBLIC ====================
-$routes->get('/', 'Landpage\Landpage::index');
+ $routes->get('/', 'Landpage\Landpage::index');
 
 // Auth
 $routes->get('login',  'Auth\AuthController::login');
 $routes->post('login', 'Auth\AuthController::attemptLogin');
-$routes->post('logout','Auth\AuthController::logout');
+$routes->get('logout', 'Auth\AuthController::logout');  // GET logout
+$routes->post('logout','Auth\AuthController::logout'); // POST logout (untuk form)
 
 // Register (vendor)
-$routes->get('register',  'Auth\AuthController::registerForm');
-$routes->post('register', 'Auth\AuthController::registerProcess');
+ $routes->get('register',  'Auth\AuthController::registerForm');
+ $routes->post('register', 'Auth\AuthController::registerProcess');
 
 // Forgot / Reset Password
-$routes->get('forgot-password',  'Auth\ForgotPasswordController::showForgotForm');
-$routes->post('forgot-password', 'Auth\ForgotPasswordController::sendResetLink');
-$routes->get('reset-password',   'Auth\ForgotPasswordController::showResetForm');
-$routes->post('reset-password',  'Auth\ForgotPasswordController::resetPassword');
+ $routes->get('forgot-password',  'Auth\ForgotPasswordController::showForgotForm');
+ $routes->post('forgot-password', 'Auth\ForgotPasswordController::sendResetLink');
+ $routes->get('reset-password',   'Auth\ForgotPasswordController::showResetForm');
+ $routes->post('reset-password',  'Auth\ForgotPasswordController::resetPassword');
 
 // Util
-$routes->get('auth/remember-status', 'Auth\AuthController::checkRememberStatus');
+ $routes->get('auth/remember-status', 'Auth\AuthController::checkRememberStatus');
+
+// app/Config/Routes.php
 
 // ==================== ADMIN ====================
+
  $routes->group('admin', ['filter' => ['session', 'group:admin']], static function ($routes) {
     $routes->get('dashboard', 'Admin\Dashboard::index');
     $routes->get('api/stats', 'Admin\Dashboard::stats');
     $routes->get('api/leads/(:num)', 'Admin\Dashboard::getLeadDetail/$1');
 
-    // Users SEO
-    $routes->group('users-seo', function($routes){
-        $routes->get('/', 'Admin\UsersSeo::index');
-        $routes->get('create', 'Admin\UsersSeo::create');
-        $routes->post('store', 'Admin\UsersSeo::store');
-        $routes->post('(:num)/delete', 'Admin\UsersSeo::delete/$1');
+    // === ROUTES PROFILE YANG DIPERBAIKI ===
+    $routes->group('profile', function($routes) {
+        $routes->get('/', 'Admin\Profile::index'); // Halaman utama profile
+        $routes->get('edit-modal', 'Admin\Profile::editModal'); // Modal edit (AJAX)
+        $routes->get('password-modal', 'Admin\Profile::passwordModal'); // Modal password (AJAX)
+        $routes->post('update', 'Admin\Profile::update'); // Update profile
+        $routes->post('password-update', 'Admin\Profile::passwordUpdate'); // Update password
     });
+    
+    $routes->group('areas', function($routes){
+        $routes->get('/', 'Admin\VendorAreas::index');
+        $routes->get('create', 'Admin\VendorAreas::create');
+        $routes->get('edit/(:num)', 'Admin\VendorAreas::edit/$1');
+        $routes->get('search', 'Admin\VendorAreas::search');
+        $routes->post('attach', 'Admin\VendorAreas::attach');
+        $routes->post('delete', 'Admin\VendorAreas::delete');
+        $routes->post('clear-all/(:num)', 'Admin\VendorAreas::clearAll/$1');
+        $routes->delete('clear-all/(:num)', 'Admin\VendorAreas::clearAll/$1');
+        $routes->get('get-selected-areas/(:num)', 'Admin\VendorAreas::getSelectedAreas/$1');
+    });
+        
+    // Vendor Services & Products
+    $routes->get('services', 'Admin\VendorServices::index');
+    $routes->get('services/create', 'Admin\VendorServices::create');
+    $routes->post('services/store', 'Admin\VendorServices::store');
+    $routes->get('services/edit/(:num)', 'Admin\VendorServices::edit/$1');
+    $routes->post('services/update/(:num)', 'Admin\VendorServices::update/$1');
+    $routes->post('services/delete/(:num)', 'Admin\VendorServices::delete/$1');
+    $routes->get('services/search', 'Admin\VendorServices::search');
 
-    // Users (Vendor & SEO digabung)
+    // Users (Vendor & SEO digabung) - ROUTING YANG DIPERBAIKI
     $routes->group('users', function($routes){
-        $routes->get('/', 'Admin\Users::index');           // list (tab seo/vendor)
-        $routes->get('create', 'Admin\Users::create');     // form create
-        $routes->post('store', 'Admin\Users::store');      // simpan user baru
+        $routes->get('/', 'Admin\Users::index');
+        $routes->get('create', 'Admin\Users::create');
+        $routes->post('store', 'Admin\Users::store');
+        
+        // Edit - GET request untuk menampilkan form edit
+        $routes->get('(:num)/edit', 'Admin\Users::edit/$1');
 
-        $routes->get('(:num)/edit', 'Admin\Users::edit/$1');   // form edit
-        $routes->post('(:num)/update', 'Admin\Users::update/$1'); // simpan update
-        $routes->post('(:num)/delete', 'Admin\Users::delete/$1'); // hapus
-
-        // Toggle suspend vendor/seo
+        $routes->post('(:num)/update', 'Admin\Users::update/$1');
+        $routes->post('update', 'Admin\Users::update');
+        
+        // Delete
+        $routes->post('(:num)/delete', 'Admin\Users::delete/$1');
+        
+        // API endpoints
+        $routes->get('(:num)/email', 'Admin\Users::getEmail/$1');
+        $routes->get('(:num)/vendor-data', 'Admin\Users::getVendorData/$1');
+        
+        // Actions
         $routes->post('(:num)/toggle-suspend', 'Admin\Users::toggleSuspend/$1');
         $routes->post('(:num)/toggle-suspend-seo', 'Admin\Users::toggleSuspendSeo/$1');
+        $routes->post('(:num)/verify-vendor', 'Admin\Users::verifyVendor/$1');
+        $routes->post('(:num)/reject-vendor', 'Admin\Users::rejectVendor/$1');
     });
 
     // Vendors
@@ -76,14 +113,16 @@ $routes->get('auth/remember-status', 'Auth\AuthController::checkRememberStatus')
         $routes->get('(:num)', 'Admin\Leads::show/$1');
     });
 
-    // Vendor Requests (Approve / Reject)
+    // Vendor Requests (Approve / Reject) - Legacy routes
     $routes->post('vendorrequests/approve', 'Admin\VendorRequests::approve');
     $routes->post('vendorrequests/reject',  'Admin\VendorRequests::reject');
 
-    // Commissions
-    $routes->get('commissions',              'Admin\Commissions::index');
-    $routes->post('commissions/(:num)/paid', 'Admin\Commissions::markPaid/$1');
-
+    // Commissions Management
+    $routes->get('commissions', 'Admin\Commissions::index');
+    $routes->post('commissions/verify/(:num)', 'Admin\Commissions::verify/$1');
+    $routes->post('commissions/delete/(:num)', 'Admin\Commissions::delete/$1');
+    $routes->post('commissions/bulk-action', 'Admin\Commissions::bulkAction');
+        
     // Announcements
     $routes->get('announcements',                 'Admin\Announcements::index');
     $routes->get('announcements/create',          'Admin\Announcements::create');
@@ -92,21 +131,24 @@ $routes->get('auth/remember-status', 'Auth\AuthController::checkRememberStatus')
     $routes->post('announcements/(:num)/update',  'Admin\Announcements::update/$1');
     $routes->post('announcements/(:num)/delete',  'Admin\Announcements::delete/$1');
 
-    // Notifications
-    $routes->get('notifications', 'Notifications::index');
-    $routes->post('notifications/markRead/(:num)', 'Notifications::markRead/$1');
-    $routes->post('notifications/markAllRead', 'Notifications::markAllRead');
-    $routes->post('notifications/delete/(:num)', 'Notifications::delete/$1');
-    $routes->post('notifications/deleteAll', 'Notifications::deleteAll');
+    // Notifications - PERBAIKAN: Tambahkan namespace Admin
+    $routes->get('notifications', 'Admin\Notifications::index');
+    $routes->post('notifications/markRead/(:num)', 'Admin\Notifications::markRead/$1');
+    $routes->post('notifications/markAllRead', 'Admin\Notifications::markAllRead');
+    $routes->post('notifications/delete/(:num)', 'Admin\Notifications::delete/$1');
+    $routes->post('notifications/deleteAll', 'Admin\Notifications::deleteAll');
 
-    // Activity Logs
+    $routes->get('activities/vendor', 'Admin\ActivityVendor::index');
+    $routes->get('activities/seo', 'Admin\ActivitySeo::index');
+    // Admin Activity Logs
     $routes->get('activity-logs', 'Admin\ActivityLogs::index');
-
 });
+
+// Redirect untuk dashboard yang lebih spesifik
  $routes->get('admin/dashboard/index', static fn () => redirect()->to('/admin/dashboard'));
- 
+
 // ---------- SEO ----------
-$routes->group('seo', [
+ $routes->group('seo', [
     'namespace' => 'App\Controllers\Seo',
     'filter'    => ['session', 'group:seoteam']
 ], static function ($routes) {
@@ -170,7 +212,7 @@ $routes->group('seo', [
 
 
 // ==================== VENDORUSER ====================
-$routes->group('vendoruser', [
+ $routes->group('vendoruser', [
     'filter'    => ['session', 'group:vendor'],
     'namespace' => 'App\Controllers\Vendoruser'
 ], static function ($routes) {
@@ -239,4 +281,4 @@ $routes->group('vendoruser', [
     });
 });
 
-$routes->get('vendor/dashboard', static fn () => redirect()->to('/vendoruser/dashboard'));
+ $routes->get('vendor/dashboard', static fn () => redirect()->to('/vendoruser/dashboard'));
