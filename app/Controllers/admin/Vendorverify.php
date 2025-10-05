@@ -5,7 +5,11 @@ namespace App\Controllers\Admin;
 use App\Controllers\BaseController;
 use App\Models\VendorProfilesModel;
 
+<<<<<<< HEAD
 class Vendorverify extends BaseController
+=======
+class VendorRequests extends BaseController
+>>>>>>> 5620e9ef5b9dcc016f302099c9a1eb329f12ba2a
 {
     protected $vendorProfiles;
 

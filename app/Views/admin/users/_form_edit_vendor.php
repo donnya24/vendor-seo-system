@@ -39,9 +39,14 @@
                 <input type="text" 
                        id="business_name" 
                        name="business_name" 
+<<<<<<< HEAD
                        value="<?= esc($user['business_name'] ?? '') ?>"
                        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500" 
                        required>
+=======
+                       value="<?= esc($user['business_name'] ?? ($profile['business_name'] ?? '')) ?>"
+                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+>>>>>>> 5620e9ef5b9dcc016f302099c9a1eb329f12ba2a
             </div>
             
             <!-- Nama Lengkap -->
@@ -50,9 +55,14 @@
                 <input type="text" 
                        id="owner_name" 
                        name="owner_name" 
+<<<<<<< HEAD
                        value="<?= esc($user['owner_name'] ?? '') ?>"
                        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500" 
                        required>
+=======
+                       value="<?= esc($user['owner_name'] ?? ($profile['owner_name'] ?? '')) ?>"
+                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+>>>>>>> 5620e9ef5b9dcc016f302099c9a1eb329f12ba2a
             </div>
             
             <!-- No. Telepon -->
@@ -61,7 +71,11 @@
                 <input type="text" 
                        id="phone" 
                        name="phone" 
+<<<<<<< HEAD
                        value="<?= esc($user['phone'] ?? '') ?>"
+=======
+                       value="<?= esc($user['phone'] ?? ($profile['phone'] ?? '')) ?>"
+>>>>>>> 5620e9ef5b9dcc016f302099c9a1eb329f12ba2a
                        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
             </div>
             
@@ -71,6 +85,7 @@
                 <input type="text" 
                        id="whatsapp_number" 
                        name="whatsapp_number" 
+<<<<<<< HEAD
                        value="<?= esc($user['whatsapp_number'] ?? '') ?>"
                        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
             </div>
@@ -95,6 +110,39 @@
                        value="<?= esc($user['requested_commission_nominal'] ?? '') ?>"
                        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
             </div>
+=======
+                       value="<?= esc($user['whatsapp_number'] ?? ($profile['whatsapp_number'] ?? '')) ?>"
+                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            
+            <!-- Komisi yang Diajukan -->
+<!-- Ganti bagian komisi di form edit vendor -->
+<div>
+    <label for="commission_type" class="block text-sm font-medium text-gray-700">Tipe Komisi</label>
+    <select id="commission_type" name="commission_type" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" onchange="toggleCommissionFields()">
+        <option value="percent" <?= ($profile['commission_type'] ?? 'nominal') === 'percent' ? 'selected' : '' ?>>Persentase (%)</option>
+        <option value="nominal" <?= ($profile['commission_type'] ?? 'nominal') === 'nominal' ? 'selected' : '' ?>>Nominal (Rp)</option>
+    </select>
+</div>
+
+<div id="percent_commission_field" style="display: <?= ($profile['commission_type'] ?? 'nominal') === 'percent' ? 'block' : 'none' ?>;">
+    <label for="requested_commission" class="block text-sm font-medium text-gray-700">Komisi Persentase</label>
+    <input type="number" id="requested_commission" name="requested_commission" 
+           value="<?= esc($profile['requested_commission'] ?? '') ?>"
+           step="0.01" min="0" max="100" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+           placeholder="Contoh: 10.5">
+    <p class="mt-1 text-xs text-gray-500">Masukkan persentase (0-100%)</p>
+</div>
+
+<div id="nominal_commission_field" style="display: <?= ($profile['commission_type'] ?? 'nominal') === 'nominal' ? 'block' : 'none' ?>;">
+    <label for="requested_commission_nominal" class="block text-sm font-medium text-gray-700">Komisi Nominal</label>
+    <input type="number" id="requested_commission_nominal" name="requested_commission_nominal" 
+           value="<?= esc($profile['requested_commission_nominal'] ?? '') ?>"
+           step="0.01" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+           placeholder="Contoh: 500000">
+    <p class="mt-1 text-xs text-gray-500">Masukkan nominal dalam Rupiah</p>
+</div>
+>>>>>>> 5620e9ef5b9dcc016f302099c9a1eb329f12ba2a
             
             <!-- Status -->
             <div>
@@ -102,10 +150,17 @@
                 <select id="vendor_status" 
                         name="vendor_status" 
                         class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+<<<<<<< HEAD
                     <option value="pending" <?= ($user['vendor_status'] ?? 'pending') === 'pending' ? 'selected' : '' ?>>Pending</option>
                     <option value="verified" <?= ($user['vendor_status'] ?? 'pending') === 'verified' ? 'selected' : '' ?>>Verified</option>
                     <option value="rejected" <?= ($user['vendor_status'] ?? 'pending') === 'rejected' ? 'selected' : '' ?>>Rejected</option>
                     <option value="inactive" <?= ($user['vendor_status'] ?? 'pending') === 'inactive' ? 'selected' : '' ?>>Inactive</option>
+=======
+                    <option value="pending" <?= (($user['vendor_status'] ?? $profile['status'] ?? 'pending') === 'pending') ? 'selected' : '' ?>>Pending</option>
+                    <option value="verified" <?= (($user['vendor_status'] ?? $profile['status'] ?? 'pending') === 'verified') ? 'selected' : '' ?>>Verified</option>
+                    <option value="rejected" <?= (($user['vendor_status'] ?? $profile['status'] ?? 'pending') === 'rejected') ? 'selected' : '' ?>>Rejected</option>
+                    <option value="inactive" <?= (($user['vendor_status'] ?? $profile['status'] ?? 'pending') === 'inactive') ? 'selected' : '' ?>>Inactive</option>
+>>>>>>> 5620e9ef5b9dcc016f302099c9a1eb329f12ba2a
                 </select>
             </div>
         </div>
@@ -119,6 +174,21 @@
                    value=""
                    placeholder="Kosongkan jika tidak ingin mengubah"
                    class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+<<<<<<< HEAD
+=======
+            <p class="mt-1 text-xs text-gray-500">Minimal 8 karakter</p>
+        </div>
+
+        <!-- Konfirmasi Password -->
+        <div>
+            <label for="password_confirm" class="block text-sm font-medium text-gray-700">Konfirmasi Password</label>
+            <input type="password" 
+                   id="password_confirm" 
+                   name="password_confirm" 
+                   value=""
+                   placeholder="Kosongkan jika tidak ingin mengubah password"
+                   class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+>>>>>>> 5620e9ef5b9dcc016f302099c9a1eb329f12ba2a
         </div>
     </div>
     
@@ -144,12 +214,17 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('editVendorForm', () => ({
         loading: false,
         
+<<<<<<< HEAD
         submitForm(event) {
+=======
+        async submitForm(event) {
+>>>>>>> 5620e9ef5b9dcc016f302099c9a1eb329f12ba2a
             this.loading = true;
             
             const form = event.target;
             const formData = new FormData(form);
             
+<<<<<<< HEAD
             fetch(form.action, {
                 method: 'POST',
                 body: formData,
@@ -173,6 +248,55 @@ document.addEventListener('alpine:init', () => {
             .finally(() => {
                 this.loading = false;
             });
+=======
+            // Validasi password
+            const password = formData.get('password');
+            const passwordConfirm = formData.get('password_confirm');
+            
+            if (password && password !== passwordConfirm) {
+                alert('Konfirmasi password tidak sama!');
+                this.loading = false;
+                return;
+            }
+            
+            if (password && password.length < 8) {
+                alert('Password minimal 8 karakter!');
+                this.loading = false;
+                return;
+            }
+            
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.status === 'success') {
+                        this.closeModal();
+                        showToast(result.message, 'success');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        alert(result.message || 'Gagal mengupdate data');
+                    }
+                } else {
+                    const errorText = await response.text();
+                    console.error('Server error:', errorText);
+                    alert('Terjadi kesalahan server');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Terjadi kesalahan saat menyimpan data');
+            } finally {
+                this.loading = false;
+            }
+>>>>>>> 5620e9ef5b9dcc016f302099c9a1eb329f12ba2a
         },
         
         closeModal() {
@@ -180,7 +304,12 @@ document.addEventListener('alpine:init', () => {
             if (modal && modal.__x) {
                 modal.__x.close();
             } else {
+<<<<<<< HEAD
                 document.getElementById('editUserModal').classList.add('modal-hidden');
+=======
+                // Fallback
+                modal.style.display = 'none';
+>>>>>>> 5620e9ef5b9dcc016f302099c9a1eb329f12ba2a
                 document.body.style.overflow = '';
             }
         }

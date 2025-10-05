@@ -121,7 +121,11 @@ function closeRejectModal() {
 
 function loadEditModal(userId, role) {
     // Implementasi untuk memuat modal edit
+<<<<<<< HEAD
     fetch(`<?= site_url('admin/users/edit/') ?>${userId}?role=${role}`, {
+=======
+    fetch(<?= site_url('admin/users/edit/') ?>${userId}?role=${role}, {
+>>>>>>> 5620e9ef5b9dcc016f302099c9a1eb329f12ba2a
         headers: {
             'X-Requested-With': 'XMLHttpRequest'
         }
