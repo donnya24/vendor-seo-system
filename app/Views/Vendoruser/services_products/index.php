@@ -27,11 +27,11 @@
       </div>
     </div>
 
-    <!-- Filter Bar -->
+        <!-- Filter Bar - Alternatif lebih compact -->
     <div class="bg-white ring-1 ring-gray-200 rounded-xl shadow-sm px-5 py-4 sm:px-6 sm:py-5">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:items-end">
+      <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
         <!-- Filter Layanan -->
-        <div>
+        <div class="flex-1">
           <label for="filterService" class="sr-only">Cari Layanan</label>
           <div class="relative">
             <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
@@ -41,14 +41,14 @@
               </svg>
             </div>
             <input id="filterService" type="text"
-                   class="block w-full py-2.5 ps-10 pe-3 text-sm text-gray-900 border border-gray-300 rounded-lg bg-white
+                  class="block w-full py-2.5 ps-10 pe-3 text-sm text-gray-900 border border-gray-300 rounded-lg bg-white
                           focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                   placeholder="Filter nama layanan...">
+                  placeholder="Filter nama layanan...">
           </div>
         </div>
 
         <!-- Filter Produk -->
-        <div>
+        <div class="flex-1">
           <label for="filterProduct" class="sr-only">Cari Produk</label>
           <div class="relative">
             <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
@@ -58,23 +58,17 @@
               </svg>
             </div>
             <input id="filterProduct" type="text"
-                   class="block w-full py-2.5 ps-10 pe-3 text-sm text-gray-900 border border-gray-300 rounded-lg bg-white
+                  class="block w-full py-2.5 ps-10 pe-3 text-sm text-gray-900 border border-gray-300 rounded-lg bg-white
                           focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                   placeholder="Filter nama produk...">
+                  placeholder="Filter nama produk...">
           </div>
         </div>
 
-        <!-- Tombol Apply / Reset -->
-        <div class="flex gap-2">
-          <button type="button" id="applyFiltersBtn"
-                  class="px-4 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition text-sm shadow-sm">
-            Terapkan
-          </button>
-          <button type="button" id="clearFiltersBtn"
-                  class="px-4 py-2.5 rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200 transition text-sm border border-gray-300">
-            Reset
-          </button>
-        </div>
+        <!-- Tombol Reset - Sekarang benar-benar mepet -->
+        <button type="button" id="clearFiltersBtn"
+                class="px-4 py-2.5 rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200 transition text-sm border border-gray-300 whitespace-nowrap h-[42px] flex-shrink-0">
+          Reset
+        </button>
       </div>
     </div>
 

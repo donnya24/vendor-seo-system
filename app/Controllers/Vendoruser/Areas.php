@@ -6,7 +6,6 @@ use App\Controllers\BaseController;
 use App\Models\AreasModel;
 use App\Models\VendorAreasModel;
 use App\Models\VendorProfilesModel;
-use App\Models\ActivityLogsModel;
 
 class Areas extends BaseController
 {
@@ -36,28 +35,6 @@ class Areas extends BaseController
     }
 
     /* ===================== LOG HELPERS ===================== */
-
-    private function writeLog(string $action, string $description, ?int $entityId = null): void
-    {
-        try {
-            $user     = service('auth')->user();
-            $ua       = $this->request?->getUserAgent();
-            $uaString = $ua ? $ua->getAgentString() : null;
-
-            (new ActivityLogsModel())->insert([
-                'user_id'    => $user ? (int) $user->id : null,
-                'vendor_id'  => $this->vendorId ?? null,
-                'module'     => 'areas',
-                'action'     => $action,
-                'description'=> $description,
-                'ip_address' => $this->request?->getIPAddress(),
-                'user_agent' => $uaString,
-                'created_at' => date('Y-m-d H:i:s'),
-            ]);
-        } catch (\Throwable $e) {
-            log_message('error', 'ActivityLogs insert failed: {err}', ['err' => $e->getMessage()]);
-        }
-    }
 
     private function describeAreas(array $ids, int $limit = 8, bool $withPath = true): string
     {
@@ -91,6 +68,14 @@ class Areas extends BaseController
         if (! $this->initVendor()) {
             return redirect()->to(site_url('vendoruser/dashboard'))
                 ->with('error', 'Profil vendor belum ada. Lengkapi profil terlebih dulu.');
+        }
+
+        // Log aktivitas view
+        if (function_exists('log_activity_auto')) {
+            log_activity_auto('view', 'Melihat daftar area layanan', [
+                'module' => 'vendor_areas',
+                'vendor_id' => $this->vendorId
+            ]);
         }
 
         // LEFT JOIN + filter null (biarkan sesuai punyamu)
@@ -133,6 +118,14 @@ class Areas extends BaseController
                 ->with('error', 'Profil vendor belum ada.');
         }
 
+        // Log aktivitas create form
+        if (function_exists('log_activity_auto')) {
+            log_activity_auto('create_form', 'Membuka form tambah area layanan', [
+                'module' => 'vendor_areas',
+                'vendor_id' => $this->vendorId
+            ]);
+        }
+
         $isModal = $this->request->isAJAX() || $this->request->getGet('modal') === '1';
 
         return view('vendoruser/areas/create', $this->withVendorData([
@@ -145,6 +138,14 @@ class Areas extends BaseController
     {
         if (! $this->initVendor()) {
             return $this->response->setStatusCode(403)->setBody('Unauthorized');
+        }
+
+        // Log aktivitas edit form
+        if (function_exists('log_activity_auto')) {
+            log_activity_auto('edit_form', 'Membuka form edit area layanan', [
+                'module' => 'vendor_areas',
+                'vendor_id' => $this->vendorId
+            ]);
         }
 
         $areaModel = new AreasModel();
@@ -230,9 +231,22 @@ class Areas extends BaseController
 
     /* ===================== API ===================== */
 
-    public function search()
+   public function search()
     {
+        // Inisialisasi vendor untuk mendapatkan vendor_id
+        if (! $this->initVendor()) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Unauthorized']);
+        }
+
         $q = trim((string) ($this->request->getGet('q') ?? ''));
+
+        // Log aktivitas search - SEKARANG SUDAH PASTI ADA VENDOR_ID
+        if (function_exists('log_activity_auto')) {
+            log_activity_auto('search', 'Mencari area: ' . $q, [
+                'module' => 'vendor_areas',
+                'vendor_id' => $this->vendorId
+            ]);
+        }
 
         if (mb_strlen($q) < 2) {
             return $this->response->setJSON(['status' => 'success', 'data' => []]);
@@ -309,12 +323,27 @@ class Areas extends BaseController
                 ]);
 
                 $db->transComplete();
-                $this->writeLog('set', 'Set area: Seluruh Indonesia', $aid);
+                
+                // PERBAIKAN: gunakan helper untuk log
+                if (function_exists('log_activity_auto')) {
+                    log_activity_auto('set', 'Set area: Seluruh Indonesia', [
+                        'module' => 'vendor_areas',
+                        'vendor_id' => $this->vendorId,
+                        'area_id' => $aid
+                    ]);
+                }
             } else {
                 if (empty($areaIds)) {
                     // clear semua area
                     $db->transComplete();
-                    $this->writeLog('set', 'Kosongkan area layanan', null);
+                    
+                    // PERBAIKAN: gunakan helper untuk log
+                    if (function_exists('log_activity_auto')) {
+                        log_activity_auto('set', 'Kosongkan area layanan', [
+                            'module' => 'vendor_areas',
+                            'vendor_id' => $this->vendorId
+                        ]);
+                    }
                 } else {
                     $existIds = $areaModel->whereIn('id', $areaIds)->select('id')->findColumn('id');
 
@@ -334,7 +363,15 @@ class Areas extends BaseController
                     $vendorAreaModel->insertBatch($batch);
 
                     $db->transComplete();
-                    $this->writeLog('set', 'Set area ('.count($existIds).'): '.$this->describeAreas($existIds, 8, true), null);
+                    
+                    // PERBAIKAN: gunakan helper untuk log
+                    if (function_exists('log_activity_auto')) {
+                        log_activity_auto('set', 'Set area (' . count($existIds) . '): ' . $this->describeAreas($existIds, 8, true), [
+                            'module' => 'vendor_areas',
+                            'vendor_id' => $this->vendorId,
+                            'area_ids' => $existIds
+                        ]);
+                    }
                 }
             }
 
@@ -348,8 +385,16 @@ class Areas extends BaseController
 
         } catch (\Throwable $e) {
             $db->transRollback();
-            $this->writeLog('error', 'Gagal menyimpan area: '.$e->getMessage(), null);
-            $msg = ['status'=>'error','message'=>'Gagal menyimpan area: '.$e->getMessage()];
+            
+            // PERBAIKAN: gunakan helper untuk log error
+            if (function_exists('log_activity_auto')) {
+                log_activity_auto('error', 'Gagal menyimpan area: ' . $e->getMessage(), [
+                    'module' => 'vendor_areas',
+                    'vendor_id' => $this->vendorId
+                ]);
+            }
+            
+            $msg = ['status'=>'error','message'=>'Gagal menyimpan area: ' . $e->getMessage()];
             if ($isAjax) {
                 return $this->response->setJSON($msg);
             }
@@ -377,8 +422,18 @@ class Areas extends BaseController
 
         if ($ok) {
             $desc = 'Hapus area';
-            if ($area) { $desc .= ': ' . $this->buildPathById($am, (int)$area['id']); }
-            $this->writeLog('delete', $desc, $aid);
+            if ($area) { 
+                $desc .= ': ' . $this->buildPathById($am, (int)$area['id']); 
+            }
+            
+            // PERBAIKAN: gunakan helper untuk log
+            if (function_exists('log_activity_auto')) {
+                log_activity_auto('delete', $desc, [
+                    'module' => 'vendor_areas',
+                    'vendor_id' => $this->vendorId,
+                    'area_id' => $aid
+                ]);
+            }
 
             return $this->response->setJSON([
                 'status'  => 'success',
@@ -397,6 +452,15 @@ class Areas extends BaseController
         if (! $this->initVendor()) {
             return redirect()->to(site_url('vendoruser/dashboard'));
         }
+        
+        // Log aktivitas form
+        if (function_exists('log_activity_auto')) {
+            log_activity_auto('view_form', 'Membuka form area layanan', [
+                'module' => 'vendor_areas',
+                'vendor_id' => $this->vendorId
+            ]);
+        }
+        
         return view('vendoruser/areas/form', $this->withVendorData());
     }
 }

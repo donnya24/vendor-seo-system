@@ -26,11 +26,6 @@ class CreateAdminProfilesTable extends Migration
                 'constraint' => 100,
                 'null'       => false,
             ],
-            'email' => [
-                'type'       => 'VARCHAR',
-                'constraint' => 100,
-                'null'       => false,
-            ],
             'phone' => [
                 'type'       => 'VARCHAR',
                 'constraint' => 20,
@@ -40,12 +35,6 @@ class CreateAdminProfilesTable extends Migration
                 'type'       => 'VARCHAR',
                 'constraint' => 255,
                 'null'       => true,
-            ],
-            'status' => [
-                'type'       => 'VARCHAR',
-                'constraint' => 50,
-                'default'    => 'Admin',
-                'null'       => false,
             ],
             'created_at' => [
                 'type' => 'DATETIME',

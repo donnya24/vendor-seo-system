@@ -155,7 +155,7 @@ if (!function_exists('navItem')) {
 
     <div class="mb-5">
       <p class="text-blue-300 uppercase text-[11px] font-bold mb-3 px-2 tracking-wider">Aktivitas</p>
-      <?= navItem(true, 'vendoruser/activity_logs', 'fas fa-clock-rotate-left', 'Riwayat Aktivitas', isActive('vendoruser/activity_logs')) ?>
+      <?= navItem(true, 'vendoruser/activity-logs', 'fas fa-clock-rotate-left', 'Riwayat Aktivitas', isActive('vendoruser/activity-logs')) ?>
     </div>
   </nav>
 

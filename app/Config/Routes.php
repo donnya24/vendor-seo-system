@@ -268,7 +268,7 @@ $routes->post('logout','Auth\AuthController::logout'); // POST logout (untuk for
     });
 
     // Activity Logs
-    $routes->get('activity_logs', 'ActivityLogs::index');
+    $routes->get('activity-logs', 'ActivityLogs::index');
 
     // Notifications (FIX: hilangkan nested 'vendoruser' ganda)
     $routes->group('notifications', static function ($routes) {
