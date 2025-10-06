@@ -11,18 +11,15 @@ class UserModel extends ShieldUserModel
     
     protected $allowedFields = [
         'username',
-        'email',
-        'name',
         'status',
         'status_message',
         'active',
         'last_active',
         'created_at',
         'updated_at',
-        'deleted_at',
-        'password_hash',
-        'reset_token',
-        'reset_expires_at'
+        'deleted_at'
+        // HAPUS: 'email', 'name', 'password_hash', 'reset_token', 'reset_expires_at'
+        // karena kolom ini tidak ada di tabel users
     ];
 
     protected $useTimestamps = true;
@@ -30,29 +27,45 @@ class UserModel extends ShieldUserModel
     protected $updatedField = 'updated_at';
     protected $deletedField = 'deleted_at';
 
-    // ==== Tambahan untuk reset password ====
-    public function setResetToken($email, $token, $expires)
-    {
-        return $this->where('email', $email)
-                    ->set([
-                        'reset_token' => $token,
-                        'reset_expires_at' => $expires
-                    ])
-                    ->update();
-    }
-
-    public function getUserByResetToken($token)
-    {
-        return $this->where('reset_token', $token)
-                    ->where('reset_expires_at >=', date('Y-m-d H:i:s'))
-                    ->first();
-    }
-
-    public function clearResetToken($userId)
+    // ==== HAPUS method reset password karena kolom tidak ada ====
+    // Kolom reset_token dan reset_expires_at tidak ada di tabel
+    
+    /**
+     * Update status user menjadi active
+     */
+    public function activateUser($userId)
     {
         return $this->update($userId, [
-            'reset_token' => null,
-            'reset_expires_at' => null
+            'status' => 'active',
+            'active' => 1
         ]);
+    }
+    
+    /**
+     * Update last_active timestamp
+     */
+    public function updateLastActive($userId)
+    {
+        return $this->update($userId, [
+            'last_active' => date('Y-m-d H:i:s')
+        ]);
+    }
+    
+    /**
+     * Get active users
+     */
+    public function getActiveUsers()
+    {
+        return $this->where('active', 1)
+                    ->where('status', 'active')
+                    ->findAll();
+    }
+    
+    /**
+     * Get users by status
+     */
+    public function getUsersByStatus($status)
+    {
+        return $this->where('status', $status)->findAll();
     }
 }

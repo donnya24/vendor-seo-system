@@ -68,7 +68,7 @@ if (!function_exists('log_activity_auto')) {
             }
 
             // =========================
-            // 🧾 Data log
+            // 🧾 Data log (SESUAI STRUCTURE DATABASE)
             // =========================
             $data = [
                 'user_id'     => $userId,
@@ -79,14 +79,12 @@ if (!function_exists('log_activity_auto')) {
                 'action'      => $action,
                 'description' => $description,
                 'ip_address'  => service('request')->getIPAddress(),
-                'user_agent'  => service('request')->getUserAgent(),
+                'user_agent'  => service('request')->getUserAgent()->getAgentString(), // Fix: get string
                 'created_at'  => date('Y-m-d H:i:s'),
             ];
 
-            // Tambahkan data ekstra jika ada
-            if (!empty($extraData)) {
-                $data = array_merge($data, $extraData);
-            }
+            // Hapus module dari extraData jika ada, karena sudah diproses
+            unset($extraData['module']);
 
             $logs->insert($data);
             return true;

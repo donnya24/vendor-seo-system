@@ -1,9 +1,7 @@
 <?php
-// app/Controllers/Vendoruser/ActivityLogs.php
 namespace App\Controllers\Vendoruser;
 
 use App\Controllers\BaseController;
-use App\Models\ActivityLogsModel;
 use App\Models\VendorProfilesModel;
 
 class ActivityLogs extends BaseController
@@ -15,6 +13,10 @@ class ActivityLogs extends BaseController
     private function initVendor(): bool
     {
         $user = service('auth')->user();
+        if (!$user) {
+            return false;
+        }
+        
         $this->vendorProfile = (new VendorProfilesModel())
             ->where('user_id', (int) $user->id)
             ->first();
@@ -35,31 +37,40 @@ class ActivityLogs extends BaseController
 
     public function index()
     {
+        helper('activity');
+        
         if (! $this->initVendor()) {
             return redirect()->to(site_url('vendoruser/dashboard'))
                 ->with('error', 'Profil vendor belum ada. Lengkapi profil terlebih dahulu.');
         }
 
-        // Log aktivitas view logs
-        if (function_exists('log_activity_auto')) {
-            log_activity_auto('view', 'Melihat riwayat aktivitas', [
-                'module' => 'vendor_activity_logs',
-                'vendor_id' => $this->vendorId
-            ]);
-        }
+        // Log aktivitas view logs menggunakan helper
+        log_activity_auto('view', 'Melihat riwayat aktivitas', [
+            'module' => 'vendor_activity_logs'
+        ]);
 
         // Konfigurasi pagination
         $perPage = 20;
         $currentPage = $this->request->getGet('page') ? (int) $this->request->getGet('page') : 1;
         $offset = ($currentPage - 1) * $perPage;
 
-        // Query logs dengan pagination
-        $logsModel = new ActivityLogsModel();
+        // Query logs berdasarkan vendor_id
+        $logsModel = new \App\Models\ActivityLogsModel();
         
         $totalLogs = $logsModel->where('vendor_id', $this->vendorId)->countAllResults();
         $logs = $logsModel->where('vendor_id', $this->vendorId)
                          ->orderBy('created_at', 'DESC')
                          ->findAll($perPage, $offset);
+
+        // Process logs untuk display - HAPUS REFERENSI KE STATUS
+        $processedLogs = [];
+        foreach ($logs as $log) {
+            $log['action_label'] = $this->getActionLabel($log['action']);
+            $log['module_label'] = $this->getModuleLabel($log['module']);
+            $log['badge_class'] = $this->getActionBadgeClass($log['action']);
+            // HAPUS BARIS INI: $log['status_badge'] = $this->getStatusBadgeClass($log['status']);
+            $processedLogs[] = $log;
+        }
 
         // Hitung pagination
         $totalPages = ceil($totalLogs / $perPage);
@@ -70,7 +81,7 @@ class ActivityLogs extends BaseController
             'content_view' => 'vendoruser/activity_logs/index',
             'content_data' => [
                 'page' => 'Activity Logs',
-                'logs' => $logs,
+                'logs' => $processedLogs,
                 'currentPage' => $currentPage,
                 'totalPages' => $totalPages,
                 'totalLogs' => $totalLogs,
@@ -93,6 +104,10 @@ class ActivityLogs extends BaseController
             'search' => 'Pencarian',
             'login' => 'Login',
             'logout' => 'Logout',
+            'register' => 'Registrasi',
+            'login_failed' => 'Login Gagal',
+            'register_failed' => 'Registrasi Gagal',
+            'register_error' => 'Error Registrasi',
             'create_form' => 'Buka Form Tambah',
             'edit_form' => 'Buka Form Edit',
             'view_form' => 'Buka Form',
@@ -114,7 +129,11 @@ class ActivityLogs extends BaseController
             'vendor_commissions' => 'Komisi',
             'vendor_leads' => 'Leads',
             'vendor_services_products' => 'Layanan & Produk',
-            'vendor_notifications' => 'Notifikasi', // ✅ DITAMBAHKAN
+            'vendor_notifications' => 'Notifikasi',
+            'auth' => 'Autentikasi',
+            'vendor_auth' => 'Autentikasi Vendor',
+            'admin_auth' => 'Autentikasi Admin',
+            'seo_auth' => 'Autentikasi SEO',
             'areas' => 'Area Layanan'
         ];
 
@@ -134,6 +153,10 @@ class ActivityLogs extends BaseController
             'search' => 'bg-purple-100 text-purple-800',
             'login' => 'bg-green-100 text-green-800',
             'logout' => 'bg-gray-100 text-gray-800',
+            'register' => 'bg-teal-100 text-teal-800',
+            'login_failed' => 'bg-red-100 text-red-800',
+            'register_failed' => 'bg-red-100 text-red-800',
+            'register_error' => 'bg-red-100 text-red-800',
             'create_form' => 'bg-indigo-100 text-indigo-800',
             'edit_form' => 'bg-indigo-100 text-indigo-800',
             'view_form' => 'bg-indigo-100 text-indigo-800',

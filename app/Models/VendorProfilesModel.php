@@ -27,7 +27,6 @@ class VendorProfilesModel extends Model
         'inactive_reason', 
         'approved_at',
         'action_by',
-        'is_verified',
         'commission_rate'
     ];
 

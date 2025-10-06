@@ -3,17 +3,17 @@ namespace App\Controllers\Auth;
 
 use CodeIgniter\Controller;
 use CodeIgniter\Shield\Entities\User;
-use App\Models\ActivityLogsModel; // Tambahkan ini
+use App\Models\VendorProfilesModel;
 
 class AuthController extends Controller
 {
     protected $auth;
-    protected $activityLogsModel; // Tambahkan property untuk model
+    protected $vendorProfilesModel;
 
     public function __construct()
     {
         $this->auth = service('auth');
-        $this->activityLogsModel = new ActivityLogsModel(); // Inisialisasi model
+        $this->vendorProfilesModel = new VendorProfilesModel();
     }
 
     // ===== LOGIN =====
@@ -22,7 +22,6 @@ class AuthController extends Controller
         if ($this->auth->loggedIn()) {
             return $this->redirectByRole($this->auth->user());
         }
-        // view path gunakan lowercase "auth/login"
         return view('auth/login');
     }
 
@@ -36,37 +35,45 @@ class AuthController extends Controller
         ]);
 
         if (! $validation->withRequest($this->request)->run()) {
+            // Log activity untuk validasi login gagal menggunakan helper
+            log_activity_auto('login_failed', 'Validasi login gagal - ' . json_encode($validation->getErrors()), [
+                'module' => 'auth',
+                'email' => $this->request->getPost('email')
+            ]);
+            
             return redirect()->back()->withInput()->with('error', 'Email dan password harus diisi dengan benar.');
         }
 
         $remember = (bool) $this->request->getPost('remember');
+        $email = (string) $this->request->getPost('email');
+        $password = (string) $this->request->getPost('password');
 
         $result = $this->auth->attempt([
-            'email'    => (string) $this->request->getPost('email'),
-            'password' => (string) $this->request->getPost('password'),
+            'email'    => $email,
+            'password' => $password,
         ], $remember);
 
         if ($result->isOK()) {
+            $user = $this->auth->user();
+            
             if ($remember === true) {
                 helper('auth_remember');
                 try {
-                    force_remember_token((int) $this->auth->user()->id);
+                    force_remember_token((int) $user->id);
                 } catch (\Throwable $e) {
                     log_message('error', 'force_remember_token failed: ' . $e->getMessage());
                 }
             }
             
-            // Log activity untuk login berhasil
-            $user = $this->auth->user();
-            $this->logActivity($user->id, null, 'login', 'success', 'Login berhasil ke sistem');
+            // Log activity untuk login berhasil menggunakan helper
+            $this->logLoginSuccess($user);
             
-            return $this->redirectByRole($this->auth->user());
+            return $this->redirectByRole($user);
         }
 
-        // Log activity untuk login gagal
-        $this->logActivity(null, null, 'login', 'failed', 'Login gagal - kredensial salah', [
-            'email' => $this->request->getPost('email'),
-            'ip' => $this->request->getIPAddress()
+        // Log activity untuk login gagal menggunakan helper
+        log_activity_auto('login_failed', 'Login gagal - kredensial salah untuk email: ' . $email, [
+            'module' => 'auth'
         ]);
         
         return redirect()->back()->withInput()->with('error', 'Login gagal. Periksa kembali kredensial Anda.');
@@ -75,10 +82,14 @@ class AuthController extends Controller
     // ===== LOGOUT =====
     public function logout()
     {
-        // Log activity sebelum logout
+        $user = null;
+        
+        // Ambil data user sebelum logout
         if ($this->auth->loggedIn()) {
             $user = $this->auth->user();
-            $this->logActivity($user->id, null, 'logout', 'success', 'Logout dari sistem');
+            
+            // Log activity sebelum logout menggunakan helper
+            $this->logLogout($user);
         }
 
         // Hapus remember token jika ada
@@ -102,7 +113,7 @@ class AuthController extends Controller
     // ===== REMEMBER STATUS =====
     public function checkRememberStatus()
     {
-        helper('vendoruser'); // fungsi helper custom kamu
+        helper('vendoruser');
 
         if (! $this->auth->loggedIn()) {
             return $this->response->setJSON(['logged_in' => false]);
@@ -134,7 +145,7 @@ class AuthController extends Controller
     // ========== REGISTER (PROSES) ==========
     public function registerProcess()
     {
-        helper('vendoruser');
+        helper(['vendoruser', 'activity']);
 
         $validation = service('validation');
         $validation->setRules([
@@ -147,9 +158,9 @@ class AuthController extends Controller
         ]);
 
         if (! $validation->withRequest($this->request)->run()) {
-            // Log activity untuk validasi gagal
-            $this->logActivity(null, null, 'register', 'failed', 'Validasi pendaftaran gagal', [
-                'errors' => $validation->getErrors(),
+            // Log activity untuk validasi gagal menggunakan helper
+            log_activity_auto('register_failed', 'Validasi pendaftaran vendor gagal - ' . json_encode($validation->getErrors()), [
+                'module' => 'auth',
                 'email' => $this->request->getPost('email')
             ]);
             
@@ -168,9 +179,9 @@ class AuthController extends Controller
         try {
             resolve_identity_table();
             if (identity_exists($email)) {
-                // Log activity untuk email sudah terdaftar
-                $this->logActivity(null, null, 'register', 'failed', 'Email sudah terdaftar', [
-                    'email' => $email
+                // Log activity untuk email sudah terdaftar menggunakan helper
+                log_activity_auto('register_failed', 'Email sudah terdaftar: ' . $email, [
+                    'module' => 'auth'
                 ]);
                 
                 return redirect()->back()->withInput()->with('error', 'Email sudah digunakan.');
@@ -179,10 +190,17 @@ class AuthController extends Controller
             $db->transException(true);
             $db->transStart();
 
-           // 1) Buat user Shield
+            // 1) Buat user Shield dengan status ACTIVE
             $username   = make_unique_username($vendorName, $email);
-            $userEntity = new User(['username' => $username]); // cukup pakai alias
-            $userId     = $users->insert($userEntity, true);
+            
+            // Buat user entity dengan status active
+            $userEntity = new User([
+                'username' => $username,
+                'status'   => 'active', // Set status langsung active
+                'active'   => 1         // Set active = 1
+            ]);
+            
+            $userId = $users->insert($userEntity, true);
 
             // 2) Identitas email+password & grup vendor
             create_email_password_identity((int) $userId, $email, $password);
@@ -194,35 +212,22 @@ class AuthController extends Controller
             ->where('type', 'email_password')
             ->update(['name' => $vendorName]);
 
-            // 3) Buat profil vendor
+            // 3) Buat profil vendor - HAPUS is_verified
             $vendorProfileId = null;
-            if ($db->tableExists('vendor_profiles')) {
-                $hasBusiness = $db->query("SHOW COLUMNS FROM vendor_profiles LIKE 'business_name'")->getNumRows() > 0;
-                $hasOwner    = $db->query("SHOW COLUMNS FROM vendor_profiles LIKE 'owner_name'")->getNumRows() > 0;
-                $hasName     = $db->query("SHOW COLUMNS FROM vendor_profiles LIKE 'name'")->getNumRows() > 0;
-                $hasPhone    = $db->query("SHOW COLUMNS FROM vendor_profiles LIKE 'phone'")->getNumRows() > 0;
+            
+            $vendorData = [
+                'user_id'        => $userId,
+                'business_name'  => $vendorName,
+                'owner_name'     => $vendorName,
+                'phone'          => '-',
+                'whatsapp_number'=> '-',
+                'status'         => 'pending',
+            ];
 
-                $data = [
-                    'user_id'     => $userId,
-                    'is_verified' => 0,
-                    'status'      => 'pending',
-                    'created_at'  => date('Y-m-d H:i:s'),
-                    'updated_at'  => date('Y-m-d H:i:s'),
-                ];
-                if ($hasBusiness) $data['business_name'] = $vendorName;
-                if ($hasOwner)    $data['owner_name']    = $vendorName;
-                if ($hasName)     $data['name']          = $vendorName;
-                if ($hasPhone)    $data['phone']         = '-';
+            $vendorProfileId = $this->vendorProfilesModel->insert($vendorData);
 
-                $db->table('vendor_profiles')->insert($data);
-                $vendorProfileId = $db->insertID(); // ← dapatkan ID profil vendor
-            }
-
-            // 4) Catat aktivitas registrasi ke activity_logs
-            $this->logActivity($userId, $vendorProfileId, 'register', 'success', "Vendor '$vendorName' mendaftar ke sistem", [
-                'vendor_name' => $vendorName,
-                'email' => $email
-            ]);
+            // 4) Catat aktivitas registrasi berhasil menggunakan helper
+            $this->logRegisterSuccess($userId, $vendorName, $email, $vendorProfileId);
 
             $db->transComplete();
 
@@ -232,8 +237,9 @@ class AuthController extends Controller
                 $db->transRollback();
             }
             
-            // Log activity untuk error registrasi
-            $this->logActivity(null, null, 'register', 'error', 'Registrasi vendor gagal: ' . $e->getMessage(), [
+            // Log activity untuk error registrasi menggunakan helper
+            log_activity_auto('register_error', 'Registrasi vendor gagal: ' . $e->getMessage(), [
+                'module' => 'auth',
                 'email' => $email,
                 'vendor_name' => $vendorName
             ]);
@@ -253,34 +259,83 @@ class AuthController extends Controller
     {
         if ($user->inGroup('admin'))   return redirect()->to('/admin/dashboard');
         if ($user->inGroup('seoteam')) return redirect()->to('/seo/dashboard');
-        if ($user->inGroup('vendor'))  return redirect()->to('/vendoruser/dashboard'); // <- pakai Vendoruser
+        if ($user->inGroup('vendor'))  return redirect()->to('/vendoruser/dashboard');
         return redirect()->to('/');
     }
     
-    // ===== LOG ACTIVITY METHOD =====
-    private function logActivity($userId = null, $vendorId = null, $action, $status, $description = null, $additionalData = [])
+    // ===== LOGIN SUCCESS METHOD =====
+    private function logLoginSuccess($user)
+    {
+        if (!$user) {
+            log_message('error', 'logLoginSuccess: User is null');
+            return;
+        }
+        
+        $role = $this->getUserRole($user);
+        $description = "Login berhasil sebagai {$role} - {$user->username}";
+        
+        // Gunakan helper untuk log activity
+        log_activity_auto('login', $description, [
+            'module' => 'auth'
+        ]);
+
+        // Debug info
+        log_message('info', "Login success - User ID: {$user->id}, Username: {$user->username}, Role: {$role}");
+    }
+
+    // ===== LOGOUT METHOD =====
+    private function logLogout($user)
+    {
+        if (!$user) {
+            log_message('error', 'logLogout: User is null');
+            return;
+        }
+        
+        $role = $this->getUserRole($user);
+        $description = "Logout sebagai {$role} - {$user->username}";
+        
+        // Gunakan helper untuk log activity
+        log_activity_auto('logout', $description, [
+            'module' => 'auth'
+        ]);
+
+        // Debug info
+        log_message('info', "Logout - User ID: {$user->id}, Username: {$user->username}, Role: {$role}");
+    }
+
+    // ===== REGISTER SUCCESS METHOD =====
+    private function logRegisterSuccess($userId, $vendorName, $email, $vendorProfileId)
     {
         try {
+            // Karena user belum login, kita perlu manual insert ke activity logs
+            $logs = new \App\Models\ActivityLogsModel();
+            
             $data = [
                 'user_id'     => $userId,
-                'vendor_id'   => $vendorId,
+                'vendor_id'   => $vendorProfileId,
                 'module'      => 'auth',
-                'action'      => $action,
-                'status'      => $status,
-                'description' => $description,
-                'ip_address'  => $this->request->getIPAddress(),
-                'user_agent'  => $this->request->getUserAgent(),
+                'action'      => 'register',
+                'description' => "Vendor '{$vendorName}' berhasil mendaftar - {$email}",
+                'ip_address'  => service('request')->getIPAddress(),
+                'user_agent'  => service('request')->getUserAgent()->getAgentString(),
                 'created_at'  => date('Y-m-d H:i:s'),
             ];
             
-            // Gabungkan dengan data tambahan jika ada
-            if (!empty($additionalData)) {
-                $data['additional_data'] = json_encode($additionalData);
-            }
+            $logs->insert($data);
             
-            $this->activityLogsModel->insert($data);
+            log_message('info', "Register success - User ID: {$userId}, Vendor: {$vendorName}, Email: {$email}");
+            
         } catch (\Throwable $e) {
-            log_message('error', 'Failed to log activity: ' . $e->getMessage());
+            log_message('error', 'Failed to log register activity: ' . $e->getMessage());
         }
+    }
+
+    // ===== HELPER METHODS =====
+    private function getUserRole($user)
+    {
+        if ($user->inGroup('admin')) return 'admin';
+        if ($user->inGroup('seoteam')) return 'seo';
+        if ($user->inGroup('vendor')) return 'vendor';
+        return 'user';
     }
 }
