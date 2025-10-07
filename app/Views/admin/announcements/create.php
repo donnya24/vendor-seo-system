@@ -7,6 +7,12 @@
   <main id="pageMain" class="flex-1 p-0"></main>
 </div>
 
+<input type="hidden" name="is_active" value="0">
+<label class="inline-flex items-center gap-2 mb-2">
+  <input type="checkbox" name="is_active" value="1" checked class="w-4 h-4 text-blue-600 border-gray-300 rounded">
+  <span class="text-sm text-gray-700">Aktifkan announcement</span>
+</label>
+
 <!-- ====== STYLES (diletakkan di bawah supaya menang) ====== -->
 <style>
   /* Overlay & backdrop */
@@ -123,22 +129,30 @@
 
         <label class="block text-sm font-semibold text-gray-700 mb-1">Target Audience <span class="text-red-500">*</span></label>
         <div class="relative mb-4">
-          <span class="absolute left-3 top-3 text-gray-400"><i class="fa-solid fa-users"></i></span>
+          <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
           <select name="audience" required
                   class="w-full pl-10 pr-8 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none">
             <option value="all" selected>Semua Pengguna</option>
-            <option value="admin">Admin</option>
             <option value="vendor">Vendor</option>
-            <option value="user">User</option>
             <option value="seoteam">Tim SEO</option>
           </select>
           <span class="absolute right-3 top-3 text-gray-400 pointer-events-none"><i class="fa-solid fa-chevron-down"></i></span>
         </div>
 
-        <label class="inline-flex items-center gap-2 mb-2">
-          <input type="checkbox" name="is_active" value="1" checked class="w-4 h-4 text-blue-600 border-gray-300 rounded">
-          <span class="text-sm text-gray-700">Aktifkan announcement</span>
-        </label>
+        <label class="block text-sm font-semibold text-gray-700 mb-1">Tanggal Publish <span class="text-red-500">*</span></label>
+        <div class="relative mb-4">
+          <span class="absolute left-3 top-3 text-gray-400"><i class="fa-solid fa-calendar"></i></span>
+          <input type="datetime-local" name="publish_at"
+                class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                value="<?= date('Y-m-d\TH:i'); ?>" required>
+        </div>
+
+        <label class="block text-sm font-semibold text-gray-700 mb-1">Tanggal Berakhir (optional)</label>
+        <div class="relative mb-4">
+          <span class="absolute left-3 top-3 text-gray-400"><i class="fa-solid fa-hourglass-end"></i></span>
+          <input type="datetime-local" name="expires_at"
+                class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        </div>
       </form>
     </div>
 

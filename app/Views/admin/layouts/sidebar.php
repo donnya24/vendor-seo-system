@@ -20,8 +20,10 @@
                 (url_is('admin/activities/vendor*') || url_is('admin/activities/seo*') ? 'activities' :
                 (url_is('admin/leads*') ? 'leads' :
                 (url_is('admin/commissions*') ? 'commissions' :
+                (url_is('admin/targets*') ? 'targets' :
+                (url_is('admin/reports*') ? 'reports' :
                 (url_is('admin/announcements*') ? 'announcements' :
-                (url_is('admin/activity-logs*') ? 'activity-logs' : '')))))))) ?>',
+                (url_is('admin/activity-logs*') ? 'activity-logs' : '')))))))))) ?>',
             userSubmenu: <?= (url_is('admin/userseo*') || url_is('admin/uservendor*')) ? 'true' : 'false' ?>,
             vendorSubmenu: <?= (url_is('admin/vendors*') || url_is('admin/services*') || url_is('admin/areas*')) ? 'true' : 'false' ?>,
             activitySubmenu: <?= (url_is('admin/activities/vendor*') || url_is('admin/activities/seo*')) ? 'true' : 'false' ?>,
@@ -46,6 +48,12 @@
                 else if(path.includes('/admin/activities/vendor') || path.includes('/admin/activities/seo')) {
                     this.activeMenu = 'activities';
                     this.activitySubmenu = true;
+                }
+                else if(path.includes('/admin/targets')) {
+                    this.activeMenu = 'targets';
+                }
+                else if(path.includes('/admin/reports')) {
+                    this.activeMenu = 'reports';
                 }
                 else if(path.includes('/admin/leads')) {
                     this.activeMenu = 'leads';
@@ -225,6 +233,26 @@
                 </a>
             </div>
         </div>
+
+        <!-- Targets -->
+        <a href="<?= site_url('admin/targets'); ?>"
+        class="group flex items-center gap-3 py-2.5 px-3 rounded-lg mb-1 transition-all
+                hover:bg-blue-700/50 text-blue-100 hover:text-white"
+        :class="{'bg-blue-600 text-white shadow-lg shadow-blue-600/30': activeMenu === 'targets'}"
+        @click="closeSidebarOnMobile()">
+            <i class="fas fa-bullseye w-5 text-center"></i>
+            <span class="text-sm font-medium">Targets</span>
+        </a>
+
+        <!-- Reports -->
+        <a href="<?= site_url('admin/reports'); ?>"
+        class="group flex items-center gap-3 py-2.5 px-3 rounded-lg mb-1 transition-all
+                hover:bg-blue-700/50 text-blue-100 hover:text-white"
+        :class="{'bg-blue-600 text-white shadow-lg shadow-blue-600/30': activeMenu === 'reports'}"
+        @click="closeSidebarOnMobile()">
+            <i class="fas fa-chart-line w-5 text-center"></i>
+            <span class="text-sm font-medium">Reports</span>
+        </a>
 
         <!-- Leads -->
         <a href="<?= site_url('admin/leads'); ?>"

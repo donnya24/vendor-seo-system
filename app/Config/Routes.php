@@ -41,11 +41,11 @@ $routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 
 
     // === ROUTES PROFILE YANG DIPERBAIKI ===
     $routes->group('profile', function($routes) {
-        $routes->get('/', 'Profile::index'); // Halaman utama profile
-        $routes->get('edit-modal', 'Profile::editModal'); // Modal edit (AJAX)
-        $routes->get('password-modal', 'Profile::passwordModal'); // Modal password (AJAX)
-        $routes->post('update', 'Profile::update'); // Update profile
-        $routes->post('password-update', 'Profile::passwordUpdate'); // Update password
+        $routes->get('/', 'Profile::index');
+        $routes->get('edit-modal', 'Profile::editModal');
+        $routes->get('password-modal', 'Profile::passwordModal');
+        $routes->post('update', 'Profile::update');
+        $routes->post('password-update', 'Profile::passwordUpdate');
     });
     
     $routes->group('areas', function($routes){
@@ -70,7 +70,7 @@ $routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 
     $routes->get('services/search', 'VendorServices::search');
 
     // User Vendor Routes
-    $routes->group('uservendor', ['namespace' => 'App\Controllers\Admin'], function($routes){
+    $routes->group('uservendor', function($routes){
         $routes->get('/', 'UserVendor::index');
         $routes->get('create', 'UserVendor::create');
         $routes->post('store', 'UserVendor::store');
@@ -85,7 +85,7 @@ $routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 
     });
 
     // User SEO Routes
-    $routes->group('userseo', ['namespace' => 'App\Controllers\Admin'], function($routes){
+    $routes->group('userseo', function($routes){
         $routes->get('/', 'UserSeo::index');
         $routes->get('create', 'UserSeo::create');
         $routes->post('store', 'UserSeo::store');
@@ -103,6 +103,27 @@ $routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 
     $routes->post('vendors/(:num)/unverify',  'Vendors::unverify/$1');
     $routes->post('vendors/(:num)/commission','Vendors::setCommission/$1');
 
+    // **PERBAIKAN: SEO Targets Routes - SESUAIKAN DENGAN CONTROLLER YANG ADA**
+    $routes->group('seo-targets', function($routes){
+        $routes->get('/', 'SeoTargets::index');
+        $routes->post('store', 'SeoTargets::store');
+        $routes->post('update/(:num)', 'SeoTargets::update/$1');
+        $routes->get('edit/(:num)', 'SeoTargets::edit/$1');
+        $routes->post('delete/(:num)', 'SeoTargets::delete/$1');
+    });
+
+    // **SEO TARGETS ROUTES - DIPERBAIKI**
+    $routes->group('targets', function($routes){
+        $routes->get('/', 'Targets::index');
+        $routes->post('store', 'Targets::store');
+        $routes->post('update/(:num)', 'Targets::update/$1');
+        $routes->get('edit/(:num)', 'Targets::edit/$1');
+        $routes->post('delete/(:num)', 'Targets::delete/$1');
+    });
+
+    //Reports
+    $routes->get('reports', 'Reports::index');
+    
     // Leads
     $routes->group('leads', function($routes){
         $routes->get('/', 'Leads::index');
@@ -110,11 +131,11 @@ $routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 
         $routes->get('edit/(:num)', 'Leads::edit/$1');
         $routes->post('update/(:num)', 'Leads::update/$1');
         $routes->post('delete/(:num)', 'Leads::delete/$1');
-        $routes->post('delete-all', 'Leads::deleteAll'); // Tambahkan ini
+        $routes->post('delete-all', 'Leads::deleteAll');
         $routes->get('(:num)', 'Leads::show/$1');
     });
 
-    // Vendor Requests (Approve / Reject) - Legacy routes
+    // Vendor Requests
     $routes->post('vendorrequests/approve', 'VendorRequests::approve');
     $routes->post('vendorrequests/reject',  'VendorRequests::reject');
 
@@ -139,7 +160,7 @@ $routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 
     $routes->post('notifications/delete/(:num)', 'Notifications::delete/$1');
     $routes->post('notifications/deleteAll', 'Notifications::deleteAll');
 
-    // Activity Routes - DIPERBAIKI
+    // Activity Routes
     $routes->get('activities/vendor', 'ActivityVendor::index');
     $routes->post('activities/vendor/delete-all', 'ActivityVendor::deleteAll');
 
