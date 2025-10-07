@@ -4,37 +4,86 @@ namespace App\Controllers\Seo;
 
 use App\Controllers\BaseController;
 use App\Models\SeoKeywordTargetsModel;
-use App\Models\ActivityLogsModel;
+use App\Models\VendorProfilesModel;
 
 class Targets extends BaseController
 {
     protected $model;
+    protected $vendorModel;
 
     public function __construct()
     {
         $this->model = new SeoKeywordTargetsModel();
+        $this->vendorModel = new VendorProfilesModel();
     }
 
     public function index()
     {
-        $vendorId = $this->request->getGet('vendor_id')
-            ?? session()->get('vendor_id')
-            ?? 1;
+        // Ambil filter dari query string
+        $vendorId = $this->request->getGet('vendor_id');
+        $vendorId = $vendorId ? (int) $vendorId : null;
+        
+        $priority = $this->request->getGet('priority');
+        $status = $this->request->getGet('status');
 
-        $rows = $this->model
+        // Ambil daftar vendor untuk dropdown filter
+        $vendors = $this->vendorModel->findAll();
+
+        $builder = $this->model
             ->select('seo_keyword_targets.*, vendor_profiles.business_name as vendor_name')
             ->join('vendor_profiles', 'vendor_profiles.id = seo_keyword_targets.vendor_id', 'left')
-            ->withLatestReport()
-            ->where('seo_keyword_targets.vendor_id', $vendorId)
-            ->orderBy('priority', 'DESC')
+            ->withLatestReport();
+
+        // Filter vendor jika dipilih
+        if (!empty($vendorId)) {
+            $builder->where('seo_keyword_targets.vendor_id', $vendorId);
+        }
+
+        // Filter priority jika dipilih
+        if (!empty($priority) && in_array($priority, ['low', 'medium', 'high'])) {
+            $builder->where('seo_keyword_targets.priority', $priority);
+        }
+
+        // Filter status jika dipilih
+        if (!empty($status) && in_array($status, ['pending', 'in_progress', 'completed'])) {
+            $builder->where('seo_keyword_targets.status', $status);
+        }
+
+        $rows = $builder->orderBy('priority', 'DESC')
             ->orderBy('status', 'ASC')
+            ->orderBy('created_at', 'DESC')
             ->findAll();
 
-        $this->logActivity($vendorId, 'targets', 'view', 'Melihat daftar SEO targets');
+        // Log aktivitas view targets
+        $logDescription = "Melihat daftar SEO targets";
+        $extraData = ['module' => 'targets'];
+        
+        if (!empty($vendorId)) {
+            $vendorName = $this->getVendorName($vendorId, $vendors);
+            $logDescription .= " untuk vendor {$vendorName}";
+            $extraData['vendor_id'] = $vendorId;
+        } else {
+            $logDescription .= " semua vendor";
+        }
+        
+        if (!empty($priority)) {
+            $logDescription .= " dengan priority {$priority}";
+            $extraData['priority'] = $priority;
+        }
+        
+        if (!empty($status)) {
+            $logDescription .= " dengan status {$status}";
+            $extraData['status'] = $status;
+        }
+
+        log_activity_auto('view', $logDescription, $extraData);
 
         return view('seo/targets/index', [
             'title'      => 'SEO Targets',
             'vendorId'   => $vendorId,
+            'priority'   => $priority,
+            'status'     => $status,
+            'vendors'    => $vendors,
             'targets'    => $rows,
             'activeMenu' => 'targets'
         ]);
@@ -54,8 +103,11 @@ class Targets extends BaseController
             return $this->response->setJSON(['success' => false, 'message' => 'Project & Keyword wajib diisi']);
         }
 
+        $vendorId = $data['vendor_id'] ?? session()->get('vendor_id') ?? 1;
+        $vendorName = $this->getVendorName($vendorId, $this->vendorModel->findAll());
+
         $insertData = [
-            'vendor_id'        => $data['vendor_id'] ?? session()->get('vendor_id') ?? 1,
+            'vendor_id'        => $vendorId,
             'project_name'     => $data['project_name'],
             'keyword'          => $data['keyword'],
             'current_position' => $data['current_position'] !== '' ? $data['current_position'] : null,
@@ -78,7 +130,11 @@ class Targets extends BaseController
         }
 
         if ($id) {
-            $this->logActivity($insertData['vendor_id'], 'targets', 'create', 'Menambahkan target: '.$insertData['keyword']);
+            log_activity_auto('create', "Menambahkan target SEO: '{$insertData['keyword']}' untuk vendor {$vendorName}", [
+                'module' => 'targets',
+                'vendor_id' => $vendorId,
+                'target_id' => $id
+            ]);
         }
 
         return $this->response->setJSON([
@@ -99,7 +155,17 @@ class Targets extends BaseController
             return $this->response->setJSON(['success' => false, 'message' => 'Project & Keyword wajib diisi']);
         }
 
+        // Get existing target for logging
+        $existingTarget = $this->model->find($id);
+        if (!$existingTarget) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Target tidak ditemukan']);
+        }
+
+        $vendorId = $data['vendor_id'] ?? $existingTarget['vendor_id'];
+        $vendorName = $this->getVendorName($vendorId, $this->vendorModel->findAll());
+
         $updateData = [
+            'vendor_id'        => $vendorId,
             'project_name'     => $data['project_name'],
             'keyword'          => $data['keyword'],
             'current_position' => $data['current_position'] !== '' ? $data['current_position'] : null,
@@ -121,7 +187,11 @@ class Targets extends BaseController
         }
 
         if ($updated) {
-            $this->logActivity($data['vendor_id'] ?? session()->get('vendor_id'), 'targets', 'update', 'Update target: '.$data['keyword']);
+            log_activity_auto('update', "Memperbarui target SEO: '{$updateData['keyword']}' untuk vendor {$vendorName}", [
+                'module' => 'targets',
+                'vendor_id' => $vendorId,
+                'target_id' => $id
+            ]);
         }
 
         return $this->response->setJSON([
@@ -141,6 +211,13 @@ class Targets extends BaseController
             return $this->response->setJSON(['success' => false, 'message' => 'Data tidak ditemukan']);
         }
 
+        // Log view detail
+        log_activity_auto('view', "Melihat detail target SEO: '{$target['keyword']}'", [
+            'module' => 'targets',
+            'vendor_id' => $target['vendor_id'],
+            'target_id' => $id
+        ]);
+
         return $this->response->setJSON(['success' => true, 'data' => $target]);
     }
 
@@ -149,6 +226,14 @@ class Targets extends BaseController
         if (!$this->request->isAJAX()) {
             return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'Invalid request']);
         }
+
+        // Get target data before deletion for logging
+        $target = $this->model->find($id);
+        if (!$target) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Target tidak ditemukan']);
+        }
+
+        $vendorName = $this->getVendorName($target['vendor_id'], $this->vendorModel->findAll());
 
         try {
             $deleted = $this->model->delete($id);
@@ -160,7 +245,11 @@ class Targets extends BaseController
         }
 
         if ($deleted) {
-            $this->logActivity(session()->get('vendor_id'), 'targets', 'delete', 'Menghapus target ID: '.$id);
+            log_activity_auto('delete', "Menghapus target SEO: '{$target['keyword']}' untuk vendor {$vendorName}", [
+                'module' => 'targets',
+                'vendor_id' => $target['vendor_id'],
+                'target_id' => $id
+            ]);
         }
 
         return $this->response->setJSON([
@@ -169,17 +258,16 @@ class Targets extends BaseController
         ]);
     }
 
-    private function logActivity($vendorId, $module, $action, $description)
+    /**
+     * Helper untuk mendapatkan nama vendor
+     */
+    private function getVendorName(int $vendorId, array $vendors): string
     {
-        (new ActivityLogsModel())->insert([
-            'user_id'    => session()->get('user_id'),
-            'vendor_id'  => $vendorId ?? session()->get('vendor_id') ?? 1,
-            'module'     => $module,
-            'action'     => $action,
-            'description'=> $description,
-            'ip_address' => $this->request->getIPAddress(),
-            'user_agent' => $this->request->getUserAgent(),
-            'created_at' => date('Y-m-d H:i:s')
-        ]);
+        foreach ($vendors as $vendor) {
+            if ($vendor['id'] == $vendorId) {
+                return $vendor['business_name'];
+            }
+        }
+        return 'Unknown Vendor';
     }
 }

@@ -40,16 +40,14 @@ class VendorProfilesModel extends Model
         'profile_image'       => 'permit_empty|string|max_length[255]',
         'requested_commission'=> 'permit_empty|decimal',
         'requested_commission_nominal' => 'permit_empty|decimal',
-        'commission_type'     => 'permit_empty|in_list[percent,nominal]', // PERBAIKAN: permit_empty
+        'commission_type'     => 'permit_empty|in_list[percent,nominal]',
         'rejection_reason'    => 'permit_empty|string',
         'inactive_reason'     => 'permit_empty|string', 
         'approved_at'         => 'permit_empty|valid_date',
         'action_by'           => 'permit_empty|integer',
-        'is_verified'         => 'permit_empty|in_list[0,1]',
         'commission_rate'     => 'permit_empty|decimal'
     ];
 
-    // Optional: Custom validation messages
     protected $validationMessages = [
         'commission_type' => [
             'in_list' => 'Tipe komisi harus percent atau nominal'

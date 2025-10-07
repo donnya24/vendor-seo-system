@@ -1,7 +1,7 @@
 <?php
 // ==== Bootstrap data agar modal SELALU punya $sp & $userEmail ==== //
- $auth = service('auth');
- $user = $auth ? $auth->user() : null;
+$auth = service('auth');
+$user = $auth ? $auth->user() : null;
 
 // Ambil $sp jika belum ada (fallback query ringan)
 if (!isset($sp) || !is_array($sp)) {
@@ -16,7 +16,7 @@ if (!isset($sp) || !is_array($sp)) {
 }
 
 // Jadikan $profile = $sp jika $profile belum ada (untuk header/topbar)
- $profile = $profile ?? $sp ?? [];
+$profile = $profile ?? $sp ?? [];
 
 // Email prioritas dari controller ($userEmail). Jika kosong, fallback ke auth_identities.secret
 if (!isset($userEmail) || $userEmail === null) {
@@ -35,9 +35,9 @@ if (!isset($userEmail) || $userEmail === null) {
 }
 
 // Foto profil di header (pakai ikon jika tidak ada foto)
- $defaultAvatar   = base_url('assets/img/default-avatar.png'); 
- $profileImage    = $profile['profile_image'] ?? null;
- $hasProfileImage = false;
+$defaultAvatar   = base_url('assets/img/default-avatar.png'); 
+$profileImage    = $profile['profile_image'] ?? null;
+$hasProfileImage = false;
 if ($profileImage && is_file(FCPATH . 'uploads/seo_profiles/' . $profileImage)) {
     $hasProfileImage  = true;
     $profileImagePath = base_url('uploads/seo_profiles/' . $profileImage);
@@ -46,9 +46,9 @@ if ($profileImage && is_file(FCPATH . 'uploads/seo_profiles/' . $profileImage)) 
 }
 
 // ===== Notifikasi =====
- $notifItems       = []; // untuk dropdown
- $allNotifications = []; // untuk modal
- $unreadCount      = 0;
+$notifItems       = []; // untuk dropdown
+$allNotifications = []; // untuk modal
+$unreadCount      = 0;
 
 // Prioritaskan menggunakan data dari controller jika tersedia
 if (isset($notifications) && is_array($notifications)) {
@@ -123,13 +123,13 @@ else if ($user) {
 }
 
 // Ambil SEMUA notifikasi (hasil query di atas)
- $modalNotifications = $allNotifications;
+$modalNotifications = $allNotifications;
 
 // Jangan fallback ke $notifItems agar modal tidak cuma 10 notif
- $openNotifModal = !empty($openNotifModal);
+$openNotifModal = !empty($openNotifModal);
 ?>
 <!DOCTYPE html>
-<html lang="id" x-data="{ sidebarOpen: false, profileOpen: false, notifOpen: false, notifModalOpen: false }">
+<html lang="id" x-data="{ sidebarOpen: false, profileOpen: false, notifOpen: false, notifModalOpen: <?= $openNotifModal ? 'true' : 'false' ?> }">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -336,15 +336,17 @@ else if ($user) {
               </div>
               <div class="flex flex-col gap-2 ml-4 shrink-0">
                 <?php if (empty($n['is_read'])): ?>
-                  <form method="post" action="<?= site_url('seo/notif/read/'.(int)($n['id'] ?? 0)) ?>">
+                  <!-- PERBAIKAN: URL mark-read yang benar -->
+                  <form method="post" action="<?= site_url('seo/notif/mark-read/'.(int)($n['id'] ?? 0)) ?>">
                     <?= csrf_field() ?>
                     <button type="submit" class="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center">
                       <i class="fas fa-check-circle mr-1"></i> Tandai Dibaca
                     </button>
                   </form>
                 <?php endif; ?>
+                <!-- PERBAIKAN: URL delete yang benar -->
                 <form method="post" action="<?= site_url('seo/notif/delete/'.(int)($n['id'] ?? 0)) ?>"
-                      onsubmit="return confirm('Sembunyikan notifikasi ini dari tampilan Anda?');">
+                      onsubmit="return confirm('Anda yakin ingin menghapus notifikasi?');">
                   <?= csrf_field() ?>
                   <button type="submit" class="text-xs text-red-600 hover:text-red-800 font-medium flex items-center">
                     <i class="fas fa-trash-alt mr-1"></i> Hapus
@@ -359,15 +361,17 @@ else if ($user) {
 
     <!-- Footer -->
     <div class="px-5 py-4 border-t border-gray-200 flex justify-between items-center bg-gray-50 rounded-b-xl">
-      <form method="post" action="<?= site_url('seo/notif/mark-all') ?>">
+      <!-- PERBAIKAN: URL mark-all-read yang benar -->
+      <form method="post" action="<?= site_url('seo/notif/mark-all-read') ?>">
         <?= csrf_field() ?>
         <button type="submit" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors flex items-center">
           <i class="fas fa-check-double mr-2"></i>
           Tandai Semua Dibaca
         </button>
       </form>
+      <!-- PERBAIKAN: URL delete-all yang benar -->
       <form method="post" action="<?= site_url('seo/notif/delete-all') ?>"
-            onsubmit="return confirm('Sembunyikan semua notifikasi dari tampilan Anda?');">
+            onsubmit="return confirm('Anda yakin ingin menghapus semua notifikasi?');">
         <?= csrf_field() ?>
         <button type="submit" class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors flex items-center">
           <i class="fas fa-trash-alt mr-2"></i>
@@ -384,17 +388,6 @@ document.addEventListener('alpine:init', () => {
     modal: null,
     notifModal: <?= $openNotifModal ? 'true' : 'false' ?>
   });
-  
-  // Auto-open modal notif jika $openNotifModal = true
-  <?php if ($openNotifModal): ?>
-  document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => {
-      Alpine.data('notificationModal', () => ({
-        notifModalOpen: true
-      }));
-    }, 100);
-  });
-  <?php endif; ?>
 });
 </script>
 

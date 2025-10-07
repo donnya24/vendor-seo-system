@@ -1,4 +1,5 @@
-<?= $this->include('admin/layouts/header') ?>
+<?= $this->include('admin/layouts/header'); ?>
+<?= $this->include('admin/layouts/sidebar'); ?>
 
 <div class="p-4 md:p-6 lg:p-8">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">

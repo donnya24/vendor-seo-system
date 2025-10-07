@@ -4,17 +4,14 @@ namespace App\Controllers\Seo;
 
 use App\Controllers\BaseController;
 use App\Models\SeoProfilesModel;
-use App\Models\ActivityLogsModel;
 
 class Profile extends BaseController
 {
     protected $seoProfilesModel;
-    protected $activityLogsModel;
 
     public function __construct()
     {
-        $this->seoProfilesModel  = new SeoProfilesModel();
-        $this->activityLogsModel = new ActivityLogsModel();
+        $this->seoProfilesModel = new SeoProfilesModel();
     }
 
     private function user()
@@ -27,7 +24,6 @@ class Profile extends BaseController
     {
         $db  = db_connect();
         $row = $db->table('auth_identities')
-            ->select('secret')
             ->where('user_id', $userId)
             ->whereIn('type', ['email', 'email_password'])
             ->orderBy('id', 'desc')
@@ -52,7 +48,7 @@ class Profile extends BaseController
     public function index()
     {
         $user = $this->user();
-        if (! $user) return redirect()->to('/login');
+        if (!$user) return redirect()->to('/login');
 
         $sp = $this->sp() ?? [
             'id'            => null,
@@ -70,7 +66,10 @@ class Profile extends BaseController
             $profileImagePath = base_url('uploads/seo_profiles/' . $profileImage);
         }
 
-        $this->logActivity($user->id, null, 'view_profile', 'success', 'Mengakses profil SEO user');
+        // Log aktivitas view profile
+        log_activity_auto('view', "Melihat profil SEO", [
+            'module' => 'seo_profile'
+        ]);
 
         return view('Seo/profile/index', [
             'profile'          => $sp,
@@ -85,7 +84,7 @@ class Profile extends BaseController
     public function edit()
     {
         $user = $this->user();
-        if (! $user) return redirect()->to('/login');
+        if (!$user) return redirect()->to('/login');
 
         $seoProfile = $this->sp() ?? [
             'id'            => null,
@@ -102,7 +101,10 @@ class Profile extends BaseController
             $profileImagePath = base_url('uploads/seo_profiles/' . $profileImage);
         }
 
-        $this->logActivity($user->id, null, 'view_profile_edit', 'success', 'Mengakses form edit profil');
+        // Log aktivitas view edit profile
+        log_activity_auto('view', "Membuka form edit profil SEO", [
+            'module' => 'seo_profile'
+        ]);
 
         return view('Seo/profile/edit', [
             'sp'               => $seoProfile,
@@ -116,11 +118,15 @@ class Profile extends BaseController
     public function update()
     {
         $user = $this->user();
-        if (! $user) return redirect()->to('/login');
+        if (!$user) return redirect()->to('/login');
 
         $sp = $this->sp();
-        if (! $sp) {
-            $this->logActivity($user->id, null, 'update_profile', 'failed', 'Profil tidak ditemukan');
+        if (!$sp) {
+            // Log aktivitas gagal update profile
+            log_activity_auto('update', "Gagal update profil SEO - profil tidak ditemukan", [
+                'module' => 'seo_profile',
+                'status' => 'failed'
+            ]);
             return redirect()->back()->with('error', 'Profil tidak ditemukan');
         }
 
@@ -131,8 +137,13 @@ class Profile extends BaseController
             'remove_profile_image' => 'permit_empty|in_list[0,1]',
         ];
 
-        if (! $this->validate($rules)) {
-            $this->logActivity($user->id, null, 'update_profile', 'failed', 'Validasi gagal', $this->validator->getErrors());
+        if (!$this->validate($rules)) {
+            // Log aktivitas validasi gagal
+            log_activity_auto('update', "Validasi update profil SEO gagal", [
+                'module' => 'seo_profile',
+                'status' => 'failed',
+                'errors' => $this->validator->getErrors()
+            ]);
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
 
@@ -149,18 +160,20 @@ class Profile extends BaseController
         }
 
         $profileImageChanged = false;
+        $changes = [];
 
-        // Hapus
+        // Hapus foto profil
         if ($this->request->getPost('remove_profile_image') === '1' && !empty($sp['profile_image'])) {
             $oldPath = $pubDir . '/' . $sp['profile_image'];
             if (is_file($oldPath)) @unlink($oldPath);
             $data['profile_image'] = null;
             $profileImageChanged   = true;
+            $changes['profile_image'] = 'removed';
         }
 
-        // Upload baru
+        // Upload foto profil baru
         $file = $this->request->getFile('profile_image');
-        if ($file && $file->isValid() && ! $file->hasMoved()) {
+        if ($file && $file->isValid() && !$file->hasMoved()) {
             if (!empty($sp['profile_image'])) {
                 $oldPath = $pubDir . '/' . $sp['profile_image'];
                 if (is_file($oldPath)) @unlink($oldPath);
@@ -169,14 +182,25 @@ class Profile extends BaseController
             $file->move($pubDir, $newName);
             $data['profile_image'] = $newName;
             $profileImageChanged   = true;
+            $changes['profile_image'] = 'updated';
+        }
+
+        // Track perubahan data
+        if ($sp['name'] !== $data['name']) {
+            $changes['name'] = $data['name'];
+        }
+        if ($sp['phone'] !== $data['phone']) {
+            $changes['phone'] = $data['phone'];
         }
 
         $this->seoProfilesModel->update($sp['id'], $data);
 
-        $changes = [];
-        if ($profileImageChanged) $changes['profile_image'] = $data['profile_image'] ?? 'removed';
-
-        $this->logActivity($user->id, null, 'update_profile', 'success', 'Update profil berhasil', $changes);
+        // Log aktivitas berhasil update profile
+        log_activity_auto('update', "Berhasil update profil SEO", [
+            'module'  => 'seo_profile',
+            'status'  => 'success',
+            'changes' => $changes
+        ]);
 
         return redirect()->back()->with('success', 'Profil berhasil diperbarui');
     }
@@ -185,9 +209,12 @@ class Profile extends BaseController
     public function password()
     {
         $user = $this->user();
-        if (! $user) return redirect()->to('/login');
+        if (!$user) return redirect()->to('/login');
 
-        $this->logActivity($user->id, null, 'view_password_form', 'success', 'Mengakses form ubah password');
+        // Log aktivitas view password form
+        log_activity_auto('view', "Membuka form ubah password", [
+            'module' => 'seo_profile'
+        ]);
 
         return view('Seo/profile/ubahpassword', [
             'title'      => 'Ubah Password',
@@ -198,7 +225,14 @@ class Profile extends BaseController
     public function passwordUpdate()
     {
         $user = $this->user();
-        if (! $user) return redirect()->back()->with('error_password', 'User tidak ditemukan / sesi habis.');
+        if (!$user) {
+            // Log aktivitas gagal - user tidak ditemukan
+            log_activity_auto('update_password', "Gagal ubah password - user tidak ditemukan", [
+                'module' => 'seo_profile',
+                'status' => 'failed'
+            ]);
+            return redirect()->back()->with('error_password', 'User tidak ditemukan / sesi habis.');
+        }
 
         $rules = [
             'current_password' => 'required',
@@ -206,8 +240,13 @@ class Profile extends BaseController
             'confirm_password' => 'required|matches[new_password]'
         ];
 
-        if (! $this->validate($rules)) {
-            $this->logActivity($user->id, null, 'update_password', 'failed', 'Validasi password gagal', $this->validator->getErrors());
+        if (!$this->validate($rules)) {
+            // Log aktivitas validasi password gagal
+            log_activity_auto('update_password', "Validasi ubah password gagal", [
+                'module' => 'seo_profile',
+                'status' => 'failed',
+                'errors' => $this->validator->getErrors()
+            ]);
             return redirect()->back()->withInput()->with('errors_password', $this->validator->getErrors());
         }
 
@@ -220,47 +259,37 @@ class Profile extends BaseController
             ->get()
             ->getRow();
 
-        if (! $identity || ! password_verify((string)$this->request->getPost('current_password'), (string)$identity->secret2)) {
-            $this->logActivity($user->id, null, 'update_password', 'failed', 'Password lama salah');
+        if (!$identity || !password_verify((string)$this->request->getPost('current_password'), (string)$identity->secret2)) {
+            // Log aktivitas password lama salah
+            log_activity_auto('update_password', "Gagal ubah password - password lama salah", [
+                'module' => 'seo_profile',
+                'status' => 'failed'
+            ]);
             return redirect()->back()->with('error_password', 'Password lama salah.');
         }
 
         // Update password
+        $newPasswordHash = password_hash((string)$this->request->getPost('new_password'), PASSWORD_BCRYPT);
         $db->table('auth_identities')
             ->where('id', $identity->id)
             ->update([
-                'secret2'    => password_hash((string)$this->request->getPost('new_password'), PASSWORD_BCRYPT),
+                'secret2'    => $newPasswordHash,
                 'updated_at' => date('Y-m-d H:i:s'),
             ]);
 
-        $this->logActivity($user->id, null, 'update_password', 'success', 'Password berhasil diubah');
+        // Log aktivitas berhasil ubah password
+        log_activity_auto('update_password', "Berhasil mengubah password", [
+            'module' => 'seo_profile',
+            'status' => 'success'
+        ]);
 
         service('auth')->logout();
-        return redirect()->to('/login')->with('success_password', 'Password berhasil diubah. Silakan login ulang.');
-    }
+        
+        // Log aktivitas logout setelah ubah password
+        log_activity_auto('logout', "Logout otomatis setelah ubah password", [
+            'module' => 'auth'
+        ]);
 
-    /* ------------------- LOGGING ------------------- */
-    private function logActivity($userId, $ignoredSeoId, $action, $status, $description = null, $additionalData = [])
-    {
-        // NOTE: activity_logs tidak punya kolom seo_id → vendor_id NULL.
-        try {
-            $data = [
-                'user_id'     => $userId,
-                'vendor_id'   => null,
-                'module'      => 'seo_profile',
-                'action'      => $action,
-                'status'      => $status,
-                'description' => $description,
-                'ip_address'  => (string)$this->request->getIPAddress(),
-                'user_agent'  => (string)$this->request->getUserAgent(),
-                'created_at'  => date('Y-m-d H:i:s'),
-            ];
-            if (!empty($additionalData)) {
-                $data['additional_data'] = json_encode($additionalData, JSON_UNESCAPED_UNICODE);
-            }
-            $this->activityLogsModel->insert($data);
-        } catch (\Throwable $e) {
-            log_message('error', '[SEO Profile] Log gagal: ' . $e->getMessage());
-        }
+        return redirect()->to('/login')->with('success_password', 'Password berhasil diubah. Silakan login ulang.');
     }
 }

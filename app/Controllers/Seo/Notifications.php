@@ -3,19 +3,16 @@
 namespace App\Controllers\Seo;
 
 use App\Controllers\BaseController;
-use App\Models\ActivityLogsModel;
 use App\Models\SeoProfilesModel;
 
 class Notifications extends BaseController
 {
     protected $db;
     protected string $table = 'notifications';
-    protected ActivityLogsModel $activityLogsModel;
 
     public function __construct()
     {
         $this->db = db_connect();
-        $this->activityLogsModel = new ActivityLogsModel();
     }
 
     protected function currentUser(): ?\CodeIgniter\Shield\Entities\User
@@ -102,8 +99,11 @@ class Notifications extends BaseController
 
         $sp = (new SeoProfilesModel())->where('user_id', $userId)->first();
 
-        $this->logActivity($userId, (int)($sp['id'] ?? 0), 'view_notifications', 'success', 'Melihat daftar notifikasi', [
-            'notifications_count' => count($items)
+        // Log aktivitas view notifications
+        log_activity_auto('view', "Melihat daftar notifikasi ({$unread} belum dibaca)", [
+            'module' => 'notifications',
+            'notifications_count' => count($items),
+            'unread_count' => $unread
         ]);
 
         // render layout + auto-open modal notif
@@ -122,10 +122,16 @@ class Notifications extends BaseController
     {
         $id     = (int)$id;
         $userId = (int)($this->currentUser()?->id ?? 0);
-        $sp     = (new SeoProfilesModel())->where('user_id', $userId)->first();
 
         $row = $this->scopedBuilder()->where('n.id', $id)->get()->getRowArray();
         if (!$row) {
+            // Log aktivitas gagal mark read
+            log_activity_auto('mark_read', "Gagal menandai notifikasi sebagai dibaca - tidak ditemukan", [
+                'module' => 'notifications',
+                'status' => 'failed',
+                'notification_id' => $id
+            ]);
+            
             return $this->request->isAJAX()
                 ? $this->response->setJSON(['success' => false, 'message' => 'Notifikasi tidak ditemukan'])
                 : redirect()->back()->with('error', 'Notifikasi tidak ditemukan.');
@@ -142,9 +148,13 @@ class Notifications extends BaseController
             $this->db->query($sql, [$id, $userId]);
         }
 
-        $this->logActivity($userId, (int)($sp['id'] ?? 0), 'mark_notification_read', 'success', 'Menandai notifikasi sebagai dibaca', [
-            'notification_id'    => $id,
+        // Log aktivitas berhasil mark read
+        log_activity_auto('mark_read', "Menandai notifikasi sebagai dibaca: {$row['title']}", [
+            'module' => 'notifications',
+            'status' => 'success',
+            'notification_id' => $id,
             'notification_title' => $row['title'] ?? 'Unknown',
+            'notification_type' => $row['type'] ?? 'unknown'
         ]);
 
         return $this->request->isAJAX()
@@ -156,7 +166,6 @@ class Notifications extends BaseController
     public function markAllRead()
     {
         $userId = (int)($this->currentUser()?->id ?? 0);
-        $sp     = (new SeoProfilesModel())->where('user_id', $userId)->first();
 
         $ids    = $this->scopedBuilder()->select('n.id, n.user_id')->get()->getResultArray();
         $marked = 0;
@@ -186,8 +195,12 @@ class Notifications extends BaseController
             }
         }
 
-        $this->logActivity($userId, (int)($sp['id'] ?? 0), 'mark_all_notifications_read', 'success', 'Menandai semua notifikasi sebagai dibaca', [
+        // Log aktivitas mark all read
+        log_activity_auto('mark_all_read', "Menandai semua notifikasi sebagai dibaca ({$marked} notifikasi)", [
+            'module' => 'notifications',
+            'status' => 'success',
             'notifications_marked' => $marked,
+            'total_notifications' => count($ids)
         ]);
 
         return $this->request->isAJAX()
@@ -200,10 +213,16 @@ class Notifications extends BaseController
     {
         $id     = (int)$id;
         $userId = (int)($this->currentUser()?->id ?? 0);
-        $sp     = (new SeoProfilesModel())->where('user_id', $userId)->first();
 
         $row = $this->scopedBuilder()->where('n.id', $id)->get()->getRowArray();
         if (!$row) {
+            // Log aktivitas gagal hide notification
+            log_activity_auto('hide', "Gagal menghapus notifikasi - tidak ditemukan", [
+                'module' => 'notifications',
+                'status' => 'failed',
+                'notification_id' => $id
+            ]);
+            
             return $this->request->isAJAX()
                 ? $this->response->setJSON(['success' => false, 'message' => 'Notifikasi tidak ditemukan'])
                 : redirect()->back()->with('error', 'Notifikasi tidak ditemukan.');
@@ -214,21 +233,24 @@ class Notifications extends BaseController
                 ON DUPLICATE KEY UPDATE hidden=VALUES(hidden), hidden_at=VALUES(hidden_at)";
         $this->db->query($sql, [$id, $userId]);
 
-        $this->logActivity($userId, (int)($sp['id'] ?? 0), 'hide_notification', 'success', 'Menyembunyikan notifikasi', [
-            'notification_id'    => $id,
+        // Log aktivitas hide notification
+        log_activity_auto('hide', "Menghapus notifikasi: {$row['title']}", [
+            'module' => 'notifications',
+            'status' => 'success',
+            'notification_id' => $id,
             'notification_title' => $row['title'] ?? 'Unknown',
+            'notification_type' => $row['type'] ?? 'unknown'
         ]);
 
         return $this->request->isAJAX()
             ? $this->response->setJSON(['success' => true])
-            : redirect()->back()->with('success', 'Notifikasi disembunyikan.');
+            : redirect()->back()->with('success', 'Notifikasi berhasil dihapus.');
     }
 
     /** Hide semua (per-user) */
     public function deleteAll()
     {
         $userId = (int)($this->currentUser()?->id ?? 0);
-        $sp     = (new SeoProfilesModel())->where('user_id', $userId)->first();
 
         $ids   = $this->scopedBuilder()->select('n.id')->get()->getResultArray();
         $count = count($ids);
@@ -244,36 +266,34 @@ class Notifications extends BaseController
             $this->db->query($sql);
         }
 
-        $this->logActivity($userId, (int)($sp['id'] ?? 0), 'hide_all_notifications', 'success', 'Menyembunyikan semua notifikasi', [
-            'hidden_count' => $count,
+        // Log aktivitas hide all notifications
+        log_activity_auto('hide_all', "Menghapus semua notifikasi ({$count} notifikasi)", [
+            'module' => 'notifications',
+            'status' => 'success',
+            'hidden_count' => $count
         ]);
 
         return $this->request->isAJAX()
             ? $this->response->setJSON(['success' => true, 'hidden_count' => $count])
-            : redirect()->back()->with('success', 'Semua notifikasi disembunyikan.');
+            : redirect()->back()->with('success', 'Semua notifikasi dihapus.');
     }
 
-    /** Activity log helper (pakai seo_id) */
-    private function logActivity($userId = null, $seoId = null, $action = null, $status = null, $description = null, $additionalData = [])
+    /** Count unread notifications for badge */
+    public function countUnread()
     {
-        try {
-            $data = [
-                'user_id'     => $userId,
-                'seo_id'      => $seoId,
-                'module'      => 'seo_notifications',
-                'action'      => $action,
-                'status'      => $status,
-                'description' => $description,
-                'ip_address'  => $this->request->getIPAddress(),
-                'user_agent'  => $this->request->getUserAgent(),
-                'created_at'  => date('Y-m-d H:i:s'),
-            ];
-            if (!empty($additionalData)) {
-                $data['additional_data'] = json_encode($additionalData);
-            }
-            $this->activityLogsModel->insert($data);
-        } catch (\Throwable $e) {
-            log_message('error', 'Failed to log activity in SEO Notifications: ' . $e->getMessage());
+        $userId = (int)($this->currentUser()?->id ?? 0);
+        
+        $items = $this->scopedBuilder()
+            ->select('n.id, n.user_id, n.is_read AS n_is_read, nus.is_read AS s_is_read')
+            ->get()->getResultArray();
+
+        $unread = 0;
+        foreach ($items as $it) {
+            $isPrivate = ((int)($it['user_id'] ?? 0) === $userId);
+            $isRead = $isPrivate ? (int)($it['n_is_read'] ?? 0) : (int)($it['s_is_read'] ?? 0);
+            if (!$isRead) $unread++;
         }
+
+        return $this->response->setJSON(['unread_count' => $unread]);
     }
 }

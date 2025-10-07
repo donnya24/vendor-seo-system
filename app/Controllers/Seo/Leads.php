@@ -4,41 +4,67 @@ namespace App\Controllers\Seo;
 
 use App\Controllers\BaseController;
 use App\Models\LeadsModel;
-use App\Models\ActivityLogsModel;
+use App\Models\VendorProfilesModel;
 
 class Leads extends BaseController
 {
     protected $leadModel;
+    protected $vendorModel;
 
     public function __construct()
     {
         $this->leadModel = new LeadsModel();
+        $this->vendorModel = new VendorProfilesModel();
     }
 
     public function index()
     {
-        $vendorId = (int)($this->request->getGet('vendor_id')
-            ?? session()->get('vendor_id')
-            ?? 1);
-
-        // Ambil tanggal dari request, jika kosong maka jadikan null
+        // Ambil filter dari query string
+        $vendorId = $this->request->getGet('vendor_id');
+        $vendorId = $vendorId ? (int) $vendorId : null;
+        
         $start = $this->request->getGet('start');
         $end   = $this->request->getGet('end');
 
-        // Jika salah satu tanggal kosong, tampilkan semua data
-        if (empty($start) || empty($end)) {
-            $start = null;
-            $end = null;
+        // Validasi tanggal hanya jika kedua tanggal diisi
+        if (!empty($start) && !empty($end) && !$this->leadModel->validateDateRange($start, $end)) {
+            return redirect()->back()->with('error', 'Tanggal mulai tidak boleh lebih besar dari tanggal selesai');
         }
 
+        // Ambil daftar vendor untuk dropdown filter
+        $vendors = $this->vendorModel->findAll();
+
+        // Ambil data leads dengan filter (bisa vendor saja, periode saja, atau keduanya)
         $leads = $this->leadModel->getLeadsWithVendor($vendorId, $start, $end);
 
-        $this->logActivity(
-            $vendorId,
-            'leads',
-            'view',
-            "User melihat daftar leads" . ($start ? " periode {$start} s/d {$end}" : " seluruhnya")
-        );
+        // Ambil statistik summary berdasarkan filter yang sama
+        $summary = $this->leadModel->getLeadsSummary($vendorId, $start, $end);
+
+        // Log aktivitas view leads
+        $logDescription = "Melihat daftar leads";
+        $extraData = ['module' => 'leads'];
+        
+        if (!empty($vendorId)) {
+            $vendorName = $this->getVendorName($vendorId, $vendors);
+            $logDescription .= " untuk vendor {$vendorName}";
+            $extraData['vendor_id'] = $vendorId;
+        } else {
+            $logDescription .= " semua vendor";
+        }
+        
+        if (!empty($start) && !empty($end)) {
+            $logDescription .= " periode {$start} s/d {$end}";
+            $extraData['period_start'] = $start;
+            $extraData['period_end'] = $end;
+        } elseif (!empty($start)) {
+            $logDescription .= " mulai dari {$start}";
+            $extraData['period_start'] = $start;
+        } elseif (!empty($end)) {
+            $logDescription .= " sampai dengan {$end}";
+            $extraData['period_end'] = $end;
+        }
+
+        log_activity_auto('view', $logDescription, $extraData);
 
         return view('seo/leads/index', [
             'title'      => 'Pantau Leads',
@@ -46,25 +72,23 @@ class Leads extends BaseController
             'leads'      => $leads,
             'pager'      => $this->leadModel->pager,
             'vendorId'   => $vendorId,
-            'start'      => $start ?? date('Y-m-01'), // Untuk nilai default di form
-            'end'        => $end ?? date('Y-m-t')     // Untuk nilai default di form
+            'vendors'    => $vendors,
+            'start'      => $start,
+            'end'        => $end,
+            'summary'    => $summary
         ]);
     }
 
-    private function logActivity($vendorId, $module, $action, $description)
+    /**
+     * Helper untuk mendapatkan nama vendor
+     */
+    private function getVendorName(int $vendorId, array $vendors): string
     {
-        $user   = service('auth')->user();
-        $userId = $user ? $user->id : null;
-
-        (new ActivityLogsModel())->insert([
-            'user_id'     => $userId,
-            'vendor_id'   => $vendorId ?? 0,
-            'module'      => $module,
-            'action'      => $action,
-            'description' => $description,
-            'ip_address'  => $this->request->getIPAddress(),
-            'user_agent'  => (string) $this->request->getUserAgent(),
-            'created_at'  => date('Y-m-d H:i:s'),
-        ]);
+        foreach ($vendors as $vendor) {
+            if ($vendor['id'] == $vendorId) {
+                return $vendor['business_name'];
+            }
+        }
+        return 'Unknown Vendor';
     }
 }

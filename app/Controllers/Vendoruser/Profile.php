@@ -4,13 +4,9 @@ namespace App\Controllers\Vendoruser;
 
 use App\Controllers\BaseController;
 use App\Models\VendorProfilesModel;
-use App\Models\ActivityLogsModel;
-use App\Models\NotificationsModel;
 
 class Profile extends BaseController
 {
-    protected $activityLogsModel;
-    protected $notificationsModel;
     protected $vendorProfilesModel;
 
     private $vendorProfile;
@@ -19,8 +15,6 @@ class Profile extends BaseController
 
     public function __construct()
     {
-        $this->activityLogsModel = new ActivityLogsModel();
-        $this->notificationsModel = new NotificationsModel();
         $this->vendorProfilesModel = new VendorProfilesModel();
         $this->initVendor();
     }
@@ -102,7 +96,7 @@ class Profile extends BaseController
                 $rules['requested_commission'] = 'required|numeric|greater_than_equal_to[1]|less_than_equal_to[100]';
                 $rules['requested_commission_nominal'] = 'permit_empty';
             } else if ($commissionType === 'nominal') {
-                $rules['requested_commission_nominal'] = 'required';
+                $rules['requested_commission_nominal'] = 'required|numeric|greater_than[0]';
                 $rules['requested_commission'] = 'permit_empty';
             }
         } else {
@@ -134,13 +128,10 @@ class Profile extends BaseController
             'owner_name'      => (string) $this->request->getPost('owner_name'),
             'whatsapp_number' => (string) $this->request->getPost('whatsapp_number'),
             'phone'           => (string) ($this->request->getPost('phone') ?? ''),
-            'updated_at'      => date('Y-m-d H:i:s'),
         ];
 
         // ==== HANDLE COMMISSION DATA ====
         $commissionChanged = false;
-        $commissionAction = '';
-        $commissionData = [];
 
         if (!$this->isVerified) {
             $commissionType = $this->request->getPost('commission_type');
@@ -155,12 +146,6 @@ class Profile extends BaseController
                     $commissionChanged = true;
                     $data['requested_commission'] = $newCommission;
                     $data['requested_commission_nominal'] = null;
-                    $commissionAction = empty($oldCommission) ? 'insert' : 'edit';
-                    $commissionData = [
-                        'type' => 'percent',
-                        'value' => $newCommission,
-                        'old_value' => $oldCommission
-                    ];
                 }
             } else {
                 $nominalRaw = $this->request->getPost('requested_commission_nominal');
@@ -172,18 +157,14 @@ class Profile extends BaseController
                     $commissionChanged = true;
                     $data['requested_commission_nominal'] = $newCommissionNominal;
                     $data['requested_commission'] = null;
-                    $commissionAction = empty($oldCommissionNominal) ? 'insert' : 'edit';
-                    $commissionData = [
-                        'type' => 'nominal',
-                        'value' => $newCommissionNominal,
-                        'old_value' => $oldCommissionNominal
-                    ];
                 }
             }
             
             // Reset status ke pending jika ada perubahan komisi
             if ($commissionChanged) {
                 $data['status'] = 'pending';
+                $data['approved_at'] = null;
+                $data['action_by'] = null;
             }
         }
 
@@ -223,23 +204,29 @@ class Profile extends BaseController
             $profileImageChanged = true;
         }
 
-        // ==== UPDATE DATABASE ====
+        // ==== UPDATE DATABASE MENGGUNAKAN QUERY BUILDER ====
         try {
-            $this->vendorProfilesModel->update($this->vendorId, $data);
+            $db = \Config\Database::connect();
+            $builder = $db->table('vendor_profiles');
+            
+            // Tambahkan updated_at
+            $data['updated_at'] = date('Y-m-d H:i:s');
+            
+            // Update menggunakan query builder langsung
+            $builder->where('id', $this->vendorId);
+            $success = $builder->update($data);
+
+            if (!$success) {
+                throw new \Exception('Gagal update data vendor');
+            }
 
             // ==== LOG ACTIVITY ====
             $changes = [];
             if ($commissionChanged) {
-                if ($commissionData['type'] === 'percent') {
-                    $changes['commission'] = $commissionData['value'] . '%';
-                    if (!empty($commissionData['old_value'])) {
-                        $changes['commission_old'] = $commissionData['old_value'] . '%';
-                    }
+                if ($data['commission_type'] === 'percent') {
+                    $changes['commission'] = $data['requested_commission'] . '%';
                 } else {
-                    $changes['commission'] = 'Rp ' . number_format($commissionData['value'], 0, ',', '.');
-                    if (!empty($commissionData['old_value'])) {
-                        $changes['commission_old'] = 'Rp ' . number_format($commissionData['old_value'], 0, ',', '.');
-                    }
+                    $changes['commission'] = 'Rp ' . number_format($data['requested_commission_nominal'], 0, ',', '.');
                 }
             }
             if ($profileImageChanged) {
@@ -263,33 +250,6 @@ class Profile extends BaseController
                 ]);
             }
 
-            // ==== SEND NOTIFICATION FOR COMMISSION CHANGE ====
-            if (!$this->isVerified && $commissionChanged) {
-                $this->sendCommissionNotification($user, $data + [
-                    'requested_commission' => $data['requested_commission'] ?? null,
-                    'requested_commission_nominal' => $data['requested_commission_nominal'] ?? null,
-                    'commission_type' => $data['commission_type'],
-                    'action' => $commissionAction
-                ]);
-
-                // Log commission request
-                if (function_exists('log_activity_auto')) {
-                    $logMessage = 'Mengajukan komisi: ';
-                    if ($data['commission_type'] === 'percent') {
-                        $logMessage .= $data['requested_commission'] . '%';
-                    } else {
-                        $logMessage .= 'Rp ' . number_format($data['requested_commission_nominal'], 0, ',', '.');
-                    }
-                    
-                    log_activity_auto('create', $logMessage, [
-                        'module' => 'vendor_profile',
-                        'vendor_id' => $this->vendorId,
-                        'commission_type' => $data['commission_type'],
-                        'commission_value' => $data['commission_type'] === 'percent' ? $data['requested_commission'] : $data['requested_commission_nominal']
-                    ]);
-                }
-            }
-
             return redirect()->back()->with('success', 'Profil berhasil diperbarui' . ($commissionChanged ? ' dan pengajuan komisi dikirim untuk verifikasi' : ''));
 
         } catch (\Throwable $e) {
@@ -304,72 +264,6 @@ class Profile extends BaseController
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
-        }
-    }
-
-    private function sendCommissionNotification($user, $vendorData)
-    {
-        $db = db_connect();
-        
-        try {
-            // Get admin and seoteam users
-            $targetUsers = $db->table('auth_groups_users')
-                ->select('user_id, group')
-                ->whereIn('group', ['admin', 'seoteam'])
-                ->get()
-                ->getResultArray();
-            
-            if (empty($targetUsers)) {
-                log_message('warning', 'Tidak ada user admin atau seoteam yang ditemukan untuk notifikasi komisi.');
-                return;
-            }
-            
-            // Prepare notification data
-            $commissionText = '';
-            if ($vendorData['commission_type'] === 'percent') {
-                $commissionText = $vendorData['requested_commission'] . '%';
-            } else {
-                $commissionText = 'Rp ' . number_format($vendorData['requested_commission_nominal'], 0, ',', '.');
-            }
-            
-            $actionText = $vendorData['action'] === 'insert' ? 'mengajukan komisi' : 'mengubah pengajuan komisi';
-            
-            $title = 'Pengajuan Komisi Vendor';
-            $message = 'Vendor ' . ($vendorData['business_name'] ?? '-') .
-                        ' (Pemilik: ' . ($vendorData['owner_name'] ?? '-') .
-                        ') ' . $actionText . ' ' . $commissionText . '. Silakan verifikasi pengajuan ini.';
-
-            $now = date('Y-m-d H:i:s');
-
-            // Prepare batch insert
-            $notificationsToInsert = [];
-            foreach ($targetUsers as $targetUser) {
-                $notification = [
-                    'user_id'    => $targetUser['user_id'],
-                    'vendor_id'  => $this->vendorId,
-                    'title'      => $title,
-                    'message'    => $message,
-                    'type'       => 'system',
-                    'is_read'    => 0,
-                    'created_at' => $now,
-                ];
-                
-                // Set seo_id for seoteam users
-                if ($targetUser['group'] === 'seoteam') {
-                    $notification['seo_id'] = $targetUser['user_id'];
-                }
-                
-                $notificationsToInsert[] = $notification;
-            }
-
-            // Insert notifications
-            $db->table('notifications')->insertBatch($notificationsToInsert);
-            
-            log_message('info', 'Berhasil mengirim ' . count($notificationsToInsert) . ' notifikasi komisi.');
-
-        } catch (\Throwable $e) {
-            log_message('error', 'Gagal mengirim notifikasi komisi: ' . $e->getMessage());
-            throw $e;
         }
     }
 

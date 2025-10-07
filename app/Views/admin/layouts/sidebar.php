@@ -14,71 +14,70 @@
         x-data="{
             activeMenu: '<?= 
                 url_is('admin/dashboard*') ? 'dashboard' :
-                (url_is('admin/users*') ? 'users' :
+                (url_is('admin/userseo*') ? 'users' :
+                (url_is('admin/uservendor*') ? 'users' :
                 (url_is('admin/vendors*') || url_is('admin/services*') || url_is('admin/areas*') ? 'vendors' :
-                (url_is('admin/activityvendor*') || url_is('admin/activityseo*') ? 'activities' :
+                (url_is('admin/activities/vendor*') || url_is('admin/activities/seo*') ? 'activities' :
                 (url_is('admin/leads*') ? 'leads' :
                 (url_is('admin/commissions*') ? 'commissions' :
                 (url_is('admin/announcements*') ? 'announcements' :
-                (url_is('admin/activity-logs*') ? 'activity-logs' : ''))))))) ?>',
-            userSubmenu: false,
-            vendorSubmenu: false,
-            activitySubmenu: false,
-            setActiveMenu(menu){
-                this.activeMenu = menu;
-                sessionStorage.setItem('activeMenu', menu);
-                if(menu !== 'users' && menu !== 'vendors' && menu !== 'activities'){
-                    this.userSubmenu = false;
-                    this.vendorSubmenu = false;
-                    this.activitySubmenu = false;
+                (url_is('admin/activity-logs*') ? 'activity-logs' : '')))))))) ?>',
+            userSubmenu: <?= (url_is('admin/userseo*') || url_is('admin/uservendor*')) ? 'true' : 'false' ?>,
+            vendorSubmenu: <?= (url_is('admin/vendors*') || url_is('admin/services*') || url_is('admin/areas*')) ? 'true' : 'false' ?>,
+            activitySubmenu: <?= (url_is('admin/activities/vendor*') || url_is('admin/activities/seo*')) ? 'true' : 'false' ?>,
+            init(){
+                // Auto-detect based on current path
+                const path = window.location.pathname;
+                
+                // Reset submenus first
+                this.userSubmenu = false;
+                this.vendorSubmenu = false;
+                this.activitySubmenu = false;
+                
+                // Set based on current page
+                if(path.includes('/admin/userseo') || path.includes('/admin/uservendor')) {
+                    this.activeMenu = 'users';
+                    this.userSubmenu = true;
+                }
+                else if(path.includes('/admin/vendors') || path.includes('/admin/services') || path.includes('/admin/areas')) {
+                    this.activeMenu = 'vendors';
+                    this.vendorSubmenu = true;
+                }
+                else if(path.includes('/admin/activities/vendor') || path.includes('/admin/activities/seo')) {
+                    this.activeMenu = 'activities';
+                    this.activitySubmenu = true;
+                }
+                else if(path.includes('/admin/leads')) {
+                    this.activeMenu = 'leads';
+                }
+                else if(path.includes('/admin/commissions')) {
+                    this.activeMenu = 'commissions';
+                }
+                else if(path.includes('/admin/announcements')) {
+                    this.activeMenu = 'announcements';
+                }
+                else if(path.includes('/admin/activity-logs')) {
+                    this.activeMenu = 'activity-logs';
                 }
             },
             toggleUserSubmenu(){
                 this.userSubmenu = !this.userSubmenu;
                 this.vendorSubmenu = false;
                 this.activitySubmenu = false;
-                if(this.userSubmenu){
-                    this.activeMenu = 'users';
-                    sessionStorage.setItem('activeMenu', 'users');
-                }
             },
             toggleVendorSubmenu(){
                 this.vendorSubmenu = !this.vendorSubmenu;
                 this.userSubmenu = false;
                 this.activitySubmenu = false;
-                if(this.vendorSubmenu){
-                    this.activeMenu = 'vendors';
-                    sessionStorage.setItem('activeMenu', 'vendors');
-                }
             },
             toggleActivitySubmenu(){
                 this.activitySubmenu = !this.activitySubmenu;
                 this.userSubmenu = false;
                 this.vendorSubmenu = false;
-                if(this.activitySubmenu){
-                    this.activeMenu = 'activities';
-                    sessionStorage.setItem('activeMenu', 'activities');
-                }
             },
-            init(){
-                const s = sessionStorage.getItem('activeMenu');
-                if(s) this.activeMenu = s;
-
-                const path = window.location.pathname;
-                if(path.includes('/admin/users')) {
-                    this.activeMenu = 'users';
-                    this.userSubmenu = true;
-                }
-                if(path.includes('/admin/vendors') || path.includes('/admin/services') || path.includes('/admin/areas')) {
-                    this.activeMenu = 'vendors';
-                    this.vendorSubmenu = true;
-                }
-                if(path.includes('/admin/activityvendor') || path.includes('/admin/activityseo')) {
-                    this.activeMenu = 'activities';
-                    this.activitySubmenu = true;
-                }
-                if(path.includes('/admin/commissions')) {
-                    this.activeMenu = 'commissions';
+            closeSidebarOnMobile(){
+                if (!$store.layout.isDesktop) {
+                    $store.ui.sidebar = false;
                 }
             }
         }"
@@ -114,7 +113,7 @@
            class="group flex items-center gap-3 py-2.5 px-3 rounded-lg mb-1 transition-all
                   hover:bg-blue-700/50 text-blue-100 hover:text-white"
            :class="{'bg-blue-600 text-white shadow-lg shadow-blue-600/30': activeMenu === 'dashboard'}"
-           @click="if (!$store.layout.isDesktop) $store.ui.sidebar = false; setActiveMenu('dashboard')">
+           @click="closeSidebarOnMobile()">
             <i class="fas fa-tachometer-alt w-5 text-center"></i>
             <span class="text-sm font-medium">Dashboard</span>
         </a>
@@ -136,20 +135,23 @@
                    :class="{'rotate-180': userSubmenu}"></i>
             </button>
             
-            <div x-show="userSubmenu" x-collapse class="mt-1 space-y-1">
-                <a href="<?= site_url('admin/users?tab=seo'); ?>"
+            <div x-show="userSubmenu" x-transition class="mt-1 space-y-1">
+                <!-- User Tim SEO -->
+                <a href="<?= site_url('admin/userseo'); ?>"
                    class="flex items-center gap-3 py-2 pl-11 pr-3 rounded-lg transition-all
                           hover:bg-blue-700/50 text-blue-200 hover:text-white text-sm"
-                   :class="{'bg-blue-600/50 text-white': window.location.search.includes('tab=seo')}"
-                   @click="if (!$store.layout.isDesktop) $store.ui.sidebar = false;">
+                   :class="{'bg-blue-600/50 text-white': window.location.pathname.includes('/admin/userseo')}"
+                   @click="closeSidebarOnMobile()">
                     <i class="fas fa-users w-4 text-center text-xs"></i>
                     <span>User Tim SEO</span>
                 </a>
-                <a href="<?= site_url('admin/users?tab=vendor'); ?>"
+                
+                <!-- User Vendor -->
+                <a href="<?= site_url('admin/uservendor'); ?>"
                    class="flex items-center gap-3 py-2 pl-11 pr-3 rounded-lg transition-all
                           hover:bg-blue-700/50 text-blue-200 hover:text-white text-sm"
-                   :class="{'bg-blue-600/50 text-white': window.location.search.includes('tab=vendor')}"
-                   @click="if (!$store.layout.isDesktop) $store.ui.sidebar = false;">
+                   :class="{'bg-blue-600/50 text-white': window.location.pathname.includes('/admin/uservendor')}"
+                   @click="closeSidebarOnMobile()">
                     <i class="fas fa-store w-4 text-center text-xs"></i>
                     <span>User Vendor</span>
                 </a>
@@ -170,18 +172,20 @@
                    :class="{'rotate-180': vendorSubmenu}"></i>
             </button>
             
-            <div x-show="vendorSubmenu" x-collapse class="mt-1 space-y-1">
+            <div x-show="vendorSubmenu" x-transition class="mt-1 space-y-1">
                 <a href="<?= site_url('admin/areas'); ?>"
                    class="flex items-center gap-3 py-2 pl-11 pr-3 rounded-lg transition-all
                           hover:bg-blue-700/50 text-blue-200 hover:text-white text-sm"
-                   :class="{'bg-blue-600/50 text-white': window.location.pathname.includes('/admin/areas')}">
+                   :class="{'bg-blue-600/50 text-white': window.location.pathname.includes('/admin/areas')}"
+                   @click="closeSidebarOnMobile()">
                     <i class="fas fa-map-marked-alt w-4 text-center text-xs"></i>
                     <span>Area Vendor</span>
                 </a>
                 <a href="<?= site_url('admin/services'); ?>"
                    class="flex items-center gap-3 py-2 pl-11 pr-3 rounded-lg transition-all
                           hover:bg-blue-700/50 text-blue-200 hover:text-white text-sm"
-                   :class="{'bg-blue-600/50 text-white': window.location.pathname.includes('/admin/services')}">
+                   :class="{'bg-blue-600/50 text-white': window.location.pathname.includes('/admin/services')}"
+                   @click="closeSidebarOnMobile()">
                     <i class="fas fa-box-open w-4 text-center text-xs"></i>
                     <span>Layanan & Produk Vendor</span>
                 </a>
@@ -202,18 +206,20 @@
                    :class="{'rotate-180': activitySubmenu}"></i>
             </button>
 
-            <div x-show="activitySubmenu" x-collapse class="mt-1 space-y-1">
+            <div x-show="activitySubmenu" x-transition class="mt-1 space-y-1">
                 <a href="<?= site_url('admin/activities/vendor'); ?>"
                    class="flex items-center gap-3 py-2 pl-11 pr-3 rounded-lg transition-all
                           hover:bg-blue-700/50 text-blue-200 hover:text-white text-sm"
-                   :class="{'bg-blue-600/50 text-white': window.location.pathname.includes('/admin/activities/vendor')}">
+                   :class="{'bg-blue-600/50 text-white': window.location.pathname.includes('/admin/activities/vendor')}"
+                   @click="closeSidebarOnMobile()">
                     <i class="fas fa-briefcase w-4 text-center text-xs"></i>
                     <span>Activity Vendor</span>
                 </a>
                 <a href="<?= site_url('admin/activities/seo'); ?>"
                    class="flex items-center gap-3 py-2 pl-11 pr-3 rounded-lg transition-all
                           hover:bg-blue-700/50 text-blue-200 hover:text-white text-sm"
-                   :class="{'bg-blue-600/50 text-white': window.location.pathname.includes('/admin/activities/seo')}">
+                   :class="{'bg-blue-600/50 text-white': window.location.pathname.includes('/admin/activities/seo')}"
+                   @click="closeSidebarOnMobile()">
                     <i class="fas fa-user-cog w-4 text-center text-xs"></i>
                     <span>Activity Tim SEO</span>
                 </a>
@@ -225,7 +231,7 @@
            class="group flex items-center gap-3 py-2.5 px-3 rounded-lg mb-1 transition-all
                   hover:bg-blue-700/50 text-blue-100 hover:text-white"
            :class="{'bg-blue-600 text-white shadow-lg shadow-blue-600/30': activeMenu === 'leads'}"
-           @click="setActiveMenu('leads')">
+           @click="closeSidebarOnMobile()">
             <i class="fas fa-list w-5 text-center"></i>
             <span class="text-sm font-medium">Leads</span>
         </a>
@@ -235,7 +241,7 @@
            class="group flex items-center gap-3 py-2.5 px-3 rounded-lg mb-1 transition-all
                   hover:bg-blue-700/50 text-blue-100 hover:text-white"
            :class="{'bg-blue-600 text-white shadow-lg shadow-blue-600/30': activeMenu === 'commissions'}"
-           @click="setActiveMenu('commissions')">
+           @click="closeSidebarOnMobile()">
             <i class="fas fa-coins w-5 text-center"></i>
             <span class="text-sm font-medium">Commissions</span>
         </a>
@@ -248,7 +254,7 @@
            class="group flex items-center gap-3 py-2.5 px-3 rounded-lg mb-1 transition-all
                   hover:bg-blue-700/50 text-blue-100 hover:text-white"
            :class="{'bg-blue-600 text-white shadow-lg shadow-blue-600/30': activeMenu === 'announcements'}"
-           @click="setActiveMenu('announcements')">
+           @click="closeSidebarOnMobile()">
             <i class="fas fa-bullhorn w-5 text-center"></i>
             <span class="text-sm font-medium">Announcements</span>
         </a>
@@ -258,7 +264,7 @@
            class="group flex items-center gap-3 py-2.5 px-3 rounded-lg mb-1 transition-all
                   hover:bg-blue-700/50 text-blue-100 hover:text-white"
            :class="{'bg-blue-600 text-white shadow-lg shadow-blue-600/30': activeMenu === 'activity-logs'}"
-           @click="setActiveMenu('activity-logs')">
+           @click="closeSidebarOnMobile()">
             <i class="fas fa-history w-5 text-center"></i>
             <span class="text-sm font-medium">Activity Logs</span>
         </a>

@@ -12,6 +12,74 @@
     </div>
   </div>
 
+  <!-- Filter Section -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <div class="flex flex-col lg:flex-row lg:items-end gap-4">
+      <!-- Vendor Filter -->
+      <div class="flex-1">
+        <label class="block text-sm font-medium text-gray-700 mb-2">
+          <i class="fas fa-filter text-blue-600 mr-1"></i> Filter Vendor
+        </label>
+        <select x-model="selectedVendor" 
+                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm">
+          <option value="">📋 Semua Vendor</option>
+          <?php foreach($vendors as $vendor): ?>
+            <option value="<?= $vendor['id'] ?>" 
+                    <?= ($vendorId == $vendor['id']) ? 'selected' : '' ?>>
+              🏢 <?= esc($vendor['business_name']) ?> (ID: <?= $vendor['id'] ?>)
+            </option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      
+      <!-- Status Filter -->
+      <div class="flex-1">
+        <label class="block text-sm font-medium text-gray-700 mb-2">
+          <i class="fas fa-tag text-blue-600 mr-1"></i> Filter Status
+        </label>
+        <select x-model="selectedStatus"
+                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm">
+          <option value="">Semua Status</option>
+          <option value="unpaid" <?= ($status == 'unpaid') ? 'selected' : '' ?>>🟡 Unpaid</option>
+          <option value="paid" <?= ($status == 'paid') ? 'selected' : '' ?>>🟢 Paid</option>
+        </select>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex gap-2">
+        <button @click="applyFilter()" 
+                class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center shadow-sm">
+          <i class="fas fa-search mr-2"></i> Terapkan Filter
+        </button>
+        <button @click="resetFilter()" 
+                class="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-colors font-medium flex items-center shadow-sm">
+          <i class="fas fa-refresh mr-2"></i> Reset
+        </button>
+      </div>
+    </div>
+
+    <!-- Active Filter Info -->
+    <div x-show="hasActiveFilter()" class="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center">
+          <i class="fas fa-info-circle text-blue-600 mr-2"></i>
+          <span class="text-sm text-blue-700">
+            Filter aktif: 
+            <span x-show="selectedVendor" class="font-medium bg-white px-2 py-1 rounded border border-blue-200 ml-1">
+              Vendor: <span x-text="getVendorName(selectedVendor)"></span>
+            </span>
+            <span x-show="selectedStatus" class="font-medium bg-white px-2 py-1 rounded border border-blue-200 ml-1">
+              Status: <span x-text="getStatusLabel(selectedStatus)"></span>
+            </span>
+          </span>
+        </div>
+        <span class="text-xs text-blue-600 bg-white px-2 py-1 rounded">
+          <?= count($commissions) ?> data ditemukan
+        </span>
+      </div>
+    </div>
+  </div>
+
   <!-- Stats Cards -->
   <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
@@ -37,13 +105,13 @@
           <i class="fas fa-check-circle text-xl"></i>
         </div>
         <div class="ml-4">
-          <h3 class="text-sm font-medium text-gray-500">Sudah Disetujui</h3>
+          <h3 class="text-sm font-medium text-gray-500">Sudah Dibayar</h3>
           <p class="text-2xl font-bold text-gray-800 mt-1">
             <?php 
-              $approvedCount = count(array_filter($commissions, function($c) {
-                return in_array(strtolower($c['status'] ?? ''), ['approved', 'paid']);
+              $paidCount = count(array_filter($commissions, function($c) {
+                return strtolower($c['status'] ?? '') === 'paid';
               }));
-              echo $approvedCount;
+              echo $paidCount;
             ?>
           </p>
         </div>
@@ -56,13 +124,13 @@
           <i class="fas fa-clock text-xl"></i>
         </div>
         <div class="ml-4">
-          <h3 class="text-sm font-medium text-gray-500">Menunggu Verifikasi</h3>
+          <h3 class="text-sm font-medium text-gray-500">Belum Dibayar</h3>
           <p class="text-2xl font-bold text-gray-800 mt-1">
             <?php 
-              $pendingCount = count(array_filter($commissions, function($c) {
+              $unpaidCount = count(array_filter($commissions, function($c) {
                 return strtolower($c['status'] ?? '') === 'unpaid';
               }));
-              echo $pendingCount;
+              echo $unpaidCount;
             ?>
           </p>
         </div>
@@ -111,6 +179,7 @@
                     </div>
                     <div class="ml-3">
                       <div class="text-sm font-medium text-gray-900"><?= esc($c['vendor_name'] ?? '—') ?></div>
+                      <div class="text-xs text-gray-500">ID: <?= $c['vendor_id'] ?></div>
                     </div>
                   </div>
                 </td>
@@ -148,9 +217,9 @@
                     $badgeClass = 'bg-gray-100 text-gray-700';
                     $label = ucfirst($status);
                     $icon = '';
-                    if ($status === 'approved' || $status === 'paid') {
+                    if ($status === 'paid') {
                       $badgeClass = 'bg-green-100 text-green-800';
-                      $label = 'Approved';
+                      $label = 'Paid';
                       $icon = '<i class="fas fa-check-circle mr-1"></i>';
                     } elseif ($status === 'unpaid') {
                       $badgeClass = 'bg-yellow-100 text-yellow-800';
@@ -170,9 +239,9 @@
                               class="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-md text-xs font-medium shadow-sm transition flex items-center justify-center">
                         <i class="fas fa-check mr-1"></i> Verify
                       </button>
-                    <?php elseif ($status === 'paid' || $status === 'approved'): ?>
+                    <?php elseif ($status === 'paid'): ?>
                       <span class="px-3 py-1 inline-flex items-center text-xs leading-5 font-medium rounded-full bg-green-100 text-green-800">
-                        <i class="fas fa-check-double mr-1"></i> Sudah Diverifikasi
+                        <i class="fas fa-check-double mr-1"></i> Sudah Dibayar
                       </span>
                     <?php else: ?>
                       <span class="text-gray-400 text-sm">-</span>
@@ -187,7 +256,13 @@
                 <div class="flex flex-col items-center justify-center">
                   <i class="fas fa-inbox text-gray-300 text-4xl mb-3"></i>
                   <p class="text-lg font-medium text-gray-900">Tidak ada data komisi</p>
-                  <p class="mt-1 text-sm text-gray-500">Belum ada komisi vendor yang tersedia</p>
+                  <p class="mt-1 text-sm text-gray-500">
+                    <?php if(!empty($vendorId) || !empty($status)): ?>
+                      Tidak ada komisi dengan filter yang dipilih
+                    <?php else: ?>
+                      Belum ada komisi vendor yang tersedia
+                    <?php endif; ?>
+                  </p>
                 </div>
               </td>
             </tr>
@@ -195,13 +270,41 @@
         </tbody>
       </table>
     </div>
+
+    <!-- Pagination -->
+    <?php if($pager->getPageCount() > 1): ?>
+    <div class="px-5 py-4 border-t border-gray-200 bg-gray-50">
+      <div class="flex items-center justify-between">
+        <div class="text-sm text-gray-600">
+          Menampilkan halaman <?= $pager->getCurrentPage() ?> dari <?= $pager->getPageCount() ?>
+        </div>
+        <div class="flex space-x-1">
+          <?= $pager->links() ?>
+        </div>
+      </div>
+    </div>
+    <?php endif; ?>
   </div>
 
-  <!-- Modal Konfirmasi -->
+  <!-- Modal Konfirmasi - PERBAIKAN: Backdrop overlay yang memenuhi seluruh halaman -->
   <div x-show="showConfirmModal" x-cloak
-       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
-       x-transition>
-    <div class="bg-white rounded-xl shadow-xl w-full max-w-md" @click.stop x-transition>
+       class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm"
+       style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh;"
+       x-transition:enter="transition ease-out duration-300"
+       x-transition:enter-start="opacity-0"
+       x-transition:enter-end="opacity-100"
+       x-transition:leave="transition ease-in duration-200"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0">
+    
+    <!-- Modal Content -->
+    <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-auto"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 scale-95 translate-y-4"
+         x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+         x-transition:leave-end="opacity-0 scale-95 translate-y-4">
       <div class="p-6">
         <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-green-100">
           <i class="fas fa-check text-green-600 text-2xl"></i>
@@ -215,11 +318,11 @@
         
         <div class="flex flex-col sm:flex-row gap-3 justify-center">
           <button @click="showConfirmModal = false"
-                  class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 font-medium transition">
+                  class="px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 font-medium transition-colors">
             Batal
           </button>
           <button @click="executeAction()"
-                  class="px-4 py-2 rounded-lg text-white font-medium bg-green-600 hover:bg-green-700 transition">
+                  class="px-4 py-2.5 rounded-lg text-white font-medium bg-green-600 hover:bg-green-700 transition-colors">
             Verify
           </button>
         </div>
@@ -227,9 +330,15 @@
     </div>
   </div>
 
-  <!-- Notification Toast -->
-  <div x-show="notification.show" x-cloak x-transition
-       class="fixed bottom-4 right-4 z-50 bg-white rounded-lg shadow-lg border-l-4 p-4 max-w-md"
+  <!-- Notification Toast - PERBAIKAN: Z-index yang lebih tinggi -->
+  <div x-show="notification.show" x-cloak
+       x-transition:enter="transition ease-out duration-300"
+       x-transition:enter-start="opacity-0 transform translate-y-2"
+       x-transition:enter-end="opacity-100 transform translate-y-0"
+       x-transition:leave="transition ease-in duration-200"
+       x-transition:leave-start="opacity-100 transform translate-y-0"
+       x-transition:leave-end="opacity-0 transform translate-y-2"
+       class="fixed bottom-4 right-4 z-[100] bg-white rounded-lg shadow-lg border-l-4 p-4 max-w-md"
        :class="{'border-green-500': notification.type === 'success', 'border-red-500': notification.type === 'error'}">
     <div class="flex items-start">
       <div class="flex-shrink-0">
@@ -241,26 +350,111 @@
         <p class="mt-1 text-sm text-gray-500" x-text="notification.message"></p>
       </div>
       <div class="ml-auto pl-3">
-        <button @click="notification.show = false" class="text-gray-400 hover:text-gray-500 focus:outline-none">
+        <button @click="notification.show = false" class="text-gray-400 hover:text-gray-500 focus:outline-none transition-colors">
           <i class="fas fa-times"></i>
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Loading Overlay -->
+  <!-- Loading Overlay - PERBAIKAN: Backdrop overlay yang memenuhi seluruh halaman -->
   <div x-show="loading" x-cloak
-       class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 flex flex-col items-center">
+       class="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm"
+       style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh;">
+    
+    <!-- Loading Content -->
+    <div class="relative bg-white rounded-lg p-6 flex flex-col items-center shadow-xl">
       <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
       <p class="text-gray-700 font-medium">Memproses...</p>
     </div>
   </div>
 </div>
 
+<style>
+/* PERBAIKAN: Backdrop overlay yang memenuhi seluruh halaman */
+.fixed.inset-0 {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    z-index: 9999 !important;
+}
+
+/* Pastikan modal backdrop menutupi seluruh viewport */
+.modal-backdrop-full {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    backdrop-filter: blur(4px) !important;
+    z-index: 9998 !important;
+}
+
+/* Loading overlay yang memenuhi halaman */
+.loading-overlay-full {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(0, 0, 0, 0.7) !important;
+    backdrop-filter: blur(8px) !important;
+    z-index: 10000 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Pastikan body tidak scroll saat modal terbuka */
+body.modal-open {
+    overflow: hidden !important;
+    height: 100vh !important;
+    position: fixed !important;
+    width: 100% !important;
+}
+
+/* Style untuk baris error */
+.commission-row-error {
+    animation: pulseError 2s ease-in-out;
+    border-left: 4px solid #ef4444 !important;
+    background-color: #fef2f2 !important;
+}
+
+@keyframes pulseError {
+    0%, 100% { 
+        background-color: rgb(254 242 242);
+    }
+    50% { 
+        background-color: rgb(254 202 202);
+    }
+}
+
+[x-cloak] { 
+    display: none !important; 
+}
+
+/* Pastikan modal content di tengah */
+.modal-content-center {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    z-index: 10000 !important;
+}
+</style>
+
 <script>
 function commissionManager() {
   return {
+    selectedVendor: '<?= $vendorId ?? "" ?>',
+    selectedStatus: '<?= $status ?? "" ?>',
     showConfirmModal: false,
     commissionId: null,
     loading: false,
@@ -272,16 +466,60 @@ function commissionManager() {
       timeout: null
     },
 
+    // Vendor data for display
+    vendors: {
+      <?php foreach($vendors as $vendor): ?>
+        '<?= $vendor['id'] ?>': '<?= esc($vendor['business_name']) ?>',
+      <?php endforeach; ?>
+    },
+
+    hasActiveFilter() {
+      return this.selectedVendor || this.selectedStatus;
+    },
+
+    getVendorName(vendorId) {
+      return this.vendors[vendorId] || 'Unknown Vendor';
+    },
+
+    getStatusLabel(status) {
+      const statusLabels = {
+        'paid': 'Paid',
+        'unpaid': 'Unpaid'
+      };
+      return statusLabels[status] || status;
+    },
+
+    applyFilter() {
+      const params = new URLSearchParams();
+      if (this.selectedVendor) params.append('vendor_id', this.selectedVendor);
+      if (this.selectedStatus) params.append('status', this.selectedStatus);
+      
+      const queryString = params.toString();
+      const url = queryString ? `?${queryString}` : '';
+      
+      window.location.href = `<?= site_url('seo/commissions') ?>${url}`;
+    },
+
+    resetFilter() {
+      window.location.href = '<?= site_url('seo/commissions') ?>';
+    },
+
     confirmAction(id) {
       this.commissionId = id;
       this.showConfirmModal = true;
+      // Prevent body scroll
+      document.body.classList.add('modal-open');
+      document.body.style.overflow = 'hidden';
     },
 
     async executeAction() {
       this.showConfirmModal = false;
       this.loading = true;
+      // Restore body scroll
+      document.body.classList.remove('modal-open');
+      document.body.style.overflow = '';
 
-      const url = `<?= site_url('seo/commissions/approve') ?>/${this.commissionId}?vendor_id=<?= esc($vendorId) ?>`;
+      const url = `<?= site_url('seo/commissions/approve') ?>/${this.commissionId}`;
 
       try {
         const formData = new FormData();
@@ -315,6 +553,17 @@ function commissionManager() {
     }
   };
 }
+
+// Event listener untuk menangani escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const manager = document.querySelector('[x-data]').__x.$data;
+    if (manager.showConfirmModal) {
+      manager.showConfirmModal = false;
+      document.body.style.overflow = '';
+    }
+  }
+});
 </script>
 
 <?= $this->endSection() ?>

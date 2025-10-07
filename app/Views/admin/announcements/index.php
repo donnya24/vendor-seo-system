@@ -1,3 +1,6 @@
+<?= $this->include('admin/layouts/header'); ?>
+<?= $this->include('admin/layouts/sidebar'); ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>

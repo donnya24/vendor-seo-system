@@ -31,121 +31,128 @@ $routes->post('logout','Auth\AuthController::logout'); // POST logout (untuk for
 // Util
  $routes->get('auth/remember-status', 'Auth\AuthController::checkRememberStatus');
 
-// app/Config/Routes.php
 
 // ==================== ADMIN ====================
 
- $routes->group('admin', ['filter' => ['session', 'group:admin']], static function ($routes) {
-    $routes->get('dashboard', 'Admin\Dashboard::index');
-    $routes->get('api/stats', 'Admin\Dashboard::stats');
-    $routes->get('api/leads/(:num)', 'Admin\Dashboard::getLeadDetail/$1');
+$routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 'App\Controllers\Admin'], static function ($routes) {
+    $routes->get('dashboard', 'Dashboard::index');
+    $routes->get('api/stats', 'Dashboard::stats');
+    $routes->get('api/leads/(:num)', 'Dashboard::getLeadDetail/$1');
 
     // === ROUTES PROFILE YANG DIPERBAIKI ===
     $routes->group('profile', function($routes) {
-        $routes->get('/', 'Admin\Profile::index'); // Halaman utama profile
-        $routes->get('edit-modal', 'Admin\Profile::editModal'); // Modal edit (AJAX)
-        $routes->get('password-modal', 'Admin\Profile::passwordModal'); // Modal password (AJAX)
-        $routes->post('update', 'Admin\Profile::update'); // Update profile
-        $routes->post('password-update', 'Admin\Profile::passwordUpdate'); // Update password
+        $routes->get('/', 'Profile::index'); // Halaman utama profile
+        $routes->get('edit-modal', 'Profile::editModal'); // Modal edit (AJAX)
+        $routes->get('password-modal', 'Profile::passwordModal'); // Modal password (AJAX)
+        $routes->post('update', 'Profile::update'); // Update profile
+        $routes->post('password-update', 'Profile::passwordUpdate'); // Update password
     });
     
     $routes->group('areas', function($routes){
-        $routes->get('/', 'Admin\VendorAreas::index');
-        $routes->get('create', 'Admin\VendorAreas::create');
-        $routes->get('edit/(:num)', 'Admin\VendorAreas::edit/$1');
-        $routes->get('search', 'Admin\VendorAreas::search');
-        $routes->post('attach', 'Admin\VendorAreas::attach');
-        $routes->post('delete', 'Admin\VendorAreas::delete');
-        $routes->post('clear-all/(:num)', 'Admin\VendorAreas::clearAll/$1');
-        $routes->delete('clear-all/(:num)', 'Admin\VendorAreas::clearAll/$1');
-        $routes->get('get-selected-areas/(:num)', 'Admin\VendorAreas::getSelectedAreas/$1');
+        $routes->get('/', 'VendorAreas::index');
+        $routes->get('create', 'VendorAreas::create');
+        $routes->get('edit/(:num)', 'VendorAreas::edit/$1');
+        $routes->get('search', 'VendorAreas::search');
+        $routes->post('attach', 'VendorAreas::attach');
+        $routes->post('delete', 'VendorAreas::delete');
+        $routes->post('clear-all/(:num)', 'VendorAreas::clearAll/$1');
+        $routes->delete('clear-all/(:num)', 'VendorAreas::clearAll/$1');
+        $routes->get('get-selected-areas/(:num)', 'VendorAreas::getSelectedAreas/$1');
     });
         
     // Vendor Services & Products
-    $routes->get('services', 'Admin\VendorServices::index');
-    $routes->get('services/create', 'Admin\VendorServices::create');
-    $routes->post('services/store', 'Admin\VendorServices::store');
-    $routes->get('services/edit/(:num)', 'Admin\VendorServices::edit/$1');
-    $routes->post('services/update/(:num)', 'Admin\VendorServices::update/$1');
-    $routes->post('services/delete/(:num)', 'Admin\VendorServices::delete/$1');
-    $routes->get('services/search', 'Admin\VendorServices::search');
+    $routes->get('services', 'VendorServices::index');
+    $routes->get('services/create', 'VendorServices::create');
+    $routes->post('services/store', 'VendorServices::store');
+    $routes->get('services/edit/(:num)', 'VendorServices::edit/$1');
+    $routes->post('services/update/(:num)', 'VendorServices::update/$1');
+    $routes->post('services/delete/(:num)', 'VendorServices::delete/$1');
+    $routes->get('services/search', 'VendorServices::search');
 
-    // Users (Vendor & SEO digabung) - ROUTING YANG DIPERBAIKI
-    $routes->group('users', function($routes){
-        $routes->get('/', 'Admin\Users::index');
-        $routes->get('create', 'Admin\Users::create');
-        $routes->post('store', 'Admin\Users::store');
-        
-        // Edit - GET request untuk menampilkan form edit
-        $routes->get('(:num)/edit', 'Admin\Users::edit/$1');
+    // User Vendor Routes
+    $routes->group('uservendor', ['namespace' => 'App\Controllers\Admin'], function($routes){
+        $routes->get('/', 'UserVendor::index');
+        $routes->get('create', 'UserVendor::create');
+        $routes->post('store', 'UserVendor::store');
+        $routes->get('(:num)/edit', 'UserVendor::edit/$1');
+        $routes->post('(:num)/update', 'UserVendor::update/$1');
+        $routes->post('update', 'UserVendor::update');
+        $routes->post('(:num)/delete', 'UserVendor::delete/$1');
+        $routes->get('(:num)/vendor-data', 'UserVendor::getVendorData/$1');
+        $routes->post('(:num)/toggle-suspend', 'UserVendor::toggleSuspend/$1');
+        $routes->post('(:num)/verify-vendor', 'UserVendor::verifyVendor/$1');
+        $routes->post('(:num)/reject-vendor', 'UserVendor::rejectVendor/$1');
+    });
 
-        $routes->post('(:num)/update', 'Admin\Users::update/$1');
-        $routes->post('update', 'Admin\Users::update');
-        
-        // Delete
-        $routes->post('(:num)/delete', 'Admin\Users::delete/$1');
-        
-        // API endpoints
-        $routes->get('(:num)/email', 'Admin\Users::getEmail/$1');
-        $routes->get('(:num)/vendor-data', 'Admin\Users::getVendorData/$1');
-        
-        // Actions
-        $routes->post('(:num)/toggle-suspend', 'Admin\Users::toggleSuspend/$1');
-        $routes->post('(:num)/toggle-suspend-seo', 'Admin\Users::toggleSuspendSeo/$1');
-        $routes->post('(:num)/verify-vendor', 'Admin\Users::verifyVendor/$1');
-        $routes->post('(:num)/reject-vendor', 'Admin\Users::rejectVendor/$1');
+    // User SEO Routes
+    $routes->group('userseo', ['namespace' => 'App\Controllers\Admin'], function($routes){
+        $routes->get('/', 'UserSeo::index');
+        $routes->get('create', 'UserSeo::create');
+        $routes->post('store', 'UserSeo::store');
+        $routes->get('(:num)/edit', 'UserSeo::edit/$1');
+        $routes->post('(:num)/update', 'UserSeo::update/$1');
+        $routes->post('update', 'UserSeo::update');
+        $routes->post('(:num)/delete', 'UserSeo::delete/$1');
+        $routes->post('(:num)/toggle-suspend-seo', 'UserSeo::toggleSuspendSeo/$1');
     });
 
     // Vendors
-    $routes->get('vendors',                   'Admin\Vendors::index');
-    $routes->get('vendors/(:num)',            'Admin\Vendors::show/$1');
-    $routes->post('vendors/(:num)/verify',    'Admin\Vendors::verify/$1');
-    $routes->post('vendors/(:num)/unverify',  'Admin\Vendors::unverify/$1');
-    $routes->post('vendors/(:num)/commission','Admin\Vendors::setCommission/$1');
+    $routes->get('vendors',                   'Vendors::index');
+    $routes->get('vendors/(:num)',            'Vendors::show/$1');
+    $routes->post('vendors/(:num)/verify',    'Vendors::verify/$1');
+    $routes->post('vendors/(:num)/unverify',  'Vendors::unverify/$1');
+    $routes->post('vendors/(:num)/commission','Vendors::setCommission/$1');
 
     // Leads
     $routes->group('leads', function($routes){
-        $routes->get('/', 'Admin\Leads::index');
-        $routes->post('store', 'Admin\Leads::store');
-        $routes->get('edit/(:num)', 'Admin\Leads::edit/$1');
-        $routes->post('update/(:num)', 'Admin\Leads::update/$1');
-        $routes->post('delete/(:num)', 'Admin\Leads::delete/$1');
-        $routes->get('(:num)', 'Admin\Leads::show/$1');
+        $routes->get('/', 'Leads::index');
+        $routes->post('store', 'Leads::store');
+        $routes->get('edit/(:num)', 'Leads::edit/$1');
+        $routes->post('update/(:num)', 'Leads::update/$1');
+        $routes->post('delete/(:num)', 'Leads::delete/$1');
+        $routes->post('delete-all', 'Leads::deleteAll'); // Tambahkan ini
+        $routes->get('(:num)', 'Leads::show/$1');
     });
 
     // Vendor Requests (Approve / Reject) - Legacy routes
-    $routes->post('vendorrequests/approve', 'Admin\VendorRequests::approve');
-    $routes->post('vendorrequests/reject',  'Admin\VendorRequests::reject');
+    $routes->post('vendorrequests/approve', 'VendorRequests::approve');
+    $routes->post('vendorrequests/reject',  'VendorRequests::reject');
 
     // Commissions Management
-    $routes->get('commissions', 'Admin\Commissions::index');
-    $routes->post('commissions/verify/(:num)', 'Admin\Commissions::verify/$1');
-    $routes->post('commissions/delete/(:num)', 'Admin\Commissions::delete/$1');
-    $routes->post('commissions/bulk-action', 'Admin\Commissions::bulkAction');
+    $routes->get('commissions', 'Commissions::index');
+    $routes->post('commissions/verify/(:num)', 'Commissions::verify/$1');
+    $routes->post('commissions/delete/(:num)', 'Commissions::delete/$1');
+    $routes->post('commissions/bulk-action', 'Commissions::bulkAction');
         
     // Announcements
-    $routes->get('announcements',                 'Admin\Announcements::index');
-    $routes->get('announcements/create',          'Admin\Announcements::create');
-    $routes->post('announcements/store',          'Admin\Announcements::store');
-    $routes->get('announcements/(:num)/edit',     'Admin\Announcements::edit/$1');
-    $routes->post('announcements/(:num)/update',  'Admin\Announcements::update/$1');
-    $routes->post('announcements/(:num)/delete',  'Admin\Announcements::delete/$1');
+    $routes->get('announcements',                 'Announcements::index');
+    $routes->get('announcements/create',          'Announcements::create');
+    $routes->post('announcements/store',          'Announcements::store');
+    $routes->get('announcements/(:num)/edit',     'Announcements::edit/$1');
+    $routes->post('announcements/(:num)/update',  'Announcements::update/$1');
+    $routes->post('announcements/(:num)/delete',  'Announcements::delete/$1');
 
-    // Notifications - PERBAIKAN: Tambahkan namespace Admin
-    $routes->get('notifications', 'Admin\Notifications::index');
-    $routes->post('notifications/markRead/(:num)', 'Admin\Notifications::markRead/$1');
-    $routes->post('notifications/markAllRead', 'Admin\Notifications::markAllRead');
-    $routes->post('notifications/delete/(:num)', 'Admin\Notifications::delete/$1');
-    $routes->post('notifications/deleteAll', 'Admin\Notifications::deleteAll');
+    // Notifications
+    $routes->get('notifications', 'Notifications::index');
+    $routes->post('notifications/markRead/(:num)', 'Notifications::markRead/$1');
+    $routes->post('notifications/markAllRead', 'Notifications::markAllRead');
+    $routes->post('notifications/delete/(:num)', 'Notifications::delete/$1');
+    $routes->post('notifications/deleteAll', 'Notifications::deleteAll');
 
-    $routes->get('activities/vendor', 'Admin\ActivityVendor::index');
-    $routes->get('activities/seo', 'Admin\ActivitySeo::index');
+    // Activity Routes - DIPERBAIKI
+    $routes->get('activities/vendor', 'ActivityVendor::index');
+    $routes->post('activities/vendor/delete-all', 'ActivityVendor::deleteAll');
+
+    $routes->get('activities/seo', 'ActivitySeo::index');
+    $routes->post('activities/seo/delete-all', 'ActivitySeo::deleteAll');
+
     // Admin Activity Logs
-    $routes->get('activity-logs', 'Admin\ActivityLogs::index');
+    $routes->get('activity-logs', 'ActivityLogs::index');
+    $routes->post('activity-logs/delete-all', 'ActivityLogs::deleteAll');
 });
 
 // Redirect untuk dashboard yang lebih spesifik
- $routes->get('admin/dashboard/index', static fn () => redirect()->to('/admin/dashboard'));
+$routes->get('admin/dashboard/index', static fn () => redirect()->to('/admin/dashboard'));
 
 // ---------- SEO ----------
  $routes->group('seo', [
@@ -200,16 +207,17 @@ $routes->post('logout','Auth\AuthController::logout'); // POST logout (untuk for
     $routes->get('logs', 'Logs::index');
     
     // Notifications
-        $routes->group('notif', static function ($routes) {
+    // Notifications - PERBAIKI ROUTES
+    $routes->group('notif', static function ($routes) {
         $routes->get('/', 'Notifications::index');
         $routes->post('mark-read/(:num)', 'Notifications::markRead/$1');
         $routes->post('mark-all-read', 'Notifications::markAllRead');
         $routes->post('delete/(:num)', 'Notifications::delete/$1');
         $routes->post('delete-all', 'Notifications::deleteAll');
+        $routes->get('count-unread', 'Notifications::countUnread');
     });
 
 });
-
 
 // ==================== VENDORUSER ====================
  $routes->group('vendoruser', [

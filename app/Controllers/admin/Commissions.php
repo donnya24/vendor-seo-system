@@ -9,32 +9,41 @@ use App\Models\ActivityLogsModel;
 
 class Commissions extends BaseController
 {
+    protected $commissionModel;
+    protected $vendorModel;
+    protected $activityLogsModel;
+
+    public function __construct()
+    {
+        $this->commissionModel = new CommissionsModel();
+        $this->vendorModel = new VendorProfilesModel();
+        $this->activityLogsModel = new ActivityLogsModel();
+    }
+
     public function index()
     {
-        $commissionModel = new CommissionsModel();
-        $vendorModel = new VendorProfilesModel();
-
         // Filter by vendor jika ada
         $vendorId = $this->request->getGet('vendor_id');
         $status = $this->request->getGet('status');
 
-        $builder = $commissionModel
+        // Build query
+        $query = $this->commissionModel
             ->select('commissions.*, vendor_profiles.business_name as vendor_name, vendor_profiles.owner_name')
             ->join('vendor_profiles', 'vendor_profiles.id = commissions.vendor_id', 'left');
 
         if ($vendorId && $vendorId !== 'all') {
-            $builder->where('commissions.vendor_id', $vendorId);
+            $query->where('commissions.vendor_id', $vendorId);
         }
 
         if ($status && $status !== 'all') {
-            $builder->where('commissions.status', $status);
+            $query->where('commissions.status', $status);
         }
 
-        $commissions = $builder->orderBy('commissions.created_at', 'DESC')
+        $commissions = $query->orderBy('commissions.created_at', 'DESC')
             ->paginate(20);
 
         // Ambil daftar vendor untuk dropdown filter
-        $vendors = $vendorModel
+        $vendors = $this->vendorModel
             ->select('id, business_name')
             ->where('status', 'verified')
             ->orderBy('business_name', 'ASC')
@@ -44,70 +53,123 @@ class Commissions extends BaseController
             'title'       => 'Manajemen Komisi Vendor',
             'activeMenu'  => 'commissions',
             'commissions' => $commissions,
-            'pager'       => $commissionModel->pager,
+            'pager'       => $this->commissionModel->pager,
             'vendors'     => $vendors,
-            'vendorId'    => $vendorId,
+            'vendor_id'   => $vendorId,
             'status'      => $status
         ]);
     }
 
     public function verify($id)
     {
-        $commissionModel = new CommissionsModel();
-        $commission = $commissionModel->find($id);
+        // Validasi AJAX request
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request method.']);
+        }
+
+        $commission = $this->commissionModel->find($id);
 
         if (!$commission) {
-            if ($this->request->isAJAX()) {
-                return $this->response->setJSON(['success' => false, 'message' => 'Komisi tidak ditemukan.']);
+            return $this->response->setJSON(['success' => false, 'message' => 'Komisi tidak ditemukan.']);
+        }
+
+        // PERBAIKAN: Akses array dengan benar
+        $commissionStatus = $commission['status'] ?? '';
+
+        // Validasi status sebelum verifikasi
+        if ($commissionStatus === 'paid') {
+            return $this->response->setJSON([
+                'success' => false, 
+                'message' => 'Komisi ini sudah dalam status Paid dan tidak dapat diverifikasi ulang.'
+            ]);
+        }
+
+        try {
+            // PERBAIKAN: Hanya update kolom yang ada di tabel
+            $updateData = [
+                'status' => 'paid'
+            ];
+
+            // Tambahkan paid_at hanya jika kolomnya ada di allowedFields
+            if (in_array('paid_at', $this->commissionModel->allowedFields)) {
+                $updateData['paid_at'] = date('Y-m-d H:i:s');
             }
-            return redirect()->back()->with('error', 'Komisi tidak ditemukan.');
+
+            // Update status menjadi 'paid'
+            $this->commissionModel->update($id, $updateData);
+
+            // Log activity
+            $vendorId = $commission['vendor_id'] ?? 0;
+            $this->logActivity(
+                $vendorId,
+                'commissions',
+                'verify',
+                "Komisi #{$id} telah diverifikasi dan ditandai sebagai dibayar."
+            );
+
+            return $this->response->setJSON([
+                'success' => true, 
+                'message' => 'Komisi berhasil diverifikasi dan ditandai sebagai dibayar.'
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error verifying commission: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false, 
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ]);
         }
-
-        // PERBAIKAN: Update status menjadi 'paid' karena hanya ada unpaid dan paid
-        $commissionModel->update($id, [
-            'status'      => 'paid',
-            'verified_at' => date('Y-m-d H:i:s'),
-            'verified_by' => session('user_id'),
-            'paid_at'     => date('Y-m-d H:i:s')
-        ]);
-
-        $this->logActivity($commission['vendor_id'], 'commissions', 'verify', "Komisi #{$id} telah diverifikasi dan ditandai sebagai dibayar.");
-
-        if ($this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => true, 'message' => 'Komisi berhasil diverifikasi dan ditandai sebagai dibayar.']);
-        }
-        return redirect()->back()->with('success', 'Komisi telah diverifikasi dan ditandai sebagai dibayar.');
     }
 
     public function delete($id)
     {
-        $commissionModel = new CommissionsModel();
-        $commission = $commissionModel->find($id);
+        // Validasi AJAX request
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request method.']);
+        }
+
+        $commission = $this->commissionModel->find($id);
 
         if (!$commission) {
-            if ($this->request->isAJAX()) {
-                return $this->response->setJSON(['success' => false, 'message' => 'Komisi tidak ditemukan.']);
-            }
-            return redirect()->back()->with('error', 'Komisi tidak ditemukan.');
+            return $this->response->setJSON(['success' => false, 'message' => 'Komisi tidak ditemukan.']);
         }
 
-        $commissionModel->delete($id);
+        try {
+            // PERBAIKAN: Akses vendor_id sebagai array
+            $vendorId = $commission['vendor_id'] ?? 0;
+            
+            // Hapus komisi
+            $this->commissionModel->delete($id);
 
-        $this->logActivity(
-            $commission['vendor_id'],
-            'commissions',
-            'delete',
-            "Komisi #{$id} telah dihapus."
-        );
+            // Log activity
+            $this->logActivity(
+                $vendorId,
+                'commissions',
+                'delete',
+                "Komisi #{$id} telah dihapus."
+            );
 
-        if ($this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => true, 'message' => 'Komisi berhasil dihapus.']);
+            return $this->response->setJSON([
+                'success' => true, 
+                'message' => 'Komisi berhasil dihapus.'
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error deleting commission: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false, 
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ]);
         }
-        return redirect()->back()->with('success', 'Komisi telah dihapus.');
     }
 
     public function bulkAction()
     {
+        // Validasi AJAX request
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request method.']);
+        }
+
         $action = $this->request->getPost('action');
         $commissionIds = $this->request->getPost('commission_ids');
 
@@ -115,83 +177,134 @@ class Commissions extends BaseController
             return $this->response->setJSON(['success' => false, 'message' => 'Tidak ada komisi yang dipilih.']);
         }
 
-        // Jika commission_ids adalah string, convert ke array
-        if (is_string($commissionIds)) {
-            $commissionIds = json_decode($commissionIds, true) ?? explode(',', $commissionIds);
+        // Validasi action
+        if (!in_array($action, ['verify', 'delete'])) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Aksi tidak valid.']);
         }
 
-        $commissionModel = new CommissionsModel();
+        // Pastikan commission_ids adalah array
+        if (!is_array($commissionIds)) {
+            $commissionIds = [$commissionIds];
+        }
+
         $successCount = 0;
         $errorCount = 0;
+        $errorMessages = [];
+        $successIds = [];
+        $errorIds = [];
 
         foreach ($commissionIds as $id) {
             try {
-                $commission = $commissionModel->find($id);
+                $commission = $this->commissionModel->find($id);
                 if (!$commission) {
                     $errorCount++;
+                    $errorMessages[] = "Komisi #{$id} tidak ditemukan";
+                    $errorIds[] = $id;
                     continue;
                 }
 
                 switch ($action) {
                     case 'verify':
-                        // PERBAIKAN: Update status menjadi 'paid'
-                        $commissionModel->update($id, [
-                            'status' => 'paid',
-                            'verified_at' => date('Y-m-d H:i:s'),
-                            'verified_by' => session('user_id'),
-                            'paid_at' => date('Y-m-d H:i:s')
-                        ]);
+                        // PERBAIKAN: Akses status sebagai array
+                        $commissionStatus = $commission['status'] ?? '';
+                        
+                        // Validasi status sebelum verifikasi
+                        if ($commissionStatus === 'paid') {
+                            $errorCount++;
+                            $errorMessages[] = "Komisi #{$id} sudah dalam status Paid dan tidak dapat diverifikasi ulang";
+                            $errorIds[] = $id;
+                            continue 2; // Skip ke komisi berikutnya
+                        }
+
+                        // PERBAIKAN: Hanya update kolom yang ada di tabel
+                        $updateData = [
+                            'status' => 'paid'
+                        ];
+
+                        // Tambahkan paid_at hanya jika kolomnya ada di allowedFields
+                        if (in_array('paid_at', $this->commissionModel->allowedFields)) {
+                            $updateData['paid_at'] = date('Y-m-d H:i:s');
+                        }
+
+                        // Update status menjadi 'paid'
+                        $this->commissionModel->update($id, $updateData);
                         break;
 
                     case 'delete':
-                        $commissionModel->delete($id);
+                        $this->commissionModel->delete($id);
                         break;
 
                     default:
                         $errorCount++;
-                        continue 2; // Skip ke komisi berikutnya
+                        $errorMessages[] = "Aksi '{$action}' tidak valid untuk komisi #{$id}";
+                        $errorIds[] = $id;
+                        continue 2;
                 }
 
+                // PERBAIKAN: Akses vendor_id sebagai array
+                $vendorId = $commission['vendor_id'] ?? 0;
+                
                 // Log activity
                 $this->logActivity(
-                    $commission['vendor_id'],
+                    $vendorId,
                     'commissions',
                     $action,
                     "Komisi #{$id} telah diproses dengan aksi: {$action}"
                 );
 
                 $successCount++;
+                $successIds[] = $id;
 
             } catch (\Exception $e) {
+                log_message('error', "Error processing commission #{$id}: " . $e->getMessage());
                 $errorCount++;
+                $errorMessages[] = "Komisi #{$id}: " . $e->getMessage();
+                $errorIds[] = $id;
             }
         }
 
-        if ($successCount > 0) {
-            $message = "Berhasil memproses {$successCount} komisi.";
-            if ($errorCount > 0) {
-                $message .= " {$errorCount} komisi gagal diproses.";
-            }
-            return $this->response->setJSON(['success' => true, 'message' => $message]);
+        // Response yang lebih detail
+        $response = [
+            'success' => $successCount > 0,
+            'success_count' => $successCount,
+            'error_count' => $errorCount,
+            'success_ids' => $successIds,
+            'error_ids' => $errorIds,
+            'errors' => $errorMessages
+        ];
+
+        if ($successCount > 0 && $errorCount === 0) {
+            // Semua berhasil
+            $response['message'] = "Berhasil memproses {$successCount} komisi.";
+        } elseif ($successCount > 0 && $errorCount > 0) {
+            // Sebagian berhasil, sebagian gagal
+            $response['message'] = "Berhasil memproses {$successCount} komisi. {$errorCount} komisi gagal diproses.";
         } else {
-            return $this->response->setJSON(['success' => false, 'message' => 'Gagal memproses komisi yang dipilih.']);
+            // Semua gagal
+            $response['message'] = "Gagal memproses komisi yang dipilih.";
         }
+
+        return $this->response->setJSON($response);
     }
 
     private function logActivity($vendorId, $module, $action, $description)
     {
-        $vendorId = $vendorId ?? 0;
+        try {
+            $data = [
+                'user_id'     => session('user_id') ?? 1,
+                'vendor_id'   => (int)($vendorId ?? 0),
+                'module'      => $module,
+                'action'      => $action,
+                'description' => $description,
+                'ip_address'  => $this->request->getIPAddress() ?? '127.0.0.1',
+                'user_agent'  => (string)($this->request->getUserAgent() ?? 'Unknown'),
+                'created_at'  => date('Y-m-d H:i:s'),
+            ];
 
-        $activityLogsModel = new ActivityLogsModel();
-        $activityLogsModel->insert([
-            'user_id'     => session('user_id'),
-            'vendor_id'   => $vendorId,
-            'module'      => $module,
-            'action'      => $action,
-            'description' => $description,
-            'ip_address'  => $this->request->getIPAddress(),
-            'user_agent'  => (string) $this->request->getUserAgent(),
-            'created_at'  => date('Y-m-d H:i:s'),
-        ]);
+            $this->activityLogsModel->insert($data);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Failed to log activity: ' . $e->getMessage());
+        }
     }
 }

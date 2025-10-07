@@ -14,7 +14,6 @@
     <!-- Bulk Actions -->
     <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
       <div class="flex gap-2 w-full sm:w-auto">
-        <!-- PERBAIKAN: Hanya ada verify dan delete karena status hanya unpaid/paid -->
         <select x-model="bulkAction" class="rounded-lg border-gray-300 text-sm py-2 px-3 w-full sm:w-40">
           <option value="">Aksi Massal</option>
           <option value="verify">Verifikasi & Bayar</option>
@@ -37,7 +36,7 @@
         <select name="vendor_id" class="w-full rounded-lg border-gray-300 text-sm py-2 px-3 focus:border-blue-500 focus:ring-blue-500">
           <option value="all">Semua Vendor</option>
           <?php foreach ($vendors as $vendor): ?>
-            <option value="<?= $vendor['id'] ?>" <?= ($vendorId == $vendor['id']) ? 'selected' : '' ?>>
+            <option value="<?= $vendor['id'] ?>" <?= ($vendor_id == $vendor['id']) ? 'selected' : '' ?>>
               <?= esc($vendor['business_name']) ?>
             </option>
           <?php endforeach; ?>
@@ -46,7 +45,6 @@
       
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
-        <!-- PERBAIKAN: Sesuaikan opsi status dengan enum database (unpaid/paid) -->
         <select name="status" class="w-full rounded-lg border-gray-300 text-sm py-2 px-3 focus:border-blue-500 focus:ring-blue-500">
           <option value="all">Semua Status</option>
           <option value="unpaid" <?= ($status == 'unpaid') ? 'selected' : '' ?>>Unpaid</option>
@@ -59,7 +57,7 @@
           <i class="fas fa-filter"></i> Filter
         </button>
         <a href="<?= site_url('admin/commissions') ?>" 
-           class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors flex items-center gap-2 w-full sm:w-auto justify-center">
+          class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors flex items-center gap-2 w-full sm:w-auto justify-center">
           <i class="fas fa-refresh"></i> Reset
         </a>
       </div>
@@ -292,21 +290,23 @@
 
   <!-- Modal Konfirmasi -->
   <div x-show="showConfirmModal" x-cloak
-       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
+       class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm"
+       style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh;"
        x-transition:enter="transition ease-out duration-300"
        x-transition:enter-start="opacity-0"
        x-transition:enter-end="opacity-100"
        x-transition:leave="transition ease-in duration-200"
        x-transition:leave-start="opacity-100"
        x-transition:leave-end="opacity-0">
-    <div class="bg-white rounded-xl shadow-xl w-full max-w-md"
-         @click.stop
+    
+    <!-- Modal Content -->
+    <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-auto"
          x-transition:enter="transition ease-out duration-300"
-         x-transition:enter-start="opacity-0 scale-95 translate-y-1"
+         x-transition:enter-start="opacity-0 scale-95 translate-y-4"
          x-transition:enter-end="opacity-100 scale-100 translate-y-0"
          x-transition:leave="transition ease-in duration-200"
          x-transition:leave-start="opacity-100 scale-100 translate-y-0"
-         x-transition:leave-end="opacity-0 scale-95 translate-y-1">
+         x-transition:leave-end="opacity-0 scale-95 translate-y-4">
       <div class="p-6">
         <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full"
              :class="{
@@ -348,7 +348,7 @@
        x-transition:leave="transition ease-in duration-200"
        x-transition:leave-start="opacity-100 transform translate-y-0"
        x-transition:leave-end="opacity-0 transform translate-y-2"
-       class="fixed bottom-4 right-4 z-50 bg-white rounded-lg shadow-lg border-l-4 p-4 max-w-md"
+       class="fixed bottom-4 right-4 z-[100] bg-white rounded-lg shadow-lg border-l-4 p-4 max-w-md"
        :class="{
          'border-green-500': notification.type === 'success',
          'border-red-500': notification.type === 'error'
@@ -375,12 +375,94 @@
 
   <!-- Loading Overlay -->
   <div x-show="loading" x-cloak
-       class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 flex flex-col items-center shadow-xl">
+       class="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm"
+       style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh;">
+    
+    <!-- Loading Content -->
+    <div class="relative bg-white rounded-lg p-6 flex flex-col items-center shadow-xl">
       <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
       <p class="text-gray-700 font-medium">Memproses...</p>
     </div>
   </div>
+<style>
+/* PERBAIKAN: Backdrop overlay yang memenuhi seluruh halaman */
+.fixed.inset-0 {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    z-index: 9999 !important;
+}
+
+/* Pastikan modal backdrop menutupi seluruh viewport */
+.modal-backdrop-full {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    backdrop-filter: blur(4px) !important;
+    z-index: 9998 !important;
+}
+
+/* Loading overlay yang memenuhi halaman */
+.loading-overlay-full {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(0, 0, 0, 0.7) !important;
+    backdrop-filter: blur(8px) !important;
+    z-index: 10000 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Pastikan body tidak scroll saat modal terbuka */
+body.modal-open {
+    overflow: hidden !important;
+    height: 100vh !important;
+    position: fixed !important;
+    width: 100% !important;
+}
+
+/* Style untuk baris error */
+.commission-row-error {
+    animation: pulseError 2s ease-in-out;
+    border-left: 4px solid #ef4444 !important;
+    background-color: #fef2f2 !important;
+}
+
+@keyframes pulseError {
+    0%, 100% { 
+        background-color: rgb(254 242 242);
+    }
+    50% { 
+        background-color: rgb(254 202 202);
+    }
+}
+
+[x-cloak] { 
+    display: none !important; 
+}
+
+/* Pastikan modal content di tengah */
+.modal-content-center {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    z-index: 10000 !important;
+}
+</style>
 
 <script>
 function commissionManager() {
@@ -423,22 +505,26 @@ function commissionManager() {
             this.actionType = action;
             this.commissionId = id;
             this.showConfirmModal = true;
+            // Prevent body scroll
+            document.body.classList.add('modal-open');
+            document.body.style.overflow = 'hidden';
         },
-        
+                
         async executeAction() {
             this.showConfirmModal = false;
             this.loading = true;
+            // Restore body scroll
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
 
-            let url, method;
+            let url;
             
             switch(this.actionType) {
                 case 'verify':
                     url = `<?= site_url('admin/commissions/verify') ?>/${this.commissionId}`;
-                    method = 'POST';
                     break;
                 case 'delete':
                     url = `<?= site_url('admin/commissions/delete') ?>/${this.commissionId}`;
-                    method = 'POST';
                     break;
                 default:
                     this.loading = false;
@@ -448,12 +534,16 @@ function commissionManager() {
 
             try {
                 const response = await fetch(url, {
-                    method: method,
+                    method: 'POST',
                     headers: { 
                         'X-Requested-With': 'XMLHttpRequest',
                         'X-CSRF-TOKEN': '<?= csrf_hash() ?>'
                     }
                 });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
 
                 const data = await response.json();
 
@@ -463,12 +553,12 @@ function commissionManager() {
                         'Berhasil',
                         data.message || `Komisi berhasil ${this.actionLabels[this.actionType].toLowerCase()}`
                     );
-
                     setTimeout(() => window.location.reload(), 1500);
                 } else {
                     throw new Error(data.message || 'Terjadi kesalahan');
                 }
             } catch (error) {
+                console.error('Error executing action:', error);
                 this.showNotification(
                     'error',
                     'Gagal',
@@ -494,58 +584,202 @@ function commissionManager() {
             const checkboxes = document.querySelectorAll('.commission-checkbox');
             if (event.target.checked) {
                 this.selectedCommissions = Array.from(checkboxes).map(cb => cb.value);
-                checkboxes.forEach(cb => cb.checked = true);
+                checkboxes.forEach(cb => {
+                    if (cb) cb.checked = true;
+                });
             } else {
                 this.selectedCommissions = [];
-                checkboxes.forEach(cb => cb.checked = false);
+                checkboxes.forEach(cb => {
+                    if (cb) cb.checked = false;
+                });
             }
         },
-
         async executeBulkAction() {
             if (!this.bulkAction || this.selectedCommissions.length === 0) {
                 this.showNotification('error', 'Gagal', 'Pilih aksi dan komisi yang akan diproses.');
                 return;
             }
 
+            const confirmMessage = this.bulkAction === 'delete' 
+                ? `Anda akan menghapus ${this.selectedCommissions.length} komisi. Tindakan ini tidak dapat dibatalkan. Lanjutkan?`
+                : `Anda akan memverifikasi ${this.selectedCommissions.length} komisi. Lanjutkan?`;
+
+            if (!confirm(confirmMessage)) {
+                return;
+            }
+
             this.loading = true;
 
             try {
-                // PERBAIKAN: Kirim data sebagai JSON
+                const formData = new FormData();
+                formData.append('action', this.bulkAction);
+                this.selectedCommissions.forEach(id => {
+                    formData.append('commission_ids[]', id);
+                });
+
                 const response = await fetch(`<?= site_url('admin/commissions/bulk-action') ?>`, {
                     method: 'POST',
                     headers: { 
                         'X-Requested-With': 'XMLHttpRequest',
                         'X-CSRF-TOKEN': '<?= csrf_hash() ?>',
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/x-www-form-urlencoded',
                     },
-                    body: JSON.stringify({
-                        action: this.bulkAction,
-                        commission_ids: this.selectedCommissions
-                    })
+                    body: new URLSearchParams(formData)
                 });
+
+                // PERBAIKAN: Handle error response dengan lebih baik
+                if (!response.ok) {
+                    if (response.status === 500) {
+                        throw new Error('Server error 500. Silakan coba lagi atau hubungi administrator.');
+                    }
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
 
                 const data = await response.json();
 
-                if (data.success) {
-                    this.showNotification(
-                        'success',
-                        'Berhasil',
-                        data.message || `Aksi massal berhasil diterapkan pada ${this.selectedCommissions.length} komisi`
-                    );
+                // PERBAIKAN: Debug response untuk troubleshooting
+                console.log('Bulk action response:', data);
 
-                    setTimeout(() => window.location.reload(), 1500);
+                if (data.success || (data.success_count && data.success_count > 0)) {
+                    let successMessage = data.message;
+                    
+                    if (data.error_count > 0 && data.errors && data.errors.length > 0) {
+                        successMessage += '\n\nDetail Error:\n' + data.errors.join('\n');
+                        
+                        if (data.errors.length > 3) {
+                            this.showDetailedErrorModal(data.message, data.errors, data.success_count, data.error_count);
+                        } else {
+                            this.showNotification(
+                                'success', 
+                                `Berhasil Sebagian (${data.success_count} sukses, ${data.error_count} gagal)`, 
+                                successMessage
+                            );
+                        }
+                    } else {
+                        this.showNotification('success', 'Berhasil', successMessage);
+                    }
+
+                    // Reset seleksi
+                    if (data.success_ids && data.success_ids.length > 0) {
+                        this.selectedCommissions = this.selectedCommissions.filter(id => 
+                            !data.success_ids.includes(id.toString())
+                        );
+                        
+                        data.success_ids.forEach(successId => {
+                            const checkbox = document.querySelector(`.commission-checkbox[value="${successId}"]`);
+                            if (checkbox) checkbox.checked = false;
+                        });
+                    }
+
+                    // Highlight error rows jika ada
+                    if (data.error_ids && data.error_ids.length > 0) {
+                        this.bulkAction = '';
+                        this.highlightErrorRows(data.error_ids);
+                    } else {
+                        this.selectedCommissions = [];
+                        this.bulkAction = '';
+                        
+                        document.querySelectorAll('.commission-checkbox').forEach(cb => {
+                            if (cb) cb.checked = false;
+                        });
+                        
+                        const selectAllCheckbox = document.querySelector('input[type="checkbox"]');
+                        if (selectAllCheckbox) {
+                            selectAllCheckbox.checked = false;
+                        }
+                    }
+
+                    // Refresh halaman setelah 3 detik jika ada yang berhasil
+                    if (data.success_count > 0) {
+                        setTimeout(() => window.location.reload(), 3000);
+                    }
+
                 } else {
-                    throw new Error(data.message || 'Terjadi kesalahan saat memproses aksi massal');
+                    let errorMessage = data.message || 'Terjadi kesalahan tidak diketahui';
+                    if (data.errors && data.errors.length > 0) {
+                        errorMessage += '\n\nDetail Error:\n' + data.errors.join('\n');
+                        
+                        if (data.errors.length > 3) {
+                            this.showDetailedErrorModal(data.message, data.errors, 0, data.error_count);
+                        }
+                    }
+                    
+                    throw new Error(errorMessage);
                 }
             } catch (error) {
+                console.error('Error executing bulk action:', error);
                 this.showNotification(
                     'error',
                     'Gagal',
                     error.message || 'Terjadi kesalahan saat memproses aksi massal'
                 );
+                
+                this.highlightErrorRows(this.selectedCommissions);
             } finally {
                 this.loading = false;
             }
+        },
+
+        showDetailedErrorModal(title, errors, successCount, errorCount) {
+            const modalHtml = `
+                <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm">
+                    <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
+                        <div class="p-6 border-b border-gray-200">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-lg font-semibold text-gray-900">Detail Hasil Aksi Massal</h3>
+                                <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-500">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div class="mt-2 flex gap-4 text-sm">
+                                <span class="text-green-600 font-medium">
+                                    <i class="fas fa-check-circle"></i> ${successCount} Berhasil
+                                </span>
+                                <span class="text-red-600 font-medium">
+                                    <i class="fas fa-exclamation-circle"></i> ${errorCount} Gagal
+                                </span>
+                            </div>
+                        </div>
+                        <div class="p-6 overflow-y-auto max-h-96">
+                            <div class="space-y-3">
+                                ${errors.map(error => `
+                                    <div class="flex items-start gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                                        <i class="fas fa-exclamation-triangle text-red-500 mt-1"></i>
+                                        <div class="flex-1">
+                                            <p class="text-sm text-red-800">${error}</p>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        <div class="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
+                            <button onclick="this.closest('.fixed').remove()" 
+                                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                Tutup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        },
+
+        highlightErrorRows(errorIds) {
+            document.querySelectorAll('.commission-row-error').forEach(row => {
+                row.classList.remove('commission-row-error', 'bg-red-50', 'border-l-4', 'border-red-400');
+            });
+            
+            errorIds.forEach(id => {
+                const row = document.querySelector(`input[value="${id}"]`)?.closest('tr');
+                if (row) {
+                    row.classList.add('commission-row-error', 'bg-red-50', 'border-l-4', 'border-red-400');
+                    
+                    setTimeout(() => {
+                        row.classList.remove('commission-row-error', 'bg-red-50', 'border-l-4', 'border-red-400');
+                    }, 10000);
+                }
+            });
         },
 
         showNotification(type, title, message) {
@@ -558,12 +792,48 @@ function commissionManager() {
             this.notification.message = message;
             this.notification.show = true;
             
+            const timeoutDuration = type === 'error' && message.length > 100 ? 8000 : 5000;
             this.notification.timeout = setTimeout(() => {
                 this.notification.show = false;
-            }, 5000);
+            }, timeoutDuration);
+        },
+
+        hideNotification() {
+            if (this.notification.timeout) {
+                clearTimeout(this.notification.timeout);
+            }
+            this.notification.show = false;
+        },
+
+        resetState() {
+            this.showConfirmModal = false;
+            this.actionType = '';
+            this.commissionId = null;
+            this.bulkAction = '';
+            this.selectedCommissions = [];
+            this.loading = false;
+            this.hideNotification();
+            // Restore body scroll
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
         }
     }
 }
+
+document.addEventListener('alpine:init', () => {
+    Alpine.data('commissionManager', commissionManager);
+});
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const manager = document.querySelector('[x-data]').__x.$data;
+        if (manager.showConfirmModal) {
+            manager.showConfirmModal = false;
+            document.body.style.overflow = '';
+        }
+    }
+});
 </script>
+
 
 <?= $this->include('admin/layouts/footer'); ?>
