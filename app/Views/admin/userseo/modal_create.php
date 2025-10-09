@@ -1,8 +1,12 @@
+<?php
+// File: app/Views/admin/userseo/modal_create.php
+?>
+
 <div class="px-4 py-5">
-  <form action="<?= site_url('admin/users/store'); ?>" 
+  <form action="<?= site_url('admin/userseo/store'); ?>" 
         method="post" 
-        x-data="seoForm"
-        @submit.prevent="submitForm">
+        id="createSeoForm"
+        autocomplete="off">
 
     <?= csrf_field() ?>
     <input type="hidden" name="role" value="seoteam">
@@ -17,6 +21,7 @@
                required 
                placeholder="Masukkan nama lengkap" 
                value="<?= old('fullname') ?>"
+               autocomplete="name"
                class="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
       </div>
 
@@ -29,7 +34,9 @@
                required 
                placeholder="Masukkan username" 
                value="<?= old('username') ?>"
+               autocomplete="username new"
                class="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+        <!-- Error container will be added dynamically by JavaScript -->
       </div>
 
       <!-- Phone -->
@@ -38,6 +45,7 @@
         <input name="phone" 
                placeholder="08xx xxxx xxxx" 
                value="<?= old('phone') ?>"
+               autocomplete="tel"
                class="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
       </div>
 
@@ -51,63 +59,71 @@
                required 
                placeholder="email@contoh.com" 
                value="<?= old('email') ?>"
+               autocomplete="email new"
                class="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+        <!-- Error container will be added dynamically by JavaScript -->
       </div>
 
       <!-- Password -->
-      <div x-data="{ show: false }">
+      <div>
         <label class="block text-xs font-semibold text-gray-700 mb-1">
           Password <span class="text-red-500">*</span>
         </label>
         <div class="relative">
-          <input :type="show ? 'text' : 'password'" 
+          <input type="password" 
                  name="password" 
+                 id="create_password"
                  required 
                  minlength="8"
                  placeholder="Minimal 8 karakter"
-                 class="w-full pr-10 px-3 py-2.5 text-sm rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                 autocomplete="new-password"
+                 class="w-full pl-3 pr-10 py-2.5 text-sm rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
           <button type="button" 
-                  @click="show = !show" 
-                  class="absolute inset-y-0 right-0 pr-3 text-gray-400 hover:text-gray-600">
-            <i :class="show ? 'fa-regular fa-eye-slash' : 'fa-regular fa-eye'"></i>
+                  onclick="togglePasswordDirect('create_password', this)"
+                  class="password-toggle-btn absolute inset-y-0 right-0 px-3 flex items-center justify-center text-gray-400 hover:text-gray-600 focus:outline-none z-10">
+            <i class="fa-regular fa-eye text-sm"></i>
           </button>
         </div>
+        <!-- Error container will be added dynamically by JavaScript -->
       </div>
 
       <!-- Konfirmasi Password -->
-      <div x-data="{ show: false }">
+      <div>
         <label class="block text-xs font-semibold text-gray-700 mb-1">
           Konfirmasi Password <span class="text-red-500">*</span>
         </label>
         <div class="relative">
-          <input :type="show ? 'text' : 'password'" 
+          <input type="password" 
                  name="password_confirm" 
+                 id="create_password_confirm"
                  required 
                  minlength="8"
                  placeholder="Ulangi password"
-                 class="w-full pr-10 px-3 py-2.5 text-sm rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                 autocomplete="new-password"
+                 class="w-full pl-3 pr-10 py-2.5 text-sm rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
           <button type="button" 
-                  @click="show = !show" 
-                  class="absolute inset-y-0 right-0 pr-3 text-gray-400 hover:text-gray-600">
-            <i :class="show ? 'fa-regular fa-eye-slash' : 'fa-regular fa-eye'"></i>
+                  onclick="togglePasswordDirect('create_password_confirm', this)"
+                  class="password-toggle-btn absolute inset-y-0 right-0 px-3 flex items-center justify-center text-gray-400 hover:text-gray-600 focus:outline-none z-10">
+            <i class="fa-regular fa-eye text-sm"></i>
           </button>
         </div>
+        <!-- Error container will be added dynamically by JavaScript -->
       </div>
     </div>
 
     <!-- Actions -->
     <div class="flex justify-end gap-2 mt-5">
       <button type="button" 
-              @click="closeModal()" 
-              class="px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 font-medium">
+              onclick="closeModal('createUserModal')"
+              class="px-4 py-2.5 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium">
         Batal
       </button>
       <button type="submit" 
-              :disabled="loading"
+              id="submitCreateBtn"
               class="px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed">
-        <span x-show="!loading">Simpan User</span>
-        <span x-show="loading" class="flex items-center gap-2">
-          <i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...
+        <span id="submitText">Simpan User</span>
+        <span id="loadingText" class="hidden">
+          <i class="fa-solid fa-spinner fa-spin mr-1"></i> Menyimpan...
         </span>
       </button>
     </div>
@@ -115,57 +131,19 @@
 </div>
 
 <script>
-function seoForm() {
-  return {
-    loading: false,
+// Fungsi langsung untuk toggle password
+function togglePasswordDirect(inputId, button) {
+    const input = document.getElementById(inputId);
+    const icon = button.querySelector('i');
     
-    closeModal() {
-      // Tutup modal create
-      const createModal = document.querySelector('#createUserModal');
-      if (createModal && createModal.__x) {
-        createModal.__x.close();
-      }
-    },
-    
-    async submitForm(e) {
-      e.preventDefault();
-      const form = e.target;
-      const formData = new FormData(form);
-      
-      // Validasi password
-      const password = formData.get('password');
-      const passwordConfirm = formData.get('password_confirm');
-      
-      if (password !== passwordConfirm) {
-        alert('Konfirmasi password tidak sama!');
-        return;
-      }
-      
-      this.loading = true;
-      
-      try {
-        const response = await fetch(form.action, {
-          method: 'POST',
-          body: formData,
-          headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-          }
-        });
-        
-        if (response.ok) {
-          // Redirect ke halaman users dengan tab yang sesuai
-          window.location.href = '<?= site_url('admin/users?tab=seo') ?>';
+    if (input && icon) {
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.className = 'fa-regular fa-eye-slash text-sm';
         } else {
-          const result = await response.json();
-          alert(result.message || 'Gagal menyimpan user');
+            input.type = 'password';
+            icon.className = 'fa-regular fa-eye text-sm';
         }
-      } catch (error) {
-        console.error('Error:', error);
-        alert('Terjadi kesalahan saat menyimpan data');
-      } finally {
-        this.loading = false;
-      }
     }
-  }
 }
 </script>

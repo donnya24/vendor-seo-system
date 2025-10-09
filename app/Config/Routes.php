@@ -69,7 +69,7 @@ $routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 
     $routes->post('services/delete/(:num)', 'VendorServices::delete/$1');
     $routes->get('services/search', 'VendorServices::search');
 
-    // User Vendor Routes
+    // Management User Vendor Routes
     $routes->group('uservendor', ['namespace' => 'App\Controllers\Admin'], function($routes){
         $routes->get('/', 'UserVendor::index');
         $routes->get('create', 'UserVendor::create');
@@ -79,21 +79,22 @@ $routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 
         $routes->post('update', 'UserVendor::update');
         $routes->post('(:num)/delete', 'UserVendor::delete/$1');
         $routes->get('(:num)/vendor-data', 'UserVendor::getVendorData/$1');
-        $routes->post('(:num)/toggle-suspend', 'UserVendor::toggleSuspend/$1');
-        $routes->post('(:num)/verify-vendor', 'UserVendor::verifyVendor/$1');
-        $routes->post('(:num)/reject-vendor', 'UserVendor::rejectVendor/$1');
+        
+        // Perbaikan routing untuk verify, reject, dan suspend
+        $routes->post('(:num)/verify', 'UserVendor::verifyVendor/$1');
+        $routes->post('(:num)/reject', 'UserVendor::rejectVendor/$1');
+        $routes->post('(:num)/suspend', 'UserVendor::toggleSuspend/$1');
     });
 
-    // User SEO Routes
+    // Management User SEO Routes
     $routes->group('userseo', ['namespace' => 'App\Controllers\Admin'], function($routes){
         $routes->get('/', 'UserSeo::index');
         $routes->get('create', 'UserSeo::create');
-        $routes->post('store', 'UserSeo::store');
-        $routes->get('(:num)/edit', 'UserSeo::edit/$1');
-        $routes->post('(:num)/update', 'UserSeo::update/$1');
-        $routes->post('update', 'UserSeo::update');
-        $routes->post('(:num)/delete', 'UserSeo::delete/$1');
-        $routes->post('(:num)/toggle-suspend-seo', 'UserSeo::toggleSuspendSeo/$1');
+        $routes->post('store', 'UserSeo::store');    
+        $routes->get('edit/(:num)', 'UserSeo::edit/$1');
+        $routes->post('update/(:num)', 'UserSeo::update/$1');
+        $routes->post('delete/(:num)', 'UserSeo::delete/$1');
+        $routes->post('toggle-suspend-seo/(:num)', 'UserSeo::toggleSuspendSeo/$1');
     });
 
     // Vendors

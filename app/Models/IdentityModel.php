@@ -8,7 +8,7 @@ class IdentityModel extends Model
 {
     protected $table = 'auth_identities';
     protected $primaryKey = 'id';
-    protected $allowedFields = ['user_id', 'type', 'secret', 'secret2', 'created_at', 'updated_at'];
+    protected $allowedFields = ['user_id', 'type', 'secret', 'secret2', 'name', 'created_at', 'updated_at'];
     protected $useTimestamps = true; // Aktifkan timestamps otomatis
     protected $returnType = 'array';
     protected $dateFormat = 'datetime';
@@ -34,7 +34,7 @@ class IdentityModel extends Model
     /**
      * Update atau buat email password identity untuk user
      */
-    public function saveEmailIdentity($userId, $email, $password)
+    public function saveEmailIdentity($userId, $email, $password, $name = null)
     {
         $identity = $this->getEmailIdentity($userId);
         
@@ -45,6 +45,11 @@ class IdentityModel extends Model
             'secret2' => password_hash($password, PASSWORD_DEFAULT),
             'updated_at' => date('Y-m-d H:i:s')
         ];
+        
+        // Tambahkan name jika ada
+        if ($name) {
+            $data['name'] = $name;
+        }
         
         if ($identity) {
             // Update yang sudah ada
