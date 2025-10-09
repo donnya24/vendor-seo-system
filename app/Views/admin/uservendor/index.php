@@ -546,7 +546,6 @@ function showToast(message, type = 'info') {
 }
 // ===== MODAL MANAGEMENT =====
 function openCreateModal() {
-    console.log('Opening create modal...');
     const modal = document.getElementById('createUserModal');
     if (modal) {
         modal.classList.remove('modal-hidden');
@@ -556,7 +555,6 @@ function openCreateModal() {
 }
 
 function openEditModal(userId) {
-    console.log('Opening edit modal for user:', userId);
     const modal = document.getElementById('editUserModal');
     if (modal) {
         modal.classList.remove('modal-hidden');
@@ -586,88 +584,11 @@ function closeModal(modalId) {
     }
 }
 
-/// Perbaikan fungsi loadCreateForm dengan debug
-async function loadCreateForm() {
-    try {
-        console.log('=== LOAD CREATE FORM START ===');
-        console.log('Loading create form...');
-        
-        const response = await fetch('<?= site_url('admin/uservendor/create') ?>', {
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'text/html'
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const html = await response.text();
-        console.log('Create form HTML loaded, length:', html.length);
-        
-        document.getElementById('createModalContent').innerHTML = html;
-        console.log('Create form HTML inserted');
-        
-        // Tunggu sebentar agar DOM terupdate
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        // Re-attach event listeners setelah form dimuat
-        const form = document.getElementById('createVendorForm');
-        if (form) {
-            console.log('Create form found, attaching submit listener');
-            form.addEventListener('submit', function(event) {
-                event.preventDefault();
-                submitVendorForm(this, false);
-            });
-        } else {
-            console.error('Create form not found after loading!');
-        }
-        
-        // Tunggu lagi untuk memastikan semua script di dalam modal telah dieksekusi
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-        // Cek apakah fungsi toggleCommissionInput sudah tersedia
-        if (typeof toggleCommissionInput === 'function') {
-            console.log('toggleCommissionInput function found, calling it');
-            toggleCommissionInput();
-        } else {
-            console.error('toggleCommissionInput function not found!');
-            // Coba cari fungsi di dalam konteks modal
-            const modalContent = document.getElementById('createModalContent');
-            if (modalContent && modalContent.contentWindow) {
-                if (typeof modalContent.contentWindow.toggleCommissionInput === 'function') {
-                    console.log('Found toggleCommissionInput in modal content window');
-                    modalContent.contentWindow.toggleCommissionInput();
-                }
-            }
-        }
-        
-        console.log('=== LOAD CREATE FORM END ===');
-        
-    } catch (error) {
-        console.error('Error loading create form:', error);
-        document.getElementById('createModalContent').innerHTML = `
-            <div class="text-center py-8 text-red-600">
-                <i class="fa-solid fa-exclamation-triangle text-2xl"></i>
-                <p class="mt-2">Gagal memuat form. Silakan refresh halaman.</p>
-                <p class="text-xs mt-1">Error: ${error.message}</p>
-                <button onclick="loadCreateForm()" class="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                    Coba Lagi
-                </button>
-            </div>
-        `;
-    }
-}
-
 // Perbaikan fungsi loadEditForm
 async function loadEditForm(userId) {
     try {
-        console.log('=== LOAD EDIT FORM START ===');
-        
         // PERBAIKAN: Gunakan URL yang benar sesuai routing CodeIgniter
         const editUrl = `<?= site_url('admin/uservendor/edit') ?>/${userId}`;
-        console.log('Fetching from URL:', editUrl);
         
         const response = await fetch(editUrl, {
             headers: {
@@ -698,10 +619,7 @@ async function loadEditForm(userId) {
             });
         }
         
-        console.log('=== LOAD EDIT FORM END ===');
-        
     } catch (error) {
-        console.error('Error loading edit form:', error);
         document.getElementById('editModalContent').innerHTML = `
             <div class="text-center py-8 text-red-600">
                 <i class="fa-solid fa-exclamation-triangle text-2xl"></i>
@@ -759,38 +677,24 @@ function clearFieldError(input) {
 
 // Fungsi toggle password yang diperbaiki
 function togglePasswordDirect(inputId, button) {
-    console.log('Toggle password called for:', inputId);
-    
     const input = document.getElementById(inputId);
     const icon = button.querySelector('i');
     
-    if (!input) {
-        console.error('Input not found:', inputId);
+    if (!input || !icon) {
         return;
     }
-    
-    if (!icon) {
-        console.error('Icon not found in button');
-        return;
-    }
-    
-    console.log('Current input type:', input.type);
     
     if (input.type === 'password') {
         input.type = 'text';
         icon.className = 'fa-regular fa-eye-slash text-sm';
-        console.log('Changed to text, icon to eye-slash');
     } else {
         input.type = 'password';
         icon.className = 'fa-regular fa-eye text-sm';
-        console.log('Changed to password, icon to eye');
     }
 }
 
 // ===== SUSPEND FUNCTIONALITY FOR VENDOR =====
 async function toggleSuspendVendor(userId, button) {
-    console.log('Toggle suspend Vendor called for user:', userId);
-    
     const originalHTML = button.innerHTML;
     
     try {
@@ -804,8 +708,6 @@ async function toggleSuspendVendor(userId, button) {
         const formData = new FormData();
         formData.append('<?= csrf_token() ?>', '<?= csrf_hash() ?>');
         
-        console.log('Sending request to toggle suspend vendor:', userId);
-        
         // Perbaikan URL
         const response = await fetch(`<?= site_url('admin/uservendor/') ?>${userId}/suspend`, {
             method: 'POST',
@@ -815,14 +717,11 @@ async function toggleSuspendVendor(userId, button) {
             }
         });
         
-        console.log('Response status:', response.status);
-        
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
         const result = await response.json();
-        console.log('Server response:', result);
         
         if (result.success) {
             // Update UI sementara
@@ -840,7 +739,6 @@ async function toggleSuspendVendor(userId, button) {
         }
         
     } catch (error) {
-        console.error('Error:', error);
         showToast('Terjadi kesalahan: ' + error.message, 'error');
         button.innerHTML = originalHTML;
     } finally {
@@ -865,8 +763,6 @@ function disableAllSuspendButtons(disabled) {
 
 // Fungsi update UI untuk dua status
 async function updateSuspendUIVendor(userId, newStatus, isActive, button) {
-    console.log('Updating UI for vendor:', userId, 'New status:', newStatus, 'Is active:', isActive);
-    
     return new Promise((resolve) => {
         const row = document.querySelector(`tr[data-rowkey="vendor_${userId}"]`);
         if (row) {
@@ -890,8 +786,6 @@ async function updateSuspendUIVendor(userId, newStatus, isActive, button) {
                         activeBadge.className = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800';
                         activeBadge.innerHTML = '<i class="fa-solid fa-pause-circle mr-1"></i> Inactive';
                     }
-                    
-                    console.log('Updated both status badges');
                 }
             }
         }
@@ -900,8 +794,6 @@ async function updateSuspendUIVendor(userId, newStatus, isActive, button) {
         if (button) {
             const newText = isActive ? 'Suspend' : 'Unsuspend';
             const newIcon = isActive ? 'fa-pause' : 'fa-play';
-            
-            console.log('Updating button to:', newText);
             
             // Update tombol yang diklik
             button.innerHTML = `<i class="fa-solid ${newIcon} text-[10px]"></i><span>${newText}</span>`;
@@ -1020,7 +912,6 @@ window.UMDel = (function () {
         // PERBAIKAN: Auto refresh jika server mengirimkan flag refresh
         if (result.refresh) {
           setTimeout(() => {
-            console.log('Auto refreshing page...');
             window.location.reload();
           }, 1500);
         }
@@ -1029,7 +920,6 @@ window.UMDel = (function () {
         showToast(result.message || 'Gagal menghapus user', 'error');
       }
     } catch (error) {
-      console.error('Error:', error);
       showToast('Terjadi kesalahan saat menghapus user', 'error');
     } finally {
       // Kembalikan tombol ke keadaan semula
@@ -1077,8 +967,6 @@ window.UMDel = (function () {
 
 // ===== VERIFY VENDOR FUNCTION =====
 async function verifyVendor(userId, button) {
-    console.log('Verify vendor called for user:', userId);
-    
     const originalHTML = button.innerHTML;
     
     try {
@@ -1098,7 +986,6 @@ async function verifyVendor(userId, button) {
         });
         
         const result = await response.json();
-        console.log('Verify vendor response:', result);
         
         if (response.ok && result.success) {
             showToast(result.message, 'success');
@@ -1113,7 +1000,6 @@ async function verifyVendor(userId, button) {
         }
         
     } catch (error) {
-        console.error('Verify vendor error:', error);
         showToast('Terjadi kesalahan: ' + error.message, 'error');
         button.innerHTML = originalHTML;
         button.disabled = false;
@@ -1191,7 +1077,6 @@ document.getElementById('rejectVendorForm').addEventListener('submit', async fun
         }
         
     } catch (error) {
-        console.error('Reject vendor error:', error);
         showToast('Terjadi kesalahan: ' + error.message, 'error');
         submitButton.innerHTML = originalText;
         submitButton.disabled = false;
@@ -1205,8 +1090,6 @@ document.querySelector('#rejectVendorModal [data-overlay]').addEventListener('cl
 
 // Tambahkan di bagian event listener di index.php
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded, initializing event listeners...');
-    
     // Event delegation untuk semua interaksi
     document.addEventListener('click', function(e) {
         // Close modal buttons
@@ -1255,8 +1138,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ===== GLOBAL EVENT LISTENERS FOR MODAL =====
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded, initializing global event listeners...');
-    
     // Event delegation untuk tombol batal di dalam modal
     document.addEventListener('click', function(e) {
         // Cek apakah yang diklik adalah tombol batal
@@ -1272,7 +1153,6 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (modalContainer) {
                 const modalId = modalContainer.id;
-                console.log('Closing modal:', modalId);
                 closeModal(modalId);
             } else {
                 // Fallback: cari modal yang sedang aktif
@@ -1332,65 +1212,18 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Fungsi closeModal yang diperbaiki
-function closeModal(modalId) {
-    console.log('Attempting to close modal:', modalId);
-    const modal = document.getElementById(modalId);
-    
-    if (modal) {
-        modal.classList.add('modal-hidden');
-        document.body.style.overflow = '';
-        
-        // Clear modal content
-        const contentDiv = modalId === 'createUserModal' ? 'createModalContent' : 
-                          modalId === 'editUserModal' ? 'editModalContent' : null;
-        
-        if (contentDiv) {
-            const contentElement = document.getElementById(contentDiv);
-            if (contentElement) {
-                contentElement.innerHTML = `
-                    <div class="text-center py-8">
-                        <i class="fa-solid fa-spinner fa-spin text-blue-600 text-2xl"></i>
-                        <p class="mt-2 text-gray-600">Memuat form...</p>
-                    </div>
-                `;
-            }
-        }
-        
-        console.log('Modal closed successfully:', modalId);
-    } else {
-        console.error('Modal not found:', modalId);
-    }
-}
-
 // Perbaikan fungsi toggleCommissionInput
 function toggleCommissionInput() {
-    console.log('=== TOGGLE COMMISSION INPUT START ===');
-    
     const percentInput = document.getElementById('percent-input');
     const nominalInput = document.getElementById('nominal-input');
     const percentRadio = document.querySelector('input[name="commission_type"][value="percent"]');
     const nominalRadio = document.querySelector('input[name="commission_type"][value="nominal"]');
     
-    console.log('Elements found:', {
-        percentInput: !!percentInput,
-        nominalInput: !!nominalInput,
-        percentRadio: !!percentRadio,
-        nominalRadio: !!nominalRadio
-    });
-    
     if (!percentInput || !nominalInput || !percentRadio || !nominalRadio) {
-        console.error('Some elements not found!');
         return;
     }
     
-    console.log('Radio states:', {
-        percentChecked: percentRadio.checked,
-        nominalChecked: nominalRadio.checked
-    });
-    
     if (percentRadio.checked) {
-        console.log('Showing percent input, hiding nominal');
         percentInput.style.display = 'block';
         nominalInput.style.display = 'none';
         
@@ -1400,14 +1233,11 @@ function toggleCommissionInput() {
         
         if (percentField) {
             percentField.setAttribute('required', 'required');
-            console.log('Percent field set to required');
         }
         if (nominalField) {
             nominalField.removeAttribute('required');
-            console.log('Nominal field required attribute removed');
         }
     } else {
-        console.log('Showing nominal input, hiding percent');
         percentInput.style.display = 'none';
         nominalInput.style.display = 'block';
         
@@ -1417,20 +1247,15 @@ function toggleCommissionInput() {
         
         if (percentField) {
             percentField.removeAttribute('required');
-            console.log('Percent field required attribute removed');
         }
         if (nominalField) {
             nominalField.setAttribute('required', 'required');
-            console.log('Nominal field set to required');
         }
     }
-    
-    console.log('=== TOGGLE COMMISSION INPUT END ===');
 }
+
 // Perbaikan fungsi initializeCommissionToggle
 function initializeCommissionToggle() {
-    console.log('Initializing commission toggle...');
-    
     // Remove existing listeners to avoid duplicates
     const radios = document.querySelectorAll('input[name="commission_type"]');
     radios.forEach(radio => {
@@ -1444,14 +1269,10 @@ function initializeCommissionToggle() {
     
     // Initial toggle
     toggleCommissionInput();
-    
-    // Debug: Log current state
-    console.log('Commission toggle initialized with radios:', radios.length);
 }
 
 // Handler for commission radio change
 function handleCommissionChange() {
-    console.log('Commission radio changed:', this.value);
     toggleCommissionInput();
 }
 
@@ -1491,8 +1312,6 @@ function handleNominalPaste(e) {
 
 // Perbaikan fungsi validateVendorForm
 function validateVendorForm(formElement, isEdit = false) {
-    console.log('Validating vendor form, isEdit:', isEdit);
-    
     // Validasi password (hanya jika diisi untuk edit)
     const password = formElement.querySelector('input[name="password"]')?.value;
     const passwordConfirm = formElement.querySelector('input[name="password_confirm"]')?.value;
@@ -1547,21 +1366,18 @@ function validateVendorForm(formElement, isEdit = false) {
 function setCommissionValues(formElement) {
     const commissionType = formElement.querySelector('input[name="commission_type"]:checked')?.value;
     
-    console.log('Setting commission values for type:', commissionType);
-    
     if (commissionType === 'percent') {
         const percentInput = formElement.querySelector('input[name="requested_commission"]');
         const nominalInput = formElement.querySelector('input[name="requested_commission_nominal"]');
         
         // Pastikan nilai persentase tersimpan
         if (percentInput && percentInput.value) {
-            console.log('Percent value:', percentInput.value);
+            // Nilai sudah tersimpan
         }
         
         // Kosongkan nilai nominal
         if (nominalInput) {
             nominalInput.value = '';
-            console.log('Nominal field cleared');
         }
     } else {
         const nominalInput = formElement.querySelector('input[name="requested_commission_nominal"]');
@@ -1571,24 +1387,18 @@ function setCommissionValues(formElement) {
         if (nominalInput && nominalInput.value) {
             const cleanValue = nominalInput.value.replace(/\D/g, '');
             nominalInput.value = cleanValue;
-            console.log('Nominal value cleaned:', cleanValue);
         }
         
         // Kosongkan nilai persentase
         if (percentInput) {
             percentInput.value = '';
-            console.log('Percent field cleared');
         }
     }
-    
-    console.log('Commission values set for type:', commissionType);
 }
 
 // Update loadCreateForm function
 async function loadCreateForm() {
     try {
-        console.log('=== LOAD CREATE FORM START ===');
-        
         const response = await fetch('<?= site_url('admin/uservendor/create') ?>', {
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
@@ -1607,6 +1417,7 @@ async function loadCreateForm() {
         setTimeout(() => {
             initializeCommissionToggle();
             initializeNominalFormatting();
+            initializePhoneInputs();
         }, 100);
         
         // Re-attach event listeners setelah form dimuat
@@ -1618,10 +1429,7 @@ async function loadCreateForm() {
             });
         }
         
-        console.log('=== LOAD CREATE FORM END ===');
-        
     } catch (error) {
-        console.error('Error loading create form:', error);
         document.getElementById('createModalContent').innerHTML = `
             <div class="text-center py-8 text-red-600">
                 <i class="fa-solid fa-exclamation-triangle text-2xl"></i>
@@ -1635,66 +1443,11 @@ async function loadCreateForm() {
     }
 }
 
-// Update loadEditForm function
-async function loadEditForm(userId) {
-    try {
-        console.log('=== LOAD EDIT FORM START ===');
-        
-        const editUrl = `<?= site_url('admin/uservendor/') ?>${userId}/edit`;
-        const response = await fetch(editUrl, {
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'text/html'
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const html = await response.text();
-        document.getElementById('editModalContent').innerHTML = html;
-        
-        // Initialize commission toggle after a short delay
-        setTimeout(() => {
-            initializeCommissionToggle();
-            initializeNominalFormatting();
-        }, 100);
-        
-        // Re-attach event listeners setelah form dimuat
-        const form = document.getElementById('editVendorForm');
-        if (form) {
-            form.addEventListener('submit', function(event) {
-                event.preventDefault();
-                submitVendorForm(this, true); // true = edit
-            });
-        }
-        
-        console.log('=== LOAD EDIT FORM END ===');
-        
-    } catch (error) {
-        console.error('Error loading edit form:', error);
-        document.getElementById('editModalContent').innerHTML = `
-            <div class="text-center py-8 text-red-600">
-                <i class="fa-solid fa-exclamation-triangle text-2xl"></i>
-                <p class="mt-2">Gagal memuat form edit. Silakan refresh halaman.</p>
-                <p class="text-xs mt-1">Error: ${error.message}</p>
-                <button onclick="loadEditForm(${userId})" class="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                    Coba Lagi
-                </button>
-            </div>
-        `;
-    }
-}
-
 // Perbaikan fungsi loadEditForm
 async function loadEditForm(userId) {
     try {
-        console.log('=== LOAD EDIT FORM START ===');
-        
         // PERBAIKAN: Gunakan URL yang benar sesuai routing
         const editUrl = `<?= site_url('admin/uservendor') ?>/${userId}/edit`;
-        console.log('Fetching from URL:', editUrl);
         
         const response = await fetch(editUrl, {
             headers: {
@@ -1714,7 +1467,7 @@ async function loadEditForm(userId) {
         setTimeout(() => {
             initializeCommissionToggle();
             initializeNominalFormatting();
-            initializePasswordToggles();
+            initializePhoneInputs();
         }, 100);
         
         // Re-attach event listeners setelah form dimuat
@@ -1726,10 +1479,7 @@ async function loadEditForm(userId) {
             });
         }
         
-        console.log('=== LOAD EDIT FORM END ===');
-        
     } catch (error) {
-        console.error('Error loading edit form:', error);
         document.getElementById('editModalContent').innerHTML = `
             <div class="text-center py-8 text-red-600">
                 <i class="fa-solid fa-exclamation-triangle text-2xl"></i>
@@ -1766,25 +1516,13 @@ async function submitVendorForm(formElement, isEdit = false) {
     try {
         const formData = new FormData(formElement);
         
-        // Debug form data
-        console.log('=== FORM SUBMIT DEBUG ===');
-        console.log('Is Edit:', isEdit);
-        console.log('Form Action:', formElement.action);
-        
-        for (let pair of formData.entries()) {
-            console.log(pair[0] + ': ' + pair[1]);
-        }
-        
         // PERBAIKAN: Gunakan URL yang benar untuk update
         let submitUrl = formElement.action;
         if (isEdit) {
             // Untuk edit, gunakan URL yang benar sesuai routing
             const userId = formData.get('id');
             submitUrl = `<?= site_url('admin/uservendor') ?>/${userId}/update`;
-            console.log('Using custom update URL:', submitUrl);
         }
-        
-        console.log('Final Submit URL:', submitUrl);
         
         const response = await fetch(submitUrl, {
             method: 'POST',
@@ -1795,17 +1533,13 @@ async function submitVendorForm(formElement, isEdit = false) {
             }
         });
         
-        console.log('Response Status:', response.status);
-        
         if (!response.ok) {
             // Coba baca response body untuk error detail
             const errorText = await response.text();
-            console.error('Error Response Body:', errorText);
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
         const result = await response.json();
-        console.log('Response result:', result);
         
         if (result.status === 'success') {
             showToast(result.message, 'success');
@@ -1836,10 +1570,6 @@ async function submitVendorForm(formElement, isEdit = false) {
         }
         
     } catch (error) {
-        console.error('=== SUBMIT ERROR DEBUG ===');
-        console.error('Error Type:', error.name);
-        console.error('Error Message:', error.message);
-        
         // Tampilkan error yang lebih spesifik
         let errorMessage = 'Terjadi kesalahan: ';
         if (error.message.includes('404')) {
@@ -1858,6 +1588,37 @@ async function submitVendorForm(formElement, isEdit = false) {
         submitButton.innerHTML = originalText;
         submitButton.disabled = false;
     }
+}
+
+// Fungsi untuk inisialisasi input telepon
+function initializePhoneInputs() {
+    const phoneInputs = document.querySelectorAll('.phone-input');
+    
+    phoneInputs.forEach(input => {
+        // Hapus event listener yang sudah ada untuk mencegah duplikasi
+        input.removeEventListener('input', handlePhoneInput);
+        input.removeEventListener('paste', handlePhonePaste);
+        
+        // Tambahkan event listener baru
+        input.addEventListener('input', handlePhoneInput);
+        input.addEventListener('paste', handlePhonePaste);
+    });
+}
+
+// Handler untuk input telepon
+function handlePhoneInput(e) {
+    // Hapus semua karakter non-angka
+    let value = e.target.value.replace(/[^\d]/g, '');
+    e.target.value = value;
+}
+
+// Handler untuk paste di input telepon
+function handlePhonePaste(e) {
+    setTimeout(function() {
+        // Hapus semua karakter non-angka setelah paste
+        let value = e.target.value.replace(/[^\d]/g, '');
+        e.target.value = value;
+    }, 1);
 }
 </script>
 

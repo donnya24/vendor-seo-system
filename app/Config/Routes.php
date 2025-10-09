@@ -47,8 +47,8 @@ $routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 
         $routes->post('update', 'Profile::update'); // Update profile
         $routes->post('password-update', 'Profile::passwordUpdate'); // Update password
     });
-    
-    $routes->group('areas', function($routes){
+
+    $routes->group('areas', ['namespace' => 'App\Controllers\Admin'], function($routes) {
         $routes->get('/', 'VendorAreas::index');
         $routes->get('create', 'VendorAreas::create');
         $routes->get('edit/(:num)', 'VendorAreas::edit/$1');

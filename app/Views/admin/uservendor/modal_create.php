@@ -78,15 +78,19 @@
                 <div>
                     <label for="phone" class="block text-sm font-medium text-gray-700">No. Telepon *</label>
                     <input type="text" id="phone" name="phone" 
-                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" 
-                           required autocomplete="tel">
+                        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 phone-input" 
+                        required autocomplete="tel"
+                        inputmode="numeric"
+                        pattern="[0-9]*">
                 </div>
-                
+
                 <div>
                     <label for="whatsapp_number" class="block text-sm font-medium text-gray-700">No. WhatsApp *</label>
                     <input type="text" id="whatsapp_number" name="whatsapp_number" 
-                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" 
-                           required autocomplete="tel">
+                        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 phone-input" 
+                        required autocomplete="tel"
+                        inputmode="numeric"
+                        pattern="[0-9]*">
                 </div>
                 
                 <!-- Commission Fields -->
