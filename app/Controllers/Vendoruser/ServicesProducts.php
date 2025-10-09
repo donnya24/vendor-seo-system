@@ -120,153 +120,156 @@ class ServicesProducts extends BaseController
         ]));
     }
 
-public function store()
-{
-    if (! $this->initVendor()) {
-        if ($this->request->isAJAX()) {
-            return $this->respondAjax('error', 'Profil vendor belum ada. Lengkapi profil terlebih dulu.', 400);
-        }
-        return redirect()->back()->with('error', 'Profil vendor belum ada. Lengkapi profil terlebih dulu.');
-    }
-
-    // Validasi input
-    $validation = \Config\Services::validation();
-    $validation->setRules([
-        'service_name' => 'required|min_length[3]|max_length[255]',
-        'products.*.product_name' => 'required|min_length[2]|max_length[255]',
-        'products.*.price' => 'permit_empty|numeric|greater_than_equal_to[0]',
-    ], [
-        'service_name' => [
-            'required' => 'Nama layanan wajib diisi.',
-            'min_length' => 'Nama layanan minimal 3 karakter.',
-            'max_length' => 'Nama layanan maksimal 255 karakter.'
-        ],
-        'products.*.product_name' => [
-            'required' => 'Nama produk wajib diisi.',
-            'min_length' => 'Nama produk minimal 2 karakter.',
-            'max_length' => 'Nama produk maksimal 255 karakter.'
-        ],
-        'products.*.price' => [
-            'numeric' => 'Harga harus berupa angka.',
-            'greater_than_equal_to' => 'Harga tidak boleh negatif.'
-        ]
-    ]);
-
-    if (!$validation->withRequest($this->request)->run()) {
-        $errors = $validation->getErrors();
-        if ($this->request->isAJAX()) {
-            return $this->respondAjax('error', implode(', ', $errors), 422);
-        }
-        return redirect()->back()->withInput()->with('errors', $errors);
-    }
-
-    $svcName  = trim((string) $this->request->getPost('service_name'));
-    $svcDesc  = trim((string) $this->request->getPost('service_description'));
-    $products = $this->request->getPost('products') ?? [];
-
-    // Validasi manual tambahan
-    if (!is_array($products) || count($products) === 0) {
-        $errorMsg = 'Tambahkan minimal 1 produk.';
-        if ($this->request->isAJAX()) {
-            return $this->respondAjax('error', $errorMsg, 422);
-        }
-        return redirect()->back()->withInput()->with('error', $errorMsg);
-    }
-
-    $m = new VendorServicesProductsModel();
-    $rowsToInsert = [];
-    $validProducts = 0;
-
-    foreach ($products as $index => $p) {
-        $productName = trim($p['product_name'] ?? '');
-        if ($productName === '') {
-            continue; // Skip produk tanpa nama
+    public function store()
+    {
+        if (! $this->initVendor()) {
+            if ($this->request->isAJAX()) {
+                return $this->respondAjax('error', 'Profil vendor belum ada. Lengkapi profil terlebih dulu.', 400);
+            }
+            return redirect()->back()->with('error', 'Profil vendor belum ada. Lengkapi profil terlebih dulu.');
         }
 
-        // Handle file upload jika ada
-        $attachmentName = null;
-        $file = $this->request->getFile("products.{$index}.attachment");
-        
-        if ($file && $file->isValid() && !$file->hasMoved()) {
-            $ext = strtolower($file->getExtension());
-            if (in_array($ext, ['pdf', 'png', 'jpg', 'jpeg'])) {
-                $newName = $file->getRandomName();
-                if ($file->move(ROOTPATH . 'public/uploads/vendor_products/', $newName)) {
-                    $attachmentName = $newName;
+        // Validasi input
+        $validation = \Config\Services::validation();
+        $validation->setRules([
+            'service_name' => 'required|min_length[3]|max_length[255]',
+            'products.*.product_name' => 'required|min_length[2]|max_length[255]',
+            'products.*.price' => 'permit_empty|numeric|greater_than_equal_to[0]',
+        ], [
+            'service_name' => [
+                'required' => 'Nama layanan wajib diisi.',
+                'min_length' => 'Nama layanan minimal 3 karakter.',
+                'max_length' => 'Nama layanan maksimal 255 karakter.'
+            ],
+            'products.*.product_name' => [
+                'required' => 'Nama produk wajib diisi.',
+                'min_length' => 'Nama produk minimal 2 karakter.',
+                'max_length' => 'Nama produk maksimal 255 karakter.'
+            ],
+            'products.*.price' => [
+                'numeric' => 'Harga harus berupa angka.',
+                'greater_than_equal_to' => 'Harga tidak boleh negatif.'
+            ]
+        ]);
+
+        if (!$validation->withRequest($this->request)->run()) {
+            $errors = $validation->getErrors();
+            if ($this->request->isAJAX()) {
+                return $this->respondAjax('error', implode(', ', $errors), 422);
+            }
+            return redirect()->back()->withInput()->with('errors', $errors);
+        }
+
+        $svcName  = trim((string) $this->request->getPost('service_name'));
+        $svcDesc  = trim((string) $this->request->getPost('service_description'));
+        $products = $this->request->getPost('products') ?? [];
+
+        // Validasi manual tambahan
+        if (!is_array($products) || count($products) === 0) {
+            $errorMsg = 'Tambahkan minimal 1 produk.';
+            if ($this->request->isAJAX()) {
+                return $this->respondAjax('error', $errorMsg, 422);
+            }
+            return redirect()->back()->withInput()->with('error', $errorMsg);
+        }
+
+        $m = new VendorServicesProductsModel();
+        $rowsToInsert = [];
+        $validProducts = 0;
+
+        foreach ($products as $index => $p) {
+            $productName = trim($p['product_name'] ?? '');
+            if ($productName === '') {
+                continue; // Skip produk tanpa nama
+            }
+
+            // Handle file upload jika ada
+            $attachmentName = null;
+            $file = $this->request->getFile("products.{$index}.attachment");
+            
+            if ($file && $file->isValid() && !$file->hasMoved()) {
+                $ext = strtolower($file->getExtension());
+                if (in_array($ext, ['pdf', 'png', 'jpg', 'jpeg'])) {
+                    $newName = $file->getRandomName();
+                    if ($file->move(ROOTPATH . 'public/uploads/vendor_products/', $newName)) {
+                        $attachmentName = $newName;
+                    }
                 }
             }
+
+            // Bersihkan format harga - hapus semua karakter non-digit
+            $price = preg_replace('/[^\d]/', '', $p['price'] ?? '0');
+            
+            $rowsToInsert[] = [
+                'vendor_id'           => $this->vendorId,
+                'service_name'        => $svcName,
+                'service_description' => !empty($svcDesc) ? $svcDesc : null,
+                'product_name'        => $productName,
+                'product_description' => !empty(trim($p['product_description'] ?? '')) ? trim($p['product_description']) : null,
+                'price'               => (int)$price, // Pastikan tipe data integer
+                'attachment'          => $attachmentName,
+                'attachment_url'      => !empty(trim($p['attachment_url'] ?? '')) ? trim($p['attachment_url']) : null,
+                'created_at'          => date('Y-m-d H:i:s'),
+                'updated_at'          => date('Y-m-d H:i:s'),
+            ];
+            
+            $validProducts++;
         }
 
-        $rowsToInsert[] = [
-            'vendor_id'           => $this->vendorId,
-            'service_name'        => $svcName,
-            'service_description' => !empty($svcDesc) ? $svcDesc : null,
-            'product_name'        => $productName,
-            'product_description' => !empty(trim($p['product_description'] ?? '')) ? trim($p['product_description']) : null,
-            'price'               => isset($p['price']) && $p['price'] !== '' ? (float) $p['price'] : null,
-            'attachment'          => $attachmentName,
-            'attachment_url'      => !empty(trim($p['attachment_url'] ?? '')) ? trim($p['attachment_url']) : null,
-            'created_at'          => date('Y-m-d H:i:s'),
-            'updated_at'          => date('Y-m-d H:i:s'),
-        ];
-        
-        $validProducts++;
-    }
-
-    if ($validProducts === 0) {
-        $errorMsg = 'Tidak ada produk valid yang bisa disimpan. Pastikan nama produk diisi.';
-        if ($this->request->isAJAX()) {
-            return $this->respondAjax('error', $errorMsg, 422);
-        }
-        return redirect()->back()->withInput()->with('error', $errorMsg);
-    }
-
-    // Gunakan transaction database untuk konsistensi
-    $this->db->transStart();
-    
-    try {
-        foreach ($rowsToInsert as $row) {
-            $m->insert($row);
-        }
-        
-        $this->db->transComplete();
-        
-        if ($this->db->transStatus() === FALSE) {
-            throw new \Exception('Gagal menyimpan data ke database.');
-        }
-        
-        $this->logActivity('create', "Menambah layanan: {$svcName} (" . count($rowsToInsert) . " produk)");
-        
-        $successMsg = 'Layanan & produk berhasil ditambahkan.';
-        
-        if ($this->request->isAJAX()) {
-            return $this->respondAjax('success', $successMsg, 200, [
-                'redirect' => route_to('sp_index')
-            ]);
-        }
-        
-        return redirect()->to(route_to('sp_index'))->with('success', $successMsg);
-        
-    } catch (\Exception $e) {
-        $this->db->transRollback();
-        
-        // Hapus file yang sudah diupload jika ada error
-        foreach ($rowsToInsert as $row) {
-            if (!empty($row['attachment'])) {
-                @unlink(ROOTPATH . 'public/uploads/vendor_products/' . $row['attachment']);
+        if ($validProducts === 0) {
+            $errorMsg = 'Tidak ada produk valid yang bisa disimpan. Pastikan nama produk diisi.';
+            if ($this->request->isAJAX()) {
+                return $this->respondAjax('error', $errorMsg, 422);
             }
+            return redirect()->back()->withInput()->with('error', $errorMsg);
         }
+
+        // Gunakan transaction database untuk konsistensi
+        $this->db->transStart();
         
-        $errorMsg = 'Terjadi kesalahan sistem: ' . $e->getMessage();
-        log_message('error', $errorMsg);
-        
-        if ($this->request->isAJAX()) {
-            return $this->respondAjax('error', 'Terjadi kesalahan sistem. Silakan coba lagi.', 500);
+        try {
+            foreach ($rowsToInsert as $row) {
+                $m->insert($row);
+            }
+            
+            $this->db->transComplete();
+            
+            if ($this->db->transStatus() === FALSE) {
+                throw new \Exception('Gagal menyimpan data ke database.');
+            }
+            
+            $this->logActivity('create', "Menambah layanan: {$svcName} (" . count($rowsToInsert) . " produk)");
+            
+            $successMsg = 'Layanan & produk berhasil ditambahkan.';
+            
+            if ($this->request->isAJAX()) {
+                return $this->respondAjax('success', $successMsg, 200, [
+                    'redirect' => route_to('sp_index')
+                ]);
+            }
+            
+            return redirect()->to(route_to('sp_index'))->with('success', $successMsg);
+            
+        } catch (\Exception $e) {
+            $this->db->transRollback();
+            
+            // Hapus file yang sudah diupload jika ada error
+            foreach ($rowsToInsert as $row) {
+                if (!empty($row['attachment'])) {
+                    @unlink(ROOTPATH . 'public/uploads/vendor_products/' . $row['attachment']);
+                }
+            }
+            
+            $errorMsg = 'Terjadi kesalahan sistem: ' . $e->getMessage();
+            log_message('error', $errorMsg);
+            
+            if ($this->request->isAJAX()) {
+                return $this->respondAjax('error', 'Terjadi kesalahan sistem. Silakan coba lagi.', 500);
+            }
+            
+            return redirect()->back()->withInput()->with('error', 'Terjadi kesalahan sistem. Silakan coba lagi.');
         }
-        
-        return redirect()->back()->withInput()->with('error', 'Terjadi kesalahan sistem. Silakan coba lagi.');
     }
-}
 
     /* ----------------------------- Edit ----------------------------- */
     public function edit($serviceName = null)
@@ -342,7 +345,8 @@ public function store()
             $pid   = (int)($prod['id'] ?? 0);
             $pname = trim((string)($prod['product_name'] ?? ''));
             $pdesc = trim((string)($prod['product_description'] ?? ''));
-            $price = $prod['price'] ?? null;
+            // Bersihkan format harga - hapus semua karakter non-digit
+            $price = preg_replace('/[^\d]/', '', $prod['price'] ?? '0');
             $url   = trim((string)($prod['attachment_url'] ?? ''));
             $del   = (int)($prod['delete_flag'] ?? 0) === 1;
             $rmAtt = (int)($prod['remove_attachment'] ?? 0) === 1;
@@ -386,7 +390,7 @@ public function store()
                     'service_description' => $svcDesc,
                     'product_name'        => $pname,
                     'product_description' => $pdesc,
-                    'price'               => ($price === '' ? null : (float)$price),
+                    'price'               => ($price === '' ? null : (int)$price),
                     'attachment_url'      => $url !== '' ? $url : null,
                     'updated_at'          => date('Y-m-d H:i:s'),
                 ];
@@ -408,7 +412,7 @@ public function store()
                     'service_description' => $svcDesc,
                     'product_name'        => $pname,
                     'product_description' => $pdesc,
-                    'price'               => ($price === '' ? null : (float)$price),
+                    'price'               => ($price === '' ? null : (int)$price),
                     'attachment'          => $newAttachment ?: null,
                     'attachment_url'      => $url !== '' ? $url : null,
                     'created_at'          => date('Y-m-d H:i:s'),

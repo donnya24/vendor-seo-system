@@ -168,7 +168,7 @@
                           <?= esc($product['product_name']); ?>
                         </span>
                         <span class="ml-1 inline-block rounded-full border border-gray-300 bg-gray-100 px-2.5 py-0.5 text-[11px] text-gray-700 align-middle">
-                          Rp <?= number_format((float)$product['price'], 0, ',', '.'); ?>
+                          Rp <?= number_format((int)$product['price'], 0, ',', '.'); ?>
                         </span>
                       </td>
 
@@ -311,6 +311,24 @@ const swalMini = {
   htmlContainer: 'text-sm'
 };
 
+/* ---------- Format mata uang ---------- */
+// Format mata uang dengan titik
+function formatCurrency(value) {
+  // Hapus semua karakter non-angka
+  let number = value.replace(/[^\d]/g, '');
+  
+  // Jika kosong, return kosong
+  if (number === '') return '';
+  
+  // Format dengan titik sebagai pemisah ribuan
+  return number.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+// Hapus format mata uang
+function unformatCurrency(formattedValue) {
+  return formattedValue.replace(/[^\d]/g, '');
+}
+
 /* ---------- Helpers ---------- */
 function getCsrfHeaders(){
   const header = document.querySelector('meta[name="csrf-header"]')?.content;
@@ -451,8 +469,8 @@ window.addNewProduct = function(){
         </div>
         <div>
           <label class="block text-sm font-medium mb-1 text-gray-700">Harga (Rp) <span class="text-red-500">*</span></label>
-          <input type="number" name="products[${idx}][price]" step="0.01" min="0"
-            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 product-price-input"
+          <input type="text" name="products[${idx}][price]"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 product-price-input price-input"
             placeholder="0" required>
         </div>
         <div class="md:col-span-2">
@@ -487,6 +505,12 @@ window.addNewProduct = function(){
   const row = document.getElementById('new-product-row-' + localId);
   row?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   row?.querySelector('input[type="text"]')?.focus();
+  
+  // Inisialisasi formatting untuk input harga yang baru dibuat
+  const priceInput = row?.querySelector('.price-input');
+  if (priceInput) {
+    priceInput.value = formatCurrency(priceInput.value);
+  }
 };
 window.removeNewProduct = function(localId){
   const row = document.getElementById('new-product-row-' + localId);
@@ -537,8 +561,25 @@ window.removeAttachment = function(index){
   notify('success','Berhasil','Lampiran akan dihapus saat disimpan');
 };
 
-/* ---------- Submit AJAX ---------- */
 function handleFormSubmit(form){
+  // Format semua input harga sebelum submit
+  form.querySelectorAll('.price-input').forEach(input => {
+    // Simpan nilai asli tanpa format
+    const originalName = input.name;
+    const originalValue = input.value;
+    const unformattedValue = unformatCurrency(originalValue);
+    
+    // Buat input hidden untuk menyimpan nilai asli
+    const hiddenInput = document.createElement('input');
+    hiddenInput.type = 'hidden';
+    hiddenInput.name = originalName;
+    hiddenInput.value = unformattedValue;
+    form.appendChild(hiddenInput);
+    
+    // Ubah nama input asli agar tidak terkirim dua kali
+    input.name = originalName + '_formatted';
+  });
+
   const formData = new FormData(form);
   fetch(form.action, { method:'POST', headers: getCsrfHeaders(), body: formData })
     .then(res => res.json())
@@ -566,6 +607,51 @@ document.addEventListener('click', (e) => {
   const descModal = document.getElementById('descriptionModal');
   if (e.target === modal) closeModal();
   if (e.target === descModal) closeDescriptionModal();
+});
+
+/* ---------- Format input harga ---------- */
+document.addEventListener('input', function(e) {
+  if (e.target.matches('.price-input')) {
+    // Hanya izinkan angka
+    let value = e.target.value.replace(/[^\d]/g, '');
+    
+    // Simpan posisi kursor
+    const cursorPosition = e.target.selectionStart;
+    
+    // Format nilai
+    e.target.value = formatCurrency(value);
+    
+    // Kembalikan posisi kursor
+    e.target.setSelectionRange(cursorPosition, cursorPosition);
+  }
+});
+
+// Format saat paste
+document.addEventListener('paste', function(e) {
+  if (e.target.matches('.price-input')) {
+    e.preventDefault();
+    const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+    // Hapus semua karakter non-digit
+    const cleanValue = pastedText.replace(/[^\d]/g, '');
+    // Format nilai
+    e.target.value = formatCurrency(cleanValue);
+  }
+});
+
+// Format saat focus out (untuk memastikan format benar)
+document.addEventListener('focusout', function(e) {
+  if (e.target.matches('.price-input')) {
+    // Format nilai saat keluar dari input
+    e.target.value = formatCurrency(e.target.value);
+  }
+});
+
+// Hapus format saat focus in (untuk memudahkan edit)
+document.addEventListener('focusin', function(e) {
+  if (e.target.matches('.price-input')) {
+    // Hapus format saat fokus untuk memudahkan edit
+    e.target.value = unformatCurrency(e.target.value);
+  }
 });
 
 /* ---------- Bulk delete + filter (tetap) ---------- */

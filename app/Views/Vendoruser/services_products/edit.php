@@ -53,7 +53,7 @@
                   $pid   = $row['id'] ?? '';
                   $pname = $row['product_name'] ?? '';
                   $pdesc = $row['product_description'] ?? '';
-                  $price = $row['price'] ?? '';
+                  $price = number_format((float)$row['price'], 0, ',', '.');
                   $att   = $row['attachment'] ?? '';
                   $aurl  = $row['attachment_url'] ?? '';
                 ?>
@@ -77,8 +77,8 @@
                     </div>
                     <div>
                       <label class="block text-sm font-medium mb-1 text-gray-700">Harga (Rp) <span class="text-red-500">*</span></label>
-                      <input type="number" name="products[<?= $i ?>][price]" value="<?= esc($price) ?>" step="0.01" min="0"
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 product-price-input"
+                      <input type="text" name="products[<?= $i ?>][price]" value="<?= esc($price) ?>"
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 product-price-input price-input"
                         placeholder="0" required>
                     </div>
                     <div class="md:col-span-2">
@@ -160,6 +160,23 @@ const swalMini = {
   confirmButton: 'px-4 py-2 rounded-lg text-sm',
   cancelButton: 'px-4 py-2 rounded-lg text-sm'
 };
+
+// Format mata uang dengan titik
+function formatCurrency(value) {
+  // Hapus semua karakter non-angka
+  let number = value.replace(/[^\d]/g, '');
+  
+  // Jika kosong, return kosong
+  if (number === '') return '';
+  
+  // Format dengan titik sebagai pemisah ribuan
+  return number.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+// Hapus format mata uang
+function unformatCurrency(formattedValue) {
+  return formattedValue.replace(/[^\d]/g, '');
+}
 
 // Counter untuk produk baru
 let newProductCount = 0;
@@ -257,9 +274,9 @@ function addNewProduct() {
         </div>
         <div>
           <label class="block text-sm font-medium mb-1 text-gray-700">Harga (Rp) <span class="text-red-500">*</span></label>
-          <input type="number" name="products[${index}][price]"
-            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 product-price-input"
-            placeholder="0" step="0.01" min="0" required>
+          <input type="text" name="products[${index}][price]"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 product-price-input price-input"
+            placeholder="0" required>
         </div>
         <div class="md:col-span-2">
           <label class="block text-sm font-medium mb-1 text-gray-700">Deskripsi Produk</label>
@@ -331,7 +348,7 @@ function validateForm(e) {
       const row = inp.closest('.product-row');
       const del = row ? row.querySelector('input[name$="[delete_flag]"]') : null;
       if (row && row.style.opacity !== '0.5' && (!del || del.value === '0')) {
-        const v = parseFloat(inp.value);
+        const v = parseFloat(inp.value.replace(/[^\d]/g, ''));
         if (isNaN(v) || v < 0) { isValid = false; msg = 'Harga produk harus valid (minimal 0)'; inp.focus(); }
       }
     });
@@ -367,7 +384,31 @@ document.addEventListener('DOMContentLoaded', function() {
   if (addBtn) addBtn.addEventListener('click', addNewProduct);
 
   const form = document.getElementById('editForm');
-  if (form) form.addEventListener('submit', validateForm);
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      if (!validateForm(e)) return;
+      
+      // Format semua input harga sebelum submit
+      form.querySelectorAll('.price-input').forEach(input => {
+        // Simpan nilai asli tanpa format
+        const originalName = input.name;
+        const originalValue = input.value;
+        const unformattedValue = unformatCurrency(originalValue);
+        
+        // Buat input hidden untuk menyimpan nilai asli
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = originalName;
+        hiddenInput.value = unformattedValue;
+        form.appendChild(hiddenInput);
+        
+        // Ubah nama input asli agar tidak terkirim dua kali
+        input.name = originalName + '_formatted';
+      });
+      
+      handleFormSubmit(form);
+    });
+  }
 
   <?php if (session()->getFlashdata('success')): ?>
     showNotification('success', 'Berhasil', '<?= addslashes(session()->getFlashdata('success')) ?>');
@@ -376,4 +417,71 @@ document.addEventListener('DOMContentLoaded', function() {
     showNotification('error', 'Error', '<?= addslashes(session()->getFlashdata('error')) ?>');
   <?php endif; ?>
 });
+
+// Format input harga saat mengetik
+document.addEventListener('input', function(e) {
+  if (e.target.matches('.price-input')) {
+    // Hanya izinkan angka
+    let value = e.target.value.replace(/[^\d]/g, '');
+    
+    // Simpan posisi kursor
+    const cursorPosition = e.target.selectionStart;
+    
+    // Format nilai
+    e.target.value = formatCurrency(value);
+    
+    // Kembalikan posisi kursor
+    e.target.setSelectionRange(cursorPosition, cursorPosition);
+  }
+});
+
+// Format saat paste
+document.addEventListener('paste', function(e) {
+  if (e.target.matches('.price-input')) {
+    e.preventDefault();
+    const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+    // Hapus semua karakter non-digit
+    const cleanValue = pastedText.replace(/[^\d]/g, '');
+    // Format nilai
+    e.target.value = formatCurrency(cleanValue);
+  }
+});
+
+// Format saat focus out (untuk memastikan format benar)
+document.addEventListener('focusout', function(e) {
+  if (e.target.matches('.price-input')) {
+    // Format nilai saat keluar dari input
+    e.target.value = formatCurrency(e.target.value);
+  }
+});
+
+// Hapus format saat focus in (untuk memudahkan edit)
+document.addEventListener('focusin', function(e) {
+  if (e.target.matches('.price-input')) {
+    // Hapus format saat fokus untuk memudahkan edit
+    e.target.value = unformatCurrency(e.target.value);
+  }
+});
+
+function handleFormSubmit(form){
+  const formData = new FormData(form);
+  fetch(form.action, { method:'POST', headers: getCsrfHeaders(), body: formData })
+    .then(res => res.json())
+    .then(data => {
+      if (data.csrfHash) document.querySelector('meta[name="csrf-token"]')?.setAttribute('content', data.csrfHash);
+      if (data.status === 'success') {
+        Swal.fire({ icon:'success', title:'Berhasil', text:data.message, timer:1500, showConfirmButton:false, width:300, customClass:swalMini })
+          .then(() => { closeModal(); window.location.reload(); });
+      } else {
+        Swal.fire({ icon:'error', title:'Gagal', text:data.message||'Terjadi kesalahan', width:300, customClass:swalMini });
+      }
+    })
+    .catch(() => Swal.fire({ icon:'error', title:'Error', text:'Koneksi gagal', width:300, customClass:swalMini }));
+}
+
+function getCsrfHeaders(){
+  const header = document.querySelector('meta[name="csrf-header"]')?.content;
+  const token  = document.querySelector('meta[name="csrf-token"]')?.content;
+  return header && token ? { [header]: token, 'X-Requested-With': 'XMLHttpRequest' } : { 'X-Requested-With': 'XMLHttpRequest' };
+}
 </script>

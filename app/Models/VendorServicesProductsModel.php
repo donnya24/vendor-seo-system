@@ -25,11 +25,12 @@ class VendorServicesProductsModel extends Model
     public function getGroupedServicesProducts($vendorId)
     {
         return $this->select("
+                MIN(id) AS id,
                 service_name,
                 service_description,
                 GROUP_CONCAT(product_name SEPARATOR '<br>')                  AS products,
                 GROUP_CONCAT(product_description SEPARATOR '<br>')           AS products_deskripsi,
-                GROUP_CONCAT(FORMAT(price, 0) SEPARATOR '<br>')              AS products_harga,
+                GROUP_CONCAT(CAST(price AS UNSIGNED) SEPARATOR '<br>')       AS products_harga,
                 GROUP_CONCAT(attachment SEPARATOR '<br>')                    AS products_lampiran,
                 GROUP_CONCAT(attachment_url SEPARATOR '<br>')                AS products_lampiran_url,
                 GROUP_CONCAT(id SEPARATOR ',')                               AS product_ids,
@@ -40,5 +41,4 @@ class VendorServicesProductsModel extends Model
             ->groupBy('service_name, service_description')
             ->findAll();
     }
-
 }

@@ -56,9 +56,9 @@
 
               <div class="space-y-1">
                 <label class="text-sm">Harga (Rp)</label>
-                <input type="number" :name="'products['+index+'][price]'"
-                  class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
-                  placeholder="0" step="0.01" min="0">
+                <input type="text" :name="'products['+index+'][price]'"
+                  class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 price-input"
+                  placeholder="0">
               </div>
 
               <div class="md:col-span-2 space-y-1">
@@ -114,6 +114,23 @@ const swalMini = {
   htmlContainer: 'text-sm'
 };
 
+// Format mata uang dengan titik
+function formatCurrency(value) {
+  // Hapus semua karakter non-angka
+  let number = value.replace(/[^\d]/g, '');
+  
+  // Jika kosong, return kosong
+  if (number === '') return '';
+  
+  // Format dengan titik sebagai pemisah ribuan
+  return number.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+// Hapus format mata uang
+function unformatCurrency(formattedValue) {
+  return formattedValue.replace(/[^\d]/g, '');
+}
+
 async function refreshCsrf() {
   try {
     const response = await fetch('<?= site_url('csrf-refresh') ?>', {
@@ -168,6 +185,24 @@ async function refreshCsrf() {
       customClass: swalMini
     });
 
+    // Format semua input harga sebelum submit
+    form.querySelectorAll('.price-input').forEach(input => {
+      // Simpan nilai asli tanpa format
+      const originalName = input.name;
+      const originalValue = input.value;
+      const unformattedValue = unformatCurrency(originalValue);
+      
+      // Buat input hidden untuk menyimpan nilai asli
+      const hiddenInput = document.createElement('input');
+      hiddenInput.type = 'hidden';
+      hiddenInput.name = originalName;
+      hiddenInput.value = unformattedValue;
+      form.appendChild(hiddenInput);
+      
+      // Ubah nama input asli agar tidak terkirim dua kali
+      input.name = originalName + '_formatted';
+    });
+
     const formData = new FormData(form);
 
     // Ambil token terbaru dari <meta>
@@ -218,4 +253,49 @@ async function refreshCsrf() {
     });
   });
 })();
+
+// Format input harga saat mengetik
+document.addEventListener('input', function(e) {
+  if (e.target.matches('.price-input')) {
+    // Hanya izinkan angka
+    let value = e.target.value.replace(/[^\d]/g, '');
+    
+    // Simpan posisi kursor
+    const cursorPosition = e.target.selectionStart;
+    
+    // Format nilai
+    e.target.value = formatCurrency(value);
+    
+    // Kembalikan posisi kursor
+    e.target.setSelectionRange(cursorPosition, cursorPosition);
+  }
+});
+
+// Format saat paste
+document.addEventListener('paste', function(e) {
+  if (e.target.matches('.price-input')) {
+    e.preventDefault();
+    const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+    // Hapus semua karakter non-digit
+    const cleanValue = pastedText.replace(/[^\d]/g, '');
+    // Format nilai
+    e.target.value = formatCurrency(cleanValue);
+  }
+});
+
+// Format saat focus out (untuk memastikan format benar)
+document.addEventListener('focusout', function(e) {
+  if (e.target.matches('.price-input')) {
+    // Format nilai saat keluar dari input
+    e.target.value = formatCurrency(e.target.value);
+  }
+});
+
+// Hapus format saat focus in (untuk memudahkan edit)
+document.addEventListener('focusin', function(e) {
+  if (e.target.matches('.price-input')) {
+    // Hapus format saat fokus untuk memudahkan edit
+    e.target.value = unformatCurrency(e.target.value);
+  }
+});
 </script>
