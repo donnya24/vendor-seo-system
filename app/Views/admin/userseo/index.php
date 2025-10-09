@@ -217,12 +217,13 @@ if (!empty($users)) {
                     <div class="inline-flex items-center gap-1.5">
                       <button type="button" 
                         class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm edit-user-btn"
-                        @click="openEditModal(<?= $id ?>)">
+                        data-user-id="<?= $id ?>">
                         <i class="fa-regular fa-pen-to-square text-[11px]"></i> Edit
                       </button>
                       <button type="button" 
                         class="inline-flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white text-[11px] md:text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-lg shadow-sm"
                         data-user-name="<?= esc($u['name'] ?? 'User SEO') ?>" 
+                        data-user-id="<?= $id ?>"
                         data-role="Tim SEO" 
                         onclick="UMDel.open(this)">
                         <i class="fa-regular fa-trash-can text-[11px]"></i> Delete
@@ -452,6 +453,7 @@ async function loadCreateForm() {
         `;
     }
 }
+
 async function loadEditForm(userId) {
     try {
         console.log('Loading edit form for user:', userId);
@@ -492,6 +494,7 @@ async function loadEditForm(userId) {
         `;
     }
 }
+
 // ===== AJAX FORM SUBMISSION - YANG DIPERBAIKI =====
 async function submitSeoForm(formElement, isEdit = false) {
     const submitButton = formElement.querySelector('button[type="submit"]');
@@ -639,6 +642,7 @@ function clearFieldError(input) {
         errorContainer.classList.add('hidden');
     }
 }
+
 // ===== SUSPEND FUNCTIONALITY =====
 async function toggleSuspendSeo(userId, button) {
     console.log('Toggle suspend SEO called for user:', userId);
@@ -722,18 +726,14 @@ window.UMDel = (function () {
         
         targetRow = row;
         const userName = btn.getAttribute('data-user-name') || 'User';
-        const userId = getUserIdFromRow(row);
+        const userId = btn.getAttribute('data-user-id');
         
-        deleteUrl = `<?= site_url('admin/userseo/') ?>${userId}/delete`;
+        // PERBAIKAN: Gunakan URL yang benar sesuai dengan rute
+        deleteUrl = `<?= site_url('admin/userseo/delete/') ?>${userId}`;
         
         nameEl.textContent = userName;
         document.body.style.overflow = 'hidden';
         modal.classList.remove('modal-hidden');
-    }
-
-    function getUserIdFromRow(row) {
-        const idCell = row.querySelector('td:first-child');
-        return idCell ? idCell.textContent.trim() : '';
     }
 
     function close() {
@@ -820,7 +820,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.target.closest('.edit-user-btn')) {
             e.preventDefault();
             const button = e.target.closest('.edit-user-btn');
-            const userId = button.getAttribute('onclick')?.match(/openEditModal\((\d+)\)/)?.[1];
+            const userId = button.getAttribute('data-user-id');
             if (userId) {
                 openEditModal(parseInt(userId));
             }
@@ -856,6 +856,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
 // Fallback untuk onclick attributes
 window.openCreateModal = openCreateModal;
 window.openEditModal = openEditModal;

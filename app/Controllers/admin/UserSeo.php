@@ -290,9 +290,8 @@ class UserSeo extends BaseController
                     ]);
                 }
 
-                // --- PERBAIKAN: Gunakan notasi objek (->) bukan array (['']) ---
                 // Cek duplikasi username jika berubah
-                if ($username !== $user->username) { // PERBAIKAN DI SINI
+                if ($username !== $user->username) {
                     $existingUser = $this->users->where('username', $username)->first();
                     if ($existingUser) {
                         return $this->response->setJSON([
@@ -325,7 +324,6 @@ class UserSeo extends BaseController
                 // Set group
                 $this->setSingleGroup((int) $id, 'seoteam');
 
-                // --- PERBAIKAN LOGIKA UPDATE ---
                 // Selalu update nama di auth_identities dan seo_profiles
                 if (!empty($email)) {
                     // Update email dan nama jika email diisi
@@ -417,6 +415,7 @@ class UserSeo extends BaseController
             'message' => 'Request harus AJAX'
         ]);
     }
+
     // ========== DELETE ==========
     public function delete($id)
     {
@@ -444,10 +443,8 @@ class UserSeo extends BaseController
                 // Hapus dari seo_profiles
                 $this->seoModel->where('user_id', $id)->delete();
 
-                // =================================================================
-                // PERUBAHAN UTAMA: Hard delete user dari tabel 'users'
+                // Hard delete user dari tabel 'users'
                 // Parameter 'false' memaksa penghapusan permanen
-                // =================================================================
                 $this->users->delete($id, false);
 
                 log_message('warning', "User SEO berhasil dihapus PERMANEN: ID {$id}");
@@ -481,9 +478,7 @@ class UserSeo extends BaseController
         $this->identityModel->where('user_id', $id)->delete();
         $this->seoModel->where('user_id', $id)->delete();
         
-        // =================================================================
-        // PERUBAHAN UTAMA: Hard delete user dari tabel 'users'
-        // =================================================================
+        // Hard delete user dari tabel 'users'
         $this->users->delete($id, false);
 
         return redirect()->to(site_url('admin/userseo'))->with('success', 'User SEO berhasil dihapus secara permanen.');

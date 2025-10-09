@@ -47,8 +47,8 @@ $routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 
         $routes->post('update', 'Profile::update'); // Update profile
         $routes->post('password-update', 'Profile::passwordUpdate'); // Update password
     });
-
-    $routes->group('areas', ['namespace' => 'App\Controllers\Admin'], function($routes) {
+    // app/Config/Routes.php
+    $routes->group('admin/areas', ['namespace' => 'App\Controllers\Admin'], function($routes){
         $routes->get('/', 'VendorAreas::index');
         $routes->get('create', 'VendorAreas::create');
         $routes->get('edit/(:num)', 'VendorAreas::edit/$1');
@@ -59,15 +59,14 @@ $routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 
         $routes->delete('clear-all/(:num)', 'VendorAreas::clearAll/$1');
         $routes->get('get-selected-areas/(:num)', 'VendorAreas::getSelectedAreas/$1');
     });
-        
     // Vendor Services & Products
-    $routes->get('services', 'VendorServices::index');
-    $routes->get('services/create', 'VendorServices::create');
-    $routes->post('services/store', 'VendorServices::store');
-    $routes->get('services/edit/(:num)', 'VendorServices::edit/$1');
-    $routes->post('services/update/(:num)', 'VendorServices::update/$1');
-    $routes->post('services/delete/(:num)', 'VendorServices::delete/$1');
-    $routes->get('services/search', 'VendorServices::search');
+    $routes->get('services', 'VendorServicesProducts::index');
+    $routes->get('services/create', 'VendorServicesProducts::create');
+    $routes->post('services/store', 'VendorServicesProducts::store');
+    $routes->get('services/edit/(:num)', 'VendorServicesProducts::edit/$1');
+    $routes->post('services/update/(:num)', 'VendorServicesProducts::update/$1');
+    $routes->post('services/delete/(:num)', 'VendorServicesProducts::delete/$1');
+    $routes->get('services/search', 'VendorServicesProducts::search');
 
     // Management User Vendor Routes
     $routes->group('uservendor', ['namespace' => 'App\Controllers\Admin'], function($routes){
