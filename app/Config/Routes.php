@@ -59,15 +59,16 @@ $routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 
         $routes->delete('clear-all/(:num)', 'VendorAreas::clearAll/$1');
         $routes->get('get-selected-areas/(:num)', 'VendorAreas::getSelectedAreas/$1');
     });
+
     // Vendor Services & Products
     $routes->get('services', 'VendorServicesProducts::index');
     $routes->get('services/create', 'VendorServicesProducts::create');
     $routes->post('services/store', 'VendorServicesProducts::store');
-    $routes->get('services/edit/(:num)', 'VendorServicesProducts::edit/$1');
-    $routes->post('services/update/(:num)', 'VendorServicesProducts::update/$1');
+    $routes->get('services/edit', 'VendorServicesProducts::edit');
+    $routes->post('services/update', 'VendorServicesProducts::update');
+    $routes->post('services/delete_multiple', 'VendorServicesProducts::deleteMultiple');
     $routes->post('services/delete/(:num)', 'VendorServicesProducts::delete/$1');
     $routes->get('services/search', 'VendorServicesProducts::search');
-
     // Management User Vendor Routes
     $routes->group('uservendor', ['namespace' => 'App\Controllers\Admin'], function($routes){
         $routes->get('/', 'UserVendor::index');
