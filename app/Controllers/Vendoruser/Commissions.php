@@ -29,7 +29,20 @@ class Commissions extends BaseController
         $this->vendorId   = $this->vendorProfile['id'] ?? 0;
         $this->isVerified = ($this->vendorProfile['status'] ?? '') === 'verified';
 
-        return (bool)$this->vendorId;
+        return (bool)$this->vendorProfile;
+    }
+
+    private function checkVerifiedAccess(): bool
+    {
+        if (! $this->initVendor()) {
+            return false;
+        }
+        
+        if (! $this->isVerified) {
+            return false;
+        }
+        
+        return true;
     }
 
     private function withVendorData(array $data = []): array
@@ -57,9 +70,9 @@ class Commissions extends BaseController
 
     public function index()
     {
-        if (! $this->initVendor()) {
+        if (! $this->checkVerifiedAccess()) {
             return redirect()->to(site_url('vendoruser/dashboard'))
-                ->with('error', 'Profil vendor belum ada.');
+                ->with('error', 'Akun vendor Anda belum diverifikasi. Silakan lengkapi profil dan tunggu verifikasi dari admin.');
         }
 
         $list = $this->commissionModel
@@ -81,9 +94,9 @@ class Commissions extends BaseController
 
     public function create()
     {
-        if (! $this->initVendor()) {
+        if (! $this->checkVerifiedAccess()) {
             return redirect()->to(site_url('vendoruser/dashboard'))
-                ->with('error', 'Profil vendor belum ada.');
+                ->with('error', 'Akun vendor Anda belum diverifikasi. Silakan lengkapi profil dan tunggu verifikasi dari admin.');
         }
 
         $this->logActivity('create_form', 'Membuka form tambah komisi');
@@ -95,9 +108,9 @@ class Commissions extends BaseController
 
     public function store()
     {
-        if (! $this->initVendor()) {
+        if (! $this->checkVerifiedAccess()) {
             return redirect()->to(site_url('vendoruser/dashboard'))
-                ->with('error', 'Profil vendor belum ada.');
+                ->with('error', 'Akun vendor Anda belum diverifikasi. Silakan lengkapi profil dan tunggu verifikasi dari admin.');
         }
 
         $rules = [
@@ -140,9 +153,9 @@ class Commissions extends BaseController
 
     public function edit($id)
     {
-        if (! $this->initVendor()) {
+        if (! $this->checkVerifiedAccess()) {
             return redirect()->to(site_url('vendoruser/dashboard'))
-                ->with('error', 'Profil vendor belum ada.');
+                ->with('error', 'Akun vendor Anda belum diverifikasi. Silakan lengkapi profil dan tunggu verifikasi dari admin.');
         }
 
         $item = $this->commissionModel
@@ -170,9 +183,9 @@ class Commissions extends BaseController
 
     public function update($id)
     {
-        if (! $this->initVendor()) {
+        if (! $this->checkVerifiedAccess()) {
             return redirect()->to(site_url('vendoruser/dashboard'))
-                ->with('error', 'Profil vendor belum ada.');
+                ->with('error', 'Akun vendor Anda belum diverifikasi. Silakan lengkapi profil dan tunggu verifikasi dari admin.');
         }
 
         $item = $this->commissionModel
@@ -229,16 +242,16 @@ class Commissions extends BaseController
 
     public function delete($id)
     {
-        if (! $this->initVendor()) {
+        if (! $this->checkVerifiedAccess()) {
             if ($this->request->isAJAX()) {
                 return $this->response->setJSON([
                     'status'   => 'error',
-                    'message'  => 'Profil vendor belum ada.',
+                    'message'  => 'Akun vendor Anda belum diverifikasi. Silakan lengkapi profil dan tunggu verifikasi dari admin.',
                     'csrfHash' => csrf_hash(),
                 ]);
             }
             return redirect()->to(site_url('vendoruser/dashboard'))
-                ->with('error', 'Profil vendor belum ada.');
+                ->with('error', 'Akun vendor Anda belum diverifikasi. Silakan lengkapi profil dan tunggu verifikasi dari admin.');
         }
 
         $item = $this->commissionModel
@@ -291,16 +304,16 @@ class Commissions extends BaseController
 
     public function deleteMultiple()
     {
-        if (! $this->initVendor()) {
+        if (! $this->checkVerifiedAccess()) {
             if ($this->request->isAJAX()) {
                 return $this->response->setJSON([
                     'status'   => 'error',
-                    'message'  => 'Profil vendor belum ada.',
+                    'message'  => 'Akun vendor Anda belum diverifikasi. Silakan lengkapi profil dan tunggu verifikasi dari admin.',
                     'csrfHash' => csrf_hash(),
                 ]);
             }
             return redirect()->to(site_url('vendoruser/dashboard'))
-                ->with('error', 'Profil vendor belum ada.');
+                ->with('error', 'Akun vendor Anda belum diverifikasi. Silakan lengkapi profil dan tunggu verifikasi dari admin.');
         }
 
         $ids = $this->request->isAJAX()
