@@ -4,10 +4,14 @@ namespace App\Controllers\Vendoruser;
 
 use App\Controllers\BaseController;
 use App\Models\VendorProfilesModel;
+use App\Models\NotificationsModel;
+use App\Models\UserModel;
 
 class Profile extends BaseController
 {
     protected $vendorProfilesModel;
+    protected $notificationsModel;
+    protected $userModel;
 
     private $vendorProfile;
     private $vendorId;
@@ -16,6 +20,8 @@ class Profile extends BaseController
     public function __construct()
     {
         $this->vendorProfilesModel = new VendorProfilesModel();
+        $this->notificationsModel = new NotificationsModel();
+        $this->userModel = new UserModel();
         $this->initVendor();
     }
 
@@ -76,6 +82,17 @@ class Profile extends BaseController
         }
 
         $user = $this->user();
+        
+        // Debug informasi awal
+        log_message('info', "Memulai update profil vendor ID: {$this->vendorId}, User ID: {$user->id}");
+
+        // Ambil semua data POST
+        $postData = $this->request->getPost();
+        
+        // Bersihkan format nominal komisi SEBELUM validasi
+        if (isset($postData['requested_commission_nominal'])) {
+            $postData['requested_commission_nominal'] = preg_replace('/[^\d]/', '', $postData['requested_commission_nominal']);
+        }
 
         // ==== VALIDASI DASAR ====
         $rules = [
@@ -91,7 +108,7 @@ class Profile extends BaseController
         if (!$this->isVerified) {
             $rules['commission_type'] = 'required|in_list[percent,nominal]';
             
-            $commissionType = $this->request->getPost('commission_type');
+            $commissionType = $postData['commission_type'] ?? '';
             if ($commissionType === 'percent') {
                 $rules['requested_commission'] = 'required|numeric|greater_than_equal_to[1]|less_than_equal_to[100]';
                 $rules['requested_commission_nominal'] = 'permit_empty';
@@ -107,7 +124,8 @@ class Profile extends BaseController
         $validation = \Config\Services::validation();
         $validation->setRules($rules);
 
-        if (!$validation->withRequest($this->request)->run()) {
+        // Gunakan data yang sudah dibersihkan untuk validasi
+        if (!$validation->run($postData)) {
             // Log error validasi
             if (function_exists('log_activity_auto')) {
                 log_activity_auto('error', 'Validasi update profil gagal: ' . json_encode($validation->getErrors()), [
@@ -124,21 +142,30 @@ class Profile extends BaseController
 
         // ==== PREPARE DATA ====
         $data = [
-            'business_name'   => (string) $this->request->getPost('business_name'),
-            'owner_name'      => (string) $this->request->getPost('owner_name'),
-            'whatsapp_number' => (string) $this->request->getPost('whatsapp_number'),
-            'phone'           => (string) ($this->request->getPost('phone') ?? ''),
+            'business_name'   => (string) $postData['business_name'],
+            'owner_name'      => (string) $postData['owner_name'],
+            'whatsapp_number' => (string) $postData['whatsapp_number'],
+            'phone'           => (string) ($postData['phone'] ?? ''),
         ];
 
         // ==== HANDLE COMMISSION DATA ====
         $commissionChanged = false;
+        $oldCommissionType = $this->vendorProfile['commission_type'] ?? '';
+        $oldCommissionValue = '';
 
         if (!$this->isVerified) {
-            $commissionType = $this->request->getPost('commission_type');
+            $commissionType = $postData['commission_type'];
             $data['commission_type'] = $commissionType;
             
+            // Simpan nilai komisi lama untuk notifikasi
+            if ($oldCommissionType === 'percent') {
+                $oldCommissionValue = $this->vendorProfile['requested_commission'] ?? 0;
+            } else {
+                $oldCommissionValue = $this->vendorProfile['requested_commission_nominal'] ?? 0;
+            }
+            
             if ($commissionType === 'percent') {
-                $reqRaw = str_replace(',', '.', (string) $this->request->getPost('requested_commission'));
+                $reqRaw = str_replace(',', '.', (string) ($postData['requested_commission'] ?? ''));
                 $newCommission = is_numeric($reqRaw) ? (float) $reqRaw : null;
                 $oldCommission = isset($this->vendorProfile['requested_commission']) ? (float) $this->vendorProfile['requested_commission'] : null;
 
@@ -146,17 +173,18 @@ class Profile extends BaseController
                     $commissionChanged = true;
                     $data['requested_commission'] = $newCommission;
                     $data['requested_commission_nominal'] = null;
+                    log_message('info', "Komisi percent berubah: {$oldCommission} -> {$newCommission}");
                 }
             } else {
-                $nominalRaw = $this->request->getPost('requested_commission_nominal');
-                $nominalClean = preg_replace('/[^\d]/', '', $nominalRaw);
-                $newCommissionNominal = is_numeric($nominalClean) ? (float) $nominalClean : null;
+                // Data nominal sudah dibersihkan sebelumnya
+                $newCommissionNominal = is_numeric($postData['requested_commission_nominal'] ?? '') ? (float) $postData['requested_commission_nominal'] : null;
                 $oldCommissionNominal = isset($this->vendorProfile['requested_commission_nominal']) ? (float) $this->vendorProfile['requested_commission_nominal'] : null;
 
                 if ($newCommissionNominal !== $oldCommissionNominal) {
                     $commissionChanged = true;
                     $data['requested_commission_nominal'] = $newCommissionNominal;
                     $data['requested_commission'] = null;
+                    log_message('info', "Komisi nominal berubah: {$oldCommissionNominal} -> {$newCommissionNominal}");
                 }
             }
             
@@ -165,6 +193,7 @@ class Profile extends BaseController
                 $data['status'] = 'pending';
                 $data['approved_at'] = null;
                 $data['action_by'] = null;
+                log_message('info', "Status direset ke pending karena perubahan komisi");
             }
         }
 
@@ -178,7 +207,7 @@ class Profile extends BaseController
         }
 
         // Handle remove profile image
-        if ($this->request->getPost('remove_profile_image') === '1' && !empty($this->vendorProfile['profile_image'])) {
+        if (($postData['remove_profile_image'] ?? '0') === '1' && !empty($this->vendorProfile['profile_image'])) {
             $oldPath = $pubDir . '/' . $this->vendorProfile['profile_image'];
             if (is_file($oldPath)) {
                 @unlink($oldPath);
@@ -220,6 +249,14 @@ class Profile extends BaseController
                 throw new \Exception('Gagal update data vendor');
             }
 
+            log_message('info', "Update profil vendor berhasil, commissionChanged: " . ($commissionChanged ? 'YES' : 'NO'));
+
+            // ==== CREATE NOTIFICATION JIKA ADA PERUBAHAN KOMISI ====
+            if ($commissionChanged && !$this->isVerified) {
+                log_message('info', "Memanggil createCommissionChangeNotification...");
+                $this->createCommissionChangeNotification($oldCommissionType, $oldCommissionValue, $data);
+            }
+
             // ==== LOG ACTIVITY ====
             $changes = [];
             if ($commissionChanged) {
@@ -254,6 +291,7 @@ class Profile extends BaseController
 
         } catch (\Throwable $e) {
             // Log error
+            log_message('error', 'Error update profil: ' . $e->getMessage());
             if (function_exists('log_activity_auto')) {
                 log_activity_auto('error', 'Gagal update profil: ' . $e->getMessage(), [
                     'module' => 'vendor_profile',
@@ -264,6 +302,121 @@ class Profile extends BaseController
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Membuat notifikasi untuk semua Admin dan SEO ketika komisi berubah
+     */
+    private function createCommissionChangeNotification(string $oldCommissionType, $oldCommissionValue, array $newData): void
+    {
+        try {
+            // Dapatkan semua user yang termasuk dalam grup Admin dan Seoteam
+            $targetUsers = $this->getAdminAndSeoteamUsers();
+            
+            if (empty($targetUsers)) {
+                log_message('error', 'Tidak ada user Admin atau Seoteam ditemukan untuk notifikasi');
+                return;
+            }
+
+            // Format nilai komisi lama dan baru
+            $oldCommissionFormatted = $this->formatCommissionValue($oldCommissionType, $oldCommissionValue);
+            $newCommissionFormatted = $this->formatCommissionValue($newData['commission_type'], 
+                $newData['commission_type'] === 'percent' ? ($newData['requested_commission'] ?? 0) : ($newData['requested_commission_nominal'] ?? 0));
+
+            $vendorName = $this->vendorProfile['business_name'] ?? 'Vendor';
+            $vendorId = $this->vendorId;
+
+            // Debug informasi
+            log_message('info', "Membuat notifikasi untuk " . count($targetUsers) . " users");
+            log_message('info', "Vendor: {$vendorName}, Komisi: {$oldCommissionFormatted} -> {$newCommissionFormatted}");
+
+            // Buat notifikasi untuk setiap user dalam grup Admin dan Seoteam
+            $notificationsCreated = 0;
+            foreach ($targetUsers as $user) {
+                $userId = $user['user_id'] ?? null;
+                if (!$userId) continue;
+
+                $notificationData = [
+                    'user_id' => $userId,
+                    'vendor_id' => $this->vendorId,
+                    'type' => 'commission_change',
+                    'title' => 'Pengajuan Komisi Baru',
+                    'message' => "Vendor <strong>{$vendorName}</strong> mengajukan perubahan komisi dari {$oldCommissionFormatted} menjadi {$newCommissionFormatted}. Silakan review pengajuan ini.",
+                    'link_url' => site_url("admin/vendors/detail/{$vendorId}"),
+                    'is_read' => 0,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'updated_at' => date('Y-m-d H:i:s')
+                ];
+
+                // Debug data notifikasi
+                log_message('info', "Membuat notifikasi untuk user_id: {$userId} (group: {$user['group']})");
+
+                $inserted = $this->notificationsModel->insert($notificationData);
+                if ($inserted) {
+                    $notificationsCreated++;
+                    log_message('info', "Notifikasi berhasil dibuat dengan ID: " . $inserted);
+                } else {
+                    $errors = $this->notificationsModel->errors();
+                    log_message('error', "Gagal membuat notifikasi untuk user {$userId}: " . implode(', ', $errors));
+                }
+            }
+
+            // Log aktivitas notifikasi
+            log_message('info', "Total notifikasi berhasil dibuat: {$notificationsCreated} dari " . count($targetUsers) . " target users");
+            
+            if (function_exists('log_activity_auto')) {
+                log_activity_auto('notification', 'Notifikasi pengajuan komisi dibuat untuk admin dan seoteam', [
+                    'module' => 'vendor_profile',
+                    'vendor_id' => $this->vendorId,
+                    'target_users' => count($targetUsers),
+                    'notifications_created' => $notificationsCreated,
+                    'old_commission' => $oldCommissionFormatted,
+                    'new_commission' => $newCommissionFormatted
+                ]);
+            }
+
+        } catch (\Throwable $e) {
+            // Log error tanpa mengganggu flow utama
+            log_message('error', 'Gagal membuat notifikasi komisi: ' . $e->getMessage());
+            if (function_exists('log_activity_auto')) {
+                log_activity_auto('error', 'Gagal membuat notifikasi komisi: ' . $e->getMessage(), [
+                    'module' => 'vendor_profile',
+                    'vendor_id' => $this->vendorId
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Mendapatkan semua user yang termasuk dalam grup Admin dan Seoteam
+     */
+    private function getAdminAndSeoteamUsers(): array
+    {
+        $db = \Config\Database::connect();
+        
+        // Cari users dengan group Admin dan Seoteam dari tabel auth_groups_users
+        return $db->table('auth_groups_users agu')
+            ->select('agu.user_id, agu.group, u.email, u.username')
+            ->join('users u', 'u.id = agu.user_id')
+            ->whereIn('agu.group', ['admin', 'seoteam'])
+            ->get()
+            ->getResultArray();
+    }
+
+    /**
+     * Format nilai komisi untuk ditampilkan
+     */
+    private function formatCommissionValue(string $type, $value): string
+    {
+        if (empty($value) || $value == 0) {
+            return 'Belum diatur';
+        }
+        
+        if ($type === 'percent') {
+            return number_format((float)$value, 1) . '%';
+        } else {
+            return 'Rp ' . number_format((float)$value, 0, ',', '.');
         }
     }
 

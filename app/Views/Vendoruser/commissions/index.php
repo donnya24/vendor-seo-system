@@ -46,7 +46,7 @@
       $baseUrl = site_url('vendoruser/commissions');
       $buildUrl = function(array $extra = []) use ($baseUrl, $qs) {
         $merged = array_merge($qs, $extra);
-        if (!isset($extra['page'])) unset($merged['page']); // reset page saat klik filter
+        if (!isset($extra['page'])) unset($merged['page']);
         $q = http_build_query($merged);
         return $q ? $baseUrl.'?'.$q : $baseUrl;
       };
@@ -156,16 +156,30 @@
                     <?php endif; ?>
                   </td>
                   <td class="px-2 py-2">
-                    <button onclick="openModal('<?= site_url('vendoruser/commissions/'.$it['id'].'/edit') ?>')" 
-                      type="button"
-                      class="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-[11px] md:text-xs">
-                      Edit
-                    </button>
+                    <?php if($it['status'] === 'paid'): ?>
+                      <button 
+                        type="button"
+                        disabled
+                        class="px-2 py-1 bg-gray-400 text-white rounded cursor-not-allowed text-[11px] md:text-xs opacity-50">
+                        Edit
+                      </button>
+                    <?php else: ?>
+                      <button 
+                        onclick="openModal('<?= site_url('vendoruser/commissions/'.$it['id'].'/edit') ?>')" 
+                        type="button"
+                        class="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-[11px] md:text-xs">
+                        Edit
+                      </button>
+                    <?php endif; ?>
                   </td>
                   <!-- CHECKBOX ROW DIPINDAH KE SEBELAH KANAN -->
                   <td class="px-2 py-2">
-                    <input type="checkbox" name="ids[]" value="<?= $it['id'] ?>" 
-                           class="rowCheckbox w-3.5 h-3.5 mx-auto accent-blue-600 cursor-pointer transition-transform duration-200 hover:scale-110">
+                    <?php if($it['status'] !== 'paid'): ?>
+                      <input type="checkbox" name="ids[]" value="<?= $it['id'] ?>" 
+                             class="rowCheckbox w-3.5 h-3.5 mx-auto accent-blue-600 cursor-pointer transition-transform duration-200 hover:scale-110">
+                    <?php else: ?>
+                      <input type="checkbox" disabled class="w-3.5 h-3.5 mx-auto opacity-30 cursor-not-allowed">
+                    <?php endif; ?>
                   </td>
                 </tr>
               <?php endforeach; ?>
@@ -188,7 +202,6 @@
       Catatan: Pembayaran komisi akan diverifikasi terlebih dahulu oleh Admin/Tim SEO sebelum statusnya menjadi "Paid".
     </div>
   </div>
-</div>
 </main>
 
 <!-- Modal -->
@@ -197,7 +210,6 @@
     <div id="modalContent">Loading...</div>
   </div>
 </div>
-
 
 <script>
 const swalMini = { popup:'rounded-md text-sm p-3 shadow', title:'text-sm font-semibold', htmlContainer:'text-sm' };
@@ -213,9 +225,20 @@ function openModal(url) {
   modal.classList.remove('hidden'); modal.classList.add('flex');
   document.getElementById('modalContent').innerHTML = "Loading...";
   fetch(url, { headers: {'X-Requested-With':'XMLHttpRequest'} })
-    .then(res => res.text())
+    .then(res => {
+      if (!res.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return res.text();
+    })
     .then(html => document.getElementById('modalContent').innerHTML = html)
-    .catch(() => document.getElementById('modalContent').innerHTML = '<p class="text-red-500">Error loading form.</p>');
+    .catch(() => {
+      document.getElementById('modalContent').innerHTML = 
+        '<div class="text-center p-4">' +
+        '<p class="text-red-500 mb-2">Error loading form.</p>' +
+        '<button onclick="closeModal()" class="px-4 py-2 bg-blue-600 text-white rounded">Tutup</button>' +
+        '</div>';
+    });
 }
 
 function closeModal() {
@@ -227,7 +250,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const selectAll = document.getElementById('selectAll');
   const deleteBtn = document.getElementById('deleteSelectedBtn');
 
-  // Toggle tombol hapus saat ada yang tercentang
   function toggleDeleteBtn() {
     const checked = document.querySelectorAll('.rowCheckbox:checked').length;
     if (checked > 0) {
@@ -237,16 +259,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Select all
   selectAll?.addEventListener('change', () => {
-    document.querySelectorAll('.rowCheckbox').forEach(cb => cb.checked = selectAll.checked);
+    document.querySelectorAll('.rowCheckbox:not(:disabled)').forEach(cb => cb.checked = selectAll.checked);
     toggleDeleteBtn();
   });
 
-  // Setiap rowCheckbox berubah, cek lagi
   document.querySelectorAll('.rowCheckbox').forEach(cb => cb.addEventListener('change', toggleDeleteBtn));
 
-  // Aksi hapus terpilih
   deleteBtn.addEventListener('click', (e) => {
     e.preventDefault();
     const ids = Array.from(document.querySelectorAll('.rowCheckbox:checked')).map(cb => cb.value);

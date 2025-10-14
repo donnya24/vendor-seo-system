@@ -40,7 +40,7 @@ class Commissions extends BaseController
         ]);
     }
 
-    private function logActivity(string $action, string $description = null)
+    private function logActivity(string $action, ?string $description = null): void
     {
         $user = service('auth')->user();
         (new ActivityLogsModel())->insert([
@@ -69,7 +69,6 @@ class Commissions extends BaseController
 
         $this->logActivity('view', 'Melihat daftar komisi');
 
-        // ⬇️ Pakai layout master
         return view('vendoruser/layouts/vendor_master', $this->withVendorData([
             'title'        => 'Komisi',
             'content_view' => 'vendoruser/commissions/index',
@@ -155,6 +154,12 @@ class Commissions extends BaseController
                 ->with('error', 'Komisi tidak ditemukan.');
         }
 
+        // Cek jika status sudah paid
+        if ($item['status'] === 'paid') {
+            return redirect()->to(site_url('vendoruser/commissions'))
+                ->with('error', 'Komisi yang sudah dibayar tidak dapat diedit.');
+        }
+
         $this->logActivity('edit_form', "Membuka form edit komisi ID {$id}");
 
         return view('vendoruser/commissions/edit', $this->withVendorData([
@@ -176,6 +181,12 @@ class Commissions extends BaseController
 
         if (! $item) {
             return redirect()->back()->with('error', 'Komisi tidak ditemukan.');
+        }
+
+        // Cek jika status sudah paid
+        if ($item['status'] === 'paid') {
+            return redirect()->to(site_url('vendoruser/commissions'))
+                ->with('error', 'Komisi yang sudah dibayar tidak dapat diedit.');
         }
 
         $rules = [
@@ -246,6 +257,19 @@ class Commissions extends BaseController
                 ->with('error', 'Komisi tidak ditemukan.');
         }
 
+        // Cek jika status sudah paid
+        if ($item['status'] === 'paid') {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'status'   => 'error',
+                    'message'  => 'Komisi yang sudah dibayar tidak dapat dihapus.',
+                    'csrfHash' => csrf_hash(),
+                ]);
+            }
+            return redirect()->to(site_url('vendoruser/commissions'))
+                ->with('error', 'Komisi yang sudah dibayar tidak dapat dihapus.');
+        }
+
         if (!empty($item['proof']) && file_exists(FCPATH.'uploads/commissions/'.$item['proof'])) {
             @unlink(FCPATH.'uploads/commissions/'.$item['proof']);
         }
@@ -268,7 +292,6 @@ class Commissions extends BaseController
     public function deleteMultiple()
     {
         if (! $this->initVendor()) {
-            // AJAX → JSON, Non-AJAX → redirect
             if ($this->request->isAJAX()) {
                 return $this->response->setJSON([
                     'status'   => 'error',
@@ -280,12 +303,10 @@ class Commissions extends BaseController
                 ->with('error', 'Profil vendor belum ada.');
         }
 
-        // Ambil IDs dari AJAX JSON body atau POST form
         $ids = $this->request->isAJAX()
             ? ($this->request->getJSON(true)['ids'] ?? [])
             : ($this->request->getPost('ids') ?? []);
 
-        // Normalisasi ke array integer unik
         $ids = array_values(array_unique(array_map('intval', (array)$ids)));
 
         if (empty($ids)) {
@@ -299,7 +320,6 @@ class Commissions extends BaseController
             return redirect()->back()->with('error', 'Tidak ada komisi yang dipilih.');
         }
 
-        // Ambil item milik vendor saat ini
         $items = $this->commissionModel
             ->whereIn('id', $ids)
             ->where('vendor_id', $this->vendorId)
@@ -316,9 +336,24 @@ class Commissions extends BaseController
             return redirect()->back()->with('error', 'Data tidak ditemukan atau bukan milik Anda.');
         }
 
-        // Hapus file & record
+        // Filter hanya yang status bukan paid
+        $editableItems = array_filter($items, function($item) {
+            return $item['status'] !== 'paid';
+        });
+
+        if (empty($editableItems)) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'status'   => 'error',
+                    'message'  => 'Komisi yang sudah dibayar tidak dapat dihapus.',
+                    'csrfHash' => csrf_hash(),
+                ]);
+            }
+            return redirect()->back()->with('error', 'Komisi yang sudah dibayar tidak dapat dihapus.');
+        }
+
         $deleted = 0;
-        foreach ($items as $item) {
+        foreach ($editableItems as $item) {
             if (!empty($item['proof']) && file_exists(FCPATH.'uploads/commissions/'.$item['proof'])) {
                 @unlink(FCPATH.'uploads/commissions/'.$item['proof']);
             }
@@ -333,12 +368,11 @@ class Commissions extends BaseController
             return $this->response->setJSON([
                 'status'   => 'success',
                 'message'  => $msg,
-                'csrfHash' => csrf_hash(), // refresh token untuk request berikutnya
+                'csrfHash' => csrf_hash(),
             ]);
         }
 
         return redirect()->to(site_url('vendoruser/commissions'))
             ->with('success', $msg);
     }
-
 }
