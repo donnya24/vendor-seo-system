@@ -1,3 +1,7 @@
+<?php
+// File: app/Views/admin/Notifications/modal.php
+?>
+
 <!-- 🔔 Modal Notifikasi -->
 <div x-show="notifModal"
      x-cloak
@@ -40,24 +44,29 @@
             <!-- Info Notifikasi -->
             <div class="flex-1 pr-4">
               <p class="text-sm font-semibold text-gray-900">
-                <?= esc($n['title']) ?>
-                <?php if (! $n['is_read']): ?>
+                <?= esc($n['title'] ?? '-') ?>
+                <?php if (!($n['is_read'] ?? false)): ?>
                   <span class="ml-2 px-2 py-0.5 text-xs rounded-full bg-yellow-100 text-yellow-800">Baru</span>
                 <?php endif; ?>
               </p>
-              <p class="text-xs text-gray-600"><?= esc($n['message']) ?></p>
-              <p class="text-xs text-gray-400 mt-1"><?= esc($n['date']) ?></p>
+              <p class="text-xs text-gray-600"><?= esc($n['message'] ?? '-') ?></p>
+              
+              <!-- PERBAIKAN: Handle missing 'date' field dengan fallback ke created_at -->
+              <p class="text-xs text-gray-400 mt-1">
+                <?= !empty($n['date']) ? esc($n['date']) : 
+                    (!empty($n['created_at']) ? date('d M Y H:i', strtotime($n['created_at'])) : '-') ?>
+              </p>
             </div>
 
             <!-- Aksi -->
             <div class="flex items-center gap-2 shrink-0">
-              <?php if (! $n['is_read']): ?>
-                <form method="post" action="<?= site_url('admin/notifications/markRead/'.$n['id']) ?>">
+              <?php if (!($n['is_read'] ?? false)): ?>
+                <form method="post" action="<?= site_url('admin/notifications/markRead/'.($n['id'] ?? '')) ?>">
                   <?= csrf_field() ?>
                   <button type="submit" class="text-xs text-blue-600 hover:underline">Tandai Dibaca</button>
                 </form>
               <?php endif; ?>
-              <form method="post" action="<?= site_url('admin/notifications/delete/'.$n['id']) ?>"
+              <form method="post" action="<?= site_url('admin/notifications/delete/'.($n['id'] ?? '')) ?>"
                     onsubmit="return confirm('Hapus notifikasi ini?');">
                 <?= csrf_field() ?>
                 <button type="submit" class="text-xs text-red-600 hover:underline">Hapus</button>

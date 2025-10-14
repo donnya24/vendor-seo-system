@@ -114,48 +114,52 @@
 
             <tbody class="leading-relaxed [&>tr:nth-child(odd)]:bg-gray-50">
             <?php
+            // Siapkan array untuk data yang dikelompokkan
             $groupedData = [];
+            
             if (!empty($vendorServices)) {
-            foreach ($vendorServices as $vendorData) {
-                $vendor = $vendorData['vendor'];
-                if (!empty($vendorData['services'])) {
-                foreach ($vendorData['services'] as $service) {
-                    $serviceName = $service['service_name'] ?? '-';
-                    if ($serviceName !== '-') {
-                    if (!isset($groupedData[$serviceName])) {
-                        $groupedData[$serviceName] = [
-                        'vendor_id' => $vendor['id'],
-                        'vendor_name' => $vendor['business_name'],
-                        'service_description' => $service['service_description'] ?? '-',
-                        'products' => []
-                        ];
-                    }
+                foreach ($vendorServices as $vendorData) {
+                    $vendor = $vendorData['vendor'];
                     
-                    $products = explode('<br>', $service['products'] ?? '');
-                    $prices = explode('<br>', $service['products_harga'] ?? '');
-                    $descriptions = explode('<br>', $service['products_deskripsi'] ?? '');
-                    $attachments = explode('<br>', $service['products_lampiran'] ?? '');
-                    $attachmentUrls = explode('<br>', $service['products_lampiran_url'] ?? '');
-                    
-                    foreach ($products as $index => $product) {
-                        if (!empty($product)) {
-                        // Pastikan harga diubah ke integer
-                        $price = (int)($prices[$index] ?? 0);
-                        
-                        $groupedData[$serviceName]['products'][] = [
-                            'product_name' => $product,
-                            'product_description' => $descriptions[$index] ?? '-',
-                            'price' => $price,
-                            'attachment' => $attachments[$index] ?? null,
-                            'attachment_url' => $attachmentUrls[$index] ?? null,
-                        ];
+                    if (!empty($vendorData['services'])) {
+                        foreach ($vendorData['services'] as $service) {
+                            $serviceName = $service['service_name'] ?? '-';
+                            
+                            if ($serviceName !== '-') {
+                                // Ambil data produk
+                                $products = explode('<br>', $service['products'] ?? '');
+                                $prices = explode('<br>', $service['products_harga'] ?? '');
+                                $descriptions = explode('<br>', $service['products_deskripsi'] ?? '');
+                                $attachments = explode('<br>', $service['products_lampiran'] ?? '');
+                                $attachmentUrls = explode('<br>', $service['products_lampiran_url'] ?? '');
+                                
+                                // Siapkan array produk
+                                $productList = [];
+                                foreach ($products as $index => $product) {
+                                    if (!empty($product)) {
+                                        $productList[] = [
+                                            'product_name' => $product,
+                                            'product_description' => $descriptions[$index] ?? '-',
+                                            'price' => (int)($prices[$index] ?? 0),
+                                            'attachment' => isset($attachments[$index]) ? trim($attachments[$index]) : '',
+                                            'attachment_url' => isset($attachmentUrls[$index]) ? trim($attachmentUrls[$index]) : '',
+                                        ];
+                                    }
+                                }
+                                
+                                // Tambahkan ke groupedData
+                                $groupedData[$serviceName] = [
+                                    'vendor_id' => $vendor['id'],
+                                    'vendor_name' => $vendor['business_name'],
+                                    'service_description' => $service['service_description'] ?? '-',
+                                    'products' => $productList
+                                ];
+                            }
                         }
                     }
-                    }
-                }
                 }
             }
-            }
+            
             $rowNo = 1;
             ?>
 
@@ -167,7 +171,9 @@
                   $editUrl = site_url('admin/services/edit?service_name=' . rawurlencode($serviceName) . '&vendor_id=' . $serviceData['vendor_id']);
 
                   $serviceDescShort = $serviceData['service_description'];
-                  if (strlen($serviceDescShort) > 15) { $serviceDescShort = substr($serviceDescShort, 0, 15) . '...'; }
+                  if (strlen($serviceDescShort) > 15) { 
+                      $serviceDescShort = substr($serviceDescShort, 0, 15) . '...'; 
+                  }
                 ?>
                 <tr class="border-b border-gray-200 hover:bg-blue-50/50 transition-colors" data-vendor-id="<?= $serviceData['vendor_id'] ?>">
                   <td class="px-4 py-3 text-center align-top font-medium" rowspan="<?= $rowspan ?>"><?= $rowNo++; ?></td>
@@ -198,7 +204,9 @@
                     <?php foreach ($serviceData['products'] as $index => $product): ?>
                       <?php
                         $productDescShort = $product['product_description'];
-                        if (strlen($productDescShort) > 15) { $productDescShort = substr($productDescShort, 0, 15) . '...'; }
+                        if (strlen($productDescShort) > 15) { 
+                            $productDescShort = substr($productDescShort, 0, 15) . '...'; 
+                        }
                       ?>
                       <?php if ($index > 0): ?></tr><tr class="border-b border-gray-200 hover:bg-blue-50/50 transition-colors" data-vendor-id="<?= $serviceData['vendor_id'] ?>"><?php endif; ?>
 
@@ -208,7 +216,7 @@
                           <?= esc($product['product_name']); ?>
                         </span>
                         <span class="ml-1 inline-block rounded-full border border-gray-300 bg-gray-100 px-2.5 py-0.5 text-[11px] text-gray-700 align-middle">
-                        Rp <?= number_format((int)$product['price'], 0, ',', '.'); ?>
+                        Rp <?= number_format($product['price'], 0, ',', '.'); ?>
                         </span>
                       </td>
 
@@ -228,8 +236,8 @@
 
                       <!-- Lampiran -->
                       <td class="px-4 py-3 align-top text-center">
-                        <?php if ($product['attachment']): ?>
-                          <a href="<?= base_url('uploads/vendor_products/'.trim((string)$product['attachment'])); ?>" target="_blank"
+                        <?php if (!empty($product['attachment'])): ?>
+                          <a href="<?= base_url('uploads/vendor_products/' . $product['attachment']); ?>" target="_blank"
                              class="inline-flex items-center justify-center px-2.5 py-1.5 rounded border border-blue-200 bg-blue-50 text-blue-700 text-xs hover:bg-blue-100">
                             Lihat
                           </a>
@@ -432,6 +440,14 @@ function wireEditUI(){
     addBtn.dataset.bound = '1';
   }
 }
+
+// TAMBAHKAN FUNGSI INI UNTUK MENGHITUNG INDEX PRODUK
+function nextProductIndex() {
+  // Cari semua input produk yang ada
+  const productInputs = $root().querySelectorAll('input[name^="products["][name$="[product_name]"]');
+  return productInputs.length;
+}
+
 /* fungsi global utk dipanggil dari onclick di HTML edit form */
 window.addNewProduct = function(){
   const idx = nextProductIndex();
@@ -809,4 +825,4 @@ window.openModal=openModal; window.closeModal=closeModal;
 window.showDescription=showDescription; window.closeDescriptionModal=closeDescriptionModal;
 </script>
 
-<?= $this->include('admin/layouts/footer') ?>
+<?= $this->include('admin/layouts/footer'); ?>

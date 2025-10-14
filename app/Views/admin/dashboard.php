@@ -28,6 +28,44 @@
             }
         }
     </script>
+    
+    <!-- Custom styles for smaller SweetAlert2 -->
+    <style>
+        .small-swal {
+            font-size: 0.85rem !important;
+        }
+        
+        .small-swal .swal2-title {
+            font-size: 1.1rem !important;
+        }
+        
+        .small-swal .swal2-content {
+            font-size: 0.9rem !important;
+        }
+        
+        .small-swal .swal2-actions {
+            margin-top: 0.8rem !important;
+        }
+        
+        .small-swal .swal2-styled {
+            padding: 0.4rem 0.8rem !important;
+            font-size: 0.85rem !important;
+        }
+        
+        .small-swal-textarea {
+            font-size: 0.85rem !important;
+            padding: 0.5rem !important;
+        }
+        
+        .small-swal .swal2-input {
+            font-size: 0.85rem !important;
+        }
+        
+        .small-swal .swal2-label {
+            font-size: 0.9rem !important;
+            margin-bottom: 0.3rem !important;
+        }
+    </style>
 </head>
 <body class="bg-gray-50">
     <?= $this->include('admin/layouts/header'); ?>
@@ -448,7 +486,22 @@
         </div>
     </div>
 
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
+        // --- PERBAIKAN: Buat notifikasi "toast" yang lebih kecil dan di pojok kanan atas ---
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end', // Pojok kanan atas
+            showConfirmButton: false,
+            timer: 1500, // Hilang otomatis setelah 3 detik
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer)
+                toast.addEventListener('mouseleave', Swal.resumeTimer)
+            }
+        });
+
         // Fungsi untuk menampilkan detail leads
         async function showLeadDetail(id) {
             // Tampilkan modal
@@ -525,44 +578,177 @@
             setInterval(render, 30000);
         })();
 
+        // --- PERBAIKAN: Fungsi approveVendorRequest dengan SweetAlert2 ---
         async function approveVendorRequest(e, id) {
             e.preventDefault();
-            if (!confirm("Yakin ingin menyetujui vendor ini?")) return;
-
-            const formData = new FormData();
-            formData.append("id", id);
-
-            const res = await fetch("<?= site_url('admin/vendorrequests/approve') ?>", {
-                method: "POST",
-                body: formData,
-                headers: { "X-Requested-With": "XMLHttpRequest" }
+            
+            // Tampilkan konfirmasi dengan SweetAlert2 (ukuran lebih kecil)
+            const result = await Swal.fire({
+                title: 'Setujui Vendor?',
+                html: `Apakah Anda yakin ingin menyetujui pengajuan vendor ini?`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Ya, Setujui',
+                cancelButtonText: 'Batal',
+                width: '320px', // Perkecil lebar modal
+                padding: '0.8rem', // Perkecil padding
+                customClass: {
+                    popup: 'small-swal' // Tambahkan class kustom
+                }
             });
 
-            const data = await res.json();
-            alert(data.message);
+            if (!result.isConfirmed) return;
 
-            if (data.status === "success") location.reload();
+            // Tampilkan loading
+            Swal.fire({
+                title: 'Memproses...',
+                html: 'Sedang menyetujui vendor.',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                },
+                width: '280px', // Lebar lebih kecil untuk loading
+                padding: '0.6rem'
+            });
+
+            try {
+                const formData = new FormData();
+                formData.append("id", id);
+                // Tambahkan CSRF token
+                formData.append("<?= csrf_token() ?>", "<?= csrf_hash() ?>");
+
+                // PERBAIKAN: Ubah URL untuk menggunakan format dash-separated
+                const res = await fetch("<?= site_url('admin/dashboard/approve-vendor-request') ?>", {
+                    method: "POST",
+                    body: formData,
+                    headers: { "X-Requested-With": "XMLHttpRequest" }
+                });
+
+                const data = await res.json();
+                
+                if (data.status === "success") {
+                    // Tampilkan notifikasi sukses dengan Toast
+                    Toast.fire({
+                        icon: 'success',
+                        title: data.message
+                    }).then(() => {
+                        // Reload halaman setelah notifikasi muncul
+                        location.reload();
+                    });
+                } else {
+                    // Tampilkan notifikasi error
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: data.message || 'Terjadi kesalahan yang tidak diketahui.',
+                        width: '300px',
+                        padding: '0.8rem'
+                    });
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: 'Terjadi kesalahan jaringan. Silakan coba lagi.',
+                    width: '300px',
+                    padding: '0.8rem'
+                });
+            }
         }
 
+        // --- PERBAIKAN: Fungsi rejectVendorRequest dengan SweetAlert2 ---
         async function rejectVendorRequest(e, id) {
             e.preventDefault();
-            const reason = prompt("Masukkan alasan penolakan:", "Pengajuan ditolak admin");
-            if (!reason) return;
-
-            const formData = new FormData();
-            formData.append("id", id);
-            formData.append("reason", reason);
-
-            const res = await fetch("<?= site_url('admin/vendorrequests/reject') ?>", {
-                method: "POST",
-                body: formData,
-                headers: { "X-Requested-With": "XMLHttpRequest" }
+            
+            // Tampilkan input alasan dengan SweetAlert2 (ukuran lebih kecil)
+            const { value: reason } = await Swal.fire({
+                title: 'Tolak Vendor',
+                input: 'textarea',
+                inputLabel: 'Alasan Penolakan',
+                inputPlaceholder: 'Masukkan alasan penolakan...',
+                inputAttributes: {
+                    'aria-label': 'Masukkan alasan penolakan'
+                },
+                inputValidator: (value) => {
+                    if (!value) {
+                        return 'Alasan penolakan harus diisi!'
+                    }
+                },
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Tolak',
+                cancelButtonText: 'Batal',
+                width: '340px', // Lebar sedikit lebih besar karena ada textarea
+                padding: '0.8rem',
+                customClass: {
+                    popup: 'small-swal',
+                    input: 'small-swal-textarea' // Class kustom untuk textarea
+                }
             });
 
-            const data = await res.json();
-            alert(data.message);
+            if (!reason) return;
 
-            if (data.status === "success") location.reload();
+            // Tampilkan loading
+            Swal.fire({
+                title: 'Memproses...',
+                html: 'Sedang menolak vendor.',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                },
+                width: '280px',
+                padding: '0.6rem'
+            });
+
+            try {
+                const formData = new FormData();
+                formData.append("id", id);
+                formData.append("reason", reason);
+                // Tambahkan CSRF token
+                formData.append("<?= csrf_token() ?>", "<?= csrf_hash() ?>");
+
+                // PERBAIKAN: Ubah URL untuk menggunakan format dash-separated
+                const res = await fetch("<?= site_url('admin/dashboard/reject-vendor-request') ?>", {
+                    method: "POST",
+                    body: formData,
+                    headers: { "X-Requested-With": "XMLHttpRequest" }
+                });
+
+                const data = await res.json();
+                
+                if (data.status === "success") {
+                    // Tampilkan notifikasi sukses dengan Toast
+                    Toast.fire({
+                        icon: 'success',
+                        title: data.message
+                    }).then(() => {
+                        // Reload halaman setelah notifikasi muncul
+                        location.reload();
+                    });
+                } else {
+                    // Tampilkan notifikasi error
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: data.message || 'Terjadi kesalahan yang tidak diketahui.',
+                        width: '300px',
+                        padding: '0.8rem'
+                    });
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: 'Terjadi kesalahan jaringan. Silakan coba lagi.',
+                    width: '300px',
+                    padding: '0.8rem'
+                });
+            }
         }
     </script>
 

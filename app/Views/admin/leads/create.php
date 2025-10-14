@@ -22,7 +22,7 @@
       </div>
 
       <!-- Form -->
-      <form action="<?= site_url('admin/leads/store') ?>" method="post" class="p-5 space-y-4">
+      <form action="<?= site_url('admin/leads/store') ?>" method="post" id="createLeadForm" class="p-5 space-y-4">
         <?= csrf_field() ?>
 
         <!-- Vendor -->
@@ -51,11 +51,21 @@
                  class="w-full rounded-lg border-gray-300 focus:ring-2 focus:ring-blue-500">
         </div>
 
-        <!-- Tanggal -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal *</label>
-          <input type="date" name="tanggal" required
-                 class="w-full rounded-lg border-gray-300 focus:ring-2 focus:ring-blue-500">
+        <!-- Periode Tanggal -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Tanggal Mulai -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Mulai *</label>
+            <input type="date" name="tanggal_mulai" required
+                   class="w-full rounded-lg border-gray-300 focus:ring-2 focus:ring-blue-500">
+          </div>
+
+          <!-- Tanggal Selesai -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Selesai</label>
+            <input type="date" name="tanggal_selesai"
+                   class="w-full rounded-lg border-gray-300 focus:ring-2 focus:ring-blue-500">
+          </div>
         </div>
 
         <!-- Footer Buttons -->

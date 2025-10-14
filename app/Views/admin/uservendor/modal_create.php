@@ -140,7 +140,6 @@
                             class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
                         <option value="pending" selected>Pending</option>
                         <option value="verified">Verified</option>
-                        <option value="rejected">Rejected</option>
                         <option value="inactive">Inactive</option>
                     </select>
                 </div>

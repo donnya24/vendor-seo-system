@@ -571,7 +571,7 @@ async function submitSeoForm(formElement, isEdit = false) {
                 closeModal(modalId);
                 // Perbaikan: Gunakan pengalihan yang lebih andal
                 window.location.href = window.location.href;
-            }, 1500);
+            }, 10);
             
         } else {
             // Handle field-specific errors
@@ -678,7 +678,7 @@ async function toggleSuspendSeo(userId, button) {
             // Auto refresh setelah 1.5 detik
             setTimeout(() => {
                 window.location.reload();
-            }, 1500);
+            }, 10);
         } else {
             showToast(result.message, 'error');
         }
@@ -766,7 +766,7 @@ window.UMDel = (function () {
                 
                 setTimeout(() => {
                     window.location.reload();
-                }, 1000);
+                }, 10);
                 
             } else {
                 showToast(result.message, 'error');

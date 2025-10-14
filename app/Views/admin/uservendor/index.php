@@ -234,7 +234,7 @@ if (!empty($users)) {
               <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">NO. TLP</th>
               <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">WHATSAPP</th>
               <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">EMAIL</th>
-              <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">KOMISI</th>
+              <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">KOMISI DIAJUKAN</th>
               <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">STATUS</th>
               <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">AKSI</th>
             </tr>
@@ -731,7 +731,7 @@ async function toggleSuspendVendor(userId, button) {
             // Auto refresh setelah 1.5 detik
             setTimeout(() => {
                 window.location.reload();
-            }, 1500);
+            }, 10);
             
         } else {
             showToast(result.message, 'error');
@@ -913,7 +913,7 @@ window.UMDel = (function () {
         if (result.refresh) {
           setTimeout(() => {
             window.location.reload();
-          }, 1500);
+          }, 10);
         }
         
       } else {
@@ -992,7 +992,7 @@ async function verifyVendor(userId, button) {
             // Refresh page setelah 1.5 detik
             setTimeout(() => {
                 window.location.reload();
-            }, 1500);
+            }, 10);
         } else {
             showToast(result.message, 'error');
             button.innerHTML = originalHTML;
@@ -1069,7 +1069,7 @@ document.getElementById('rejectVendorForm').addEventListener('submit', async fun
             // Refresh page setelah 1.5 detik
             setTimeout(() => {
                 window.location.reload();
-            }, 1500);
+            }, 10);
         } else {
             showToast(result.message, 'error');
             submitButton.innerHTML = originalText;
@@ -1549,7 +1549,7 @@ async function submitVendorForm(formElement, isEdit = false) {
                 const modalId = isEdit ? 'editUserModal' : 'createUserModal';
                 closeModal(modalId);
                 window.location.reload();
-            }, 1500);
+            }, 10);
             
         } else {
             // Handle field-specific errors

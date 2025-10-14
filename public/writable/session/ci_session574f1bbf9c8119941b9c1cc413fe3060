@@ -1,0 +1,1 @@
+__ci_last_regenerate|i:1760103332;csrf_test_name|s:32:"db26f06241bb981b8997de156540fbbc";beforeLoginUrl|s:38:"http://localhost:8080/admin/uservendor";__ci_vars|a:1:{s:14:"beforeLoginUrl";i:1760102373;}_ci_previous_url|s:37:"http://localhost:8080/admin/dashboard";user|a:1:{s:2:"id";i:1;}

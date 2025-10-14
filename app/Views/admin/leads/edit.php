@@ -22,7 +22,7 @@
       </div>
 
       <!-- Form -->
-      <form action="<?= site_url('admin/leads/update/'.$lead['id']) ?>" method="post" class="p-5 space-y-4">
+      <form action="<?= site_url('admin/leads/update/'.$lead['id']) ?>" method="post" id="editLeadForm" class="p-5 space-y-4">
         <?= csrf_field() ?>
 
         <!-- Vendor -->
@@ -61,15 +61,15 @@
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Mulai *</label>
             <input type="date" name="tanggal_mulai" required
-                  value="<?= esc($lead['tanggal_mulai']) ?>"
+                  value="<?= !empty($lead['tanggal_mulai']) ? date('Y-m-d', strtotime($lead['tanggal_mulai'])) : '' ?>"
                   class="w-full rounded-lg border-gray-300 focus:ring-2 focus:ring-blue-500">
           </div>
 
           <!-- Tanggal Selesai -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Selesai *</label>
-            <input type="date" name="tanggal_selesai" required
-                  value="<?= esc($lead['tanggal_selesai']) ?>"
+            <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Selesai</label>
+            <input type="date" name="tanggal_selesai"
+                  value="<?= !empty($lead['tanggal_selesai']) ? date('Y-m-d', strtotime($lead['tanggal_selesai'])) : '' ?>"
                   class="w-full rounded-lg border-gray-300 focus:ring-2 focus:ring-blue-500">
           </div>
         </div>

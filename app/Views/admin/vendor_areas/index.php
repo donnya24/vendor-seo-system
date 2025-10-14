@@ -37,10 +37,10 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
+                    <tbody class="bg-white divide-y divide-gray-200" id="vendorAreasTable">
                         <?php $i = 1; ?>
                         <?php foreach ($vendorAreas as $item): ?>
-                            <tr>
+                            <tr id="vendor-<?= $item['vendor']['id'] ?>">
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"><?= $i++ ?></td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"><?= esc($item['vendor']['business_name']) ?></td>
                                 <td class="px-6 py-4 whitespace-nowrap">
@@ -50,10 +50,18 @@
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-900">
                                     <?php if (!empty($item['areas'])): ?>
-                                        <div class="flex flex-wrap gap-1">
+                                        <div class="flex flex-wrap gap-1" id="areas-<?= $item['vendor']['id'] ?>">
                                             <?php foreach ($item['areas'] as $area): ?>
-                                                <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800" title="<?= esc($area['path'] ?? $area['name']) ?>">
+                                                <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 area-item" 
+                                                      data-vendor-id="<?= $item['vendor']['id'] ?>" 
+                                                      data-area-id="<?= $area['id'] ?>"
+                                                      title="<?= esc($area['path'] ?? $area['name']) ?>">
                                                     <?= esc($area['name']) ?>
+                                                    <button type="button" 
+                                                            onclick="deleteArea(<?= $item['vendor']['id'] ?>, <?= $area['id'] ?>, '<?= esc($area['name']) ?>')"
+                                                            class="ml-1 text-red-600 hover:text-red-800 text-xs">
+                                                        ×
+                                                    </button>
                                                 </span>
                                             <?php endforeach; ?>
                                         </div>
@@ -62,22 +70,13 @@
                                     <?php endif; ?>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <?php 
-                                    // Siapkan data vendor dan area untuk dikirim ke URL
-                                    $vendorData = json_encode($item['vendor']);
-                                    $areasData = json_encode($item['areas']);
-                                    ?>
-                                    <button onclick="openModal('<?= site_url('admin/areas/edit/' . $item['vendor']['id']) ?>?vendor=<?= urlencode($vendorData) ?>&areas=<?= urlencode($areasData) ?>')" class="text-blue-600 hover:text-blue-900 mr-3">
+                                    <button onclick="openEditModal(<?= $item['vendor']['id'] ?>)" class="text-blue-600 hover:text-blue-900 mr-3">
                                         <i class="fas fa-edit"></i> Edit
                                     </button>
-                                    <form action="<?= site_url('admin/areas/clear-all/' . $item['vendor']['id']) ?>" method="POST" class="inline">
-                                        <?= csrf_field() ?>
-                                        <button type="submit" 
-                                                class="text-red-600 hover:text-red-900"
-                                                onclick="return confirm('Apakah Anda yakin ingin menghapus semua area untuk vendor <?= esc($item['vendor']['business_name']) ?>?')">
-                                            <i class="fas fa-trash"></i> Hapus
-                                        </button>
-                                    </form>
+                                    <button onclick="clearAllAreas(<?= $item['vendor']['id'] ?>, '<?= esc($item['vendor']['business_name']) ?>')" 
+                                            class="text-red-600 hover:text-red-900">
+                                        <i class="fas fa-trash"></i> Hapus Semua
+                                    </button>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -107,7 +106,227 @@
     </div>
 </div>
 
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <script>
+// Global variables for areas data
+window.__AREAS_PRE = [];
+window.__AREAS_SEARCH_URL = '<?= site_url('admin/areas/search') ?>';
+
+// PERBAIKAN: Fungsi global untuk SweetAlert dengan ukuran kecil
+function showMini(status, message, redirect = null) {
+    const config = {
+        toast: true, // Menggunakan toast instead of modal
+        position: 'top-end',
+        icon: status,
+        title: status === 'success' ? 'Sukses' : (status === 'error' ? 'Error' : 'Info'),
+        text: message,
+        showConfirmButton: status !== 'success',
+        timer: status === 'success' ? 2000 : 3000,
+        timerProgressBar: true,
+        width: '300px',
+        padding: '0.5rem',
+        customClass: {
+            popup: 'small-toast',
+            title: 'small-toast-title',
+            htmlContainer: 'small-toast-text',
+            confirmButton: 'small-toast-button'
+        }
+    };
+
+    Swal.fire(config).then((result) => {
+        if (redirect && (status === 'success' || result.isConfirmed)) {
+            window.location.href = redirect;
+        }
+    });
+}
+
+// PERBAIKAN: Fungsi untuk menghapus area individual dengan notifikasi kecil
+function deleteArea(vendorId, areaId, areaName) {
+    // PERBAIKAN: Gunakan konfirmasi kecil
+    Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'question',
+        title: 'Hapus Area?',
+        text: `Hapus "${areaName}" dari vendor?`,
+        showConfirmButton: true,
+        showCancelButton: true,
+        confirmButtonText: 'Ya',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#d33',
+        width: '300px',
+        padding: '0.5rem'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Show loading
+            const areaElement = document.querySelector(`.area-item[data-vendor-id="${vendorId}"][data-area-id="${areaId}"]`);
+            if (areaElement) {
+                areaElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            }
+
+            // AJAX request to delete area
+            fetch('<?= site_url('admin/areas/delete') ?>', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: `vendor_id=${vendorId}&area_id=${areaId}&<?= csrf_token() ?>=<?= csrf_hash() ?>`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Remove area from UI
+                    if (areaElement) {
+                        areaElement.remove();
+                    }
+                    
+                    // Check if no areas left
+                    const areasContainer = document.getElementById(`areas-${vendorId}`);
+                    if (areasContainer) {
+                        const remainingAreas = areasContainer.querySelectorAll('.area-item');
+                        
+                        if (remainingAreas.length === 0) {
+                            // Jika tidak ada area lagi, update seluruh cell
+                            const areaCell = areasContainer.closest('td');
+                            if (areaCell) {
+                                areaCell.innerHTML = '<span class="text-gray-500">Belum ada area</span>';
+                            }
+                        }
+                    }
+                    
+                    // PERBAIKAN: Tampilkan notifikasi kecil
+                    showMini('success', data.message);
+                } else {
+                    showMini('error', data.message);
+                    // Reset area element if error
+                    if (areaElement) {
+                        areaElement.innerHTML = `${areaName} <button type="button" onclick="deleteArea(${vendorId}, ${areaId}, '${areaName}')" class="ml-1 text-red-600 hover:text-red-800 text-xs">×</button>`;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMini('error', 'Terjadi kesalahan jaringan');
+                // Reset area element if error
+                if (areaElement) {
+                    areaElement.innerHTML = `${areaName} <button type="button" onclick="deleteArea(${vendorId}, ${areaId}, '${areaName}')" class="ml-1 text-red-600 hover:text-red-800 text-xs">×</button>`;
+                }
+            });
+        }
+    });
+}
+
+// PERBAIKAN: Fungsi untuk menghapus semua area dengan notifikasi kecil
+function clearAllAreas(vendorId, vendorName) {
+    // PERBAIKAN: Gunakan konfirmasi kecil
+    Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'question',
+        title: 'Hapus Semua Area?',
+        text: `Hapus semua area untuk "${vendorName}"?`,
+        showConfirmButton: true,
+        showCancelButton: true,
+        confirmButtonText: 'Ya',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#d33',
+        width: '300px',
+        padding: '0.5rem'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Show loading
+            const row = document.getElementById(`vendor-${vendorId}`);
+            if (row) {
+                const areasCell = row.querySelector('td:nth-child(4)');
+                if (areasCell) {
+                    areasCell.innerHTML = '<div class="flex justify-center"><i class="fas fa-spinner fa-spin text-blue-600"></i></div>';
+                }
+            }
+
+            // AJAX request to clear all areas
+            fetch('<?= site_url('admin/areas/clear-all/') ?>' + vendorId, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: `<?= csrf_token() ?>=<?= csrf_hash() ?>`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Update UI
+                    const areasCell = document.querySelector(`#vendor-${vendorId} td:nth-child(4)`);
+                    if (areasCell) {
+                        areasCell.innerHTML = '<span class="text-gray-500">Belum ada area</span>';
+                    }
+                    // PERBAIKAN: Tampilkan notifikasi kecil
+                    showMini('success', data.message);
+                } else {
+                    showMini('error', data.message);
+                    // Reload on error to sync state
+                    window.location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMini('error', 'Terjadi kesalahan jaringan');
+                window.location.reload();
+            });
+        }
+    });
+}
+
+function openEditModal(vendorId) {
+    console.log('Opening edit modal for vendor:', vendorId);
+    
+    // Show loading spinner
+    document.getElementById('modalContent').innerHTML = `
+        <div class="flex justify-center items-center py-8">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+    `;
+    
+    // Show modal
+    document.getElementById('formModal').classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+    
+    // PERBAIKAN: Gunakan parameter modal=1 seperti di Vendoruser
+    fetch(`<?= site_url('admin/areas/edit') ?>/${vendorId}?modal=1`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok: ' + response.status);
+        }
+        return response.text();
+    })
+    .then(html => {
+        document.getElementById('modalContent').innerHTML = html;
+        
+        // Initialize Alpine.js after content is loaded
+        setTimeout(() => {
+            if (typeof Alpine !== 'undefined') {
+                Alpine.initTree(document.getElementById('modalContent'));
+            }
+        }, 100);
+    })
+    .catch(error => {
+        console.error('Error loading modal content:', error);
+        document.getElementById('modalContent').innerHTML = `
+            <div class="alert alert-danger p-4 text-red-700 bg-red-100 border border-red-400 rounded">
+                <strong>Error:</strong> Gagal memuat form. Silakan coba lagi.<br>
+                <small>${error.message}</small>
+            </div>
+        `;
+    });
+}
+
 function openModal(url) {
     console.log('Opening modal with URL:', url);
     
@@ -137,17 +356,8 @@ function openModal(url) {
     .then(html => {
         document.getElementById('modalContent').innerHTML = html;
         
-        // Tunggu sebentar sebelum menginisialisasi Alpine.js
+        // Initialize Alpine.js after content is loaded
         setTimeout(() => {
-            // Hapus komponen Alpine yang mungkin sudah ada
-            const existingComponents = document.querySelectorAll('#modalContent [x-data]');
-            existingComponents.forEach(el => {
-                if (el._x_dataStack) {
-                    Alpine.destroyTree(el);
-                }
-            });
-            
-            // Inisialisasi ulang Alpine.js
             if (typeof Alpine !== 'undefined') {
                 Alpine.initTree(document.getElementById('modalContent'));
             }
@@ -225,11 +435,8 @@ document.addEventListener('submit', function(e) {
                 showConfirmButton: false
             }).then(() => {
                 closeModal();
-                if (data.redirect) {
-                    window.location.href = data.redirect;
-                } else {
-                    window.location.reload();
-                }
+                // Reload page to reflect changes
+                window.location.reload();
             });
         } else {
             Swal.fire({
@@ -272,6 +479,34 @@ document.addEventListener('keydown', function(e) {
 function closeAreasPopup() {
     closeModal();
 }
+
+// Global variables for areas data
+window.__AREAS_PRE = [];
+window.__AREAS_SEARCH_URL = '<?= site_url('admin/areas/search') ?>';
+window.__VENDORS = []; // Akan diisi saat modal dibuka
 </script>
 
-<?= $this->include('admin/layouts/footer') ?>
+<!-- PERBAIKAN: Tambahkan CSS untuk notifikasi kecil -->
+<style>
+.small-toast {
+    font-size: 0.875rem !important;
+    width: 300px !important;
+    padding: 0.5rem !important;
+}
+
+.small-toast-title {
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+}
+
+.small-toast-text {
+    font-size: 0.75rem !important;
+}
+
+.small-toast-button {
+    font-size: 0.75rem !important;
+    padding: 0.25rem 0.5rem !important;
+}
+</style>
+
+<?= $this->include('admin/layouts/footer'); ?>

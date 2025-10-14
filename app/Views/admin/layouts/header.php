@@ -1,38 +1,29 @@
 <?php
 // Fallback aman untuk var
-$stats = array_merge([
+ $stats = array_merge([
     'leads_new' => 0,
     'leads_inprogress' => 0,
     'keywords_total' => 0,
-    'unread' => 0,
     'leads_closing' => 0,
-    'leads_today' => 0,
-    'leads_closing_today' => 0,
 ], $stats ?? []);
 
-$recentLeads    = $recentLeads   ?? [];
-$topKeywords    = $topKeywords   ?? [];
-$notifications  = $notifications ?? [];
+ $recentLeads    = $recentLeads   ?? [];
+ $topKeywords    = $topKeywords   ?? [];
+ $notifications  = $notifications ?? [];
 
-// Ambil data admin
-$user           = service('auth')->user();
-$adminProfileModel = new \App\Models\AdminProfileModel();
-$ap             = $adminProfileModel->where('user_id', $user->id)->first();
+// Ambil data admin - Gunakan data yang sudah disediakan oleh controller
+ $user           = $user ?? service('auth')->user();
+ $adminName      = $adminName ?? 
+                  ($user->username ?? 
+                  (session('user_name') ?? 
+                  'Admin'));
 
-// Tentukan nama admin
-$adminName = $ap['name'] ?? 
-            ($user->username ?? 
-            (session('user_name') ?? 
-            'Admin'));
+ $openNotifModal = !empty($openNotifModal);
 
-$openNotifModal = !empty($openNotifModal);
-
-// Foto profil
-$profileImage     = $ap['profile_image'] ?? '';
-$profileOnDisk    = $profileImage ? (FCPATH . 'uploads/admin_profiles/' . $profileImage) : '';
-$profileImagePath = ($profileImage && is_file($profileOnDisk))
-    ? base_url('uploads/admin_profiles/' . $profileImage)
-    : base_url('assets/img/default-avatar.png');
+// Foto profil - Gunakan data yang sudah disediakan oleh controller
+ $profileImage     = $profileImage ?? '';
+ $profileOnDisk    = $profileOnDisk ?? '';
+ $profileImagePath = $profileImagePath ?? base_url('assets/img/default-avatar.png');
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -226,10 +217,10 @@ $profileImagePath = ($profileImage && is_file($profileOnDisk))
                                 class="relative p-2 text-white/90 hover:text-white hover:bg-white/12 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-white/30 focus:ring-offset-1 focus:ring-offset-transparent"
                                 :aria-expanded="notifOpen" aria-haspopup="true">
                             <i class="fas fa-bell text-lg sm:text-base"></i>
-                            <?php if (($stats['unread'] ?? 0) > 0): ?>
+                            <?php if (($unread ?? 0) > 0): ?>
                                 <span id="notifBadge"
                                     class="absolute -top-0.5 -right-0.5 bg-red-500 text-white rounded-full min-w-[1.25rem] h-5 flex items-center justify-center text-xs font-medium px-1">
-                                    <?= min(99, (int)($stats['unread'] ?? 0)) ?><?= (int)($stats['unread'] ?? 0) > 99 ? '+' : '' ?>
+                                    <?= min(99, (int)($unread ?? 0)) ?><?= (int)($unread ?? 0) > 99 ? '+' : '' ?>
                                 </span>
                             <?php endif; ?>
                         </button>

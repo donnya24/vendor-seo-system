@@ -146,7 +146,6 @@
                             class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
                         <option value="pending" <?= (isset($profile['status']) && $profile['status'] === 'pending') ? 'selected' : '' ?>>Pending</option>
                         <option value="verified" <?= (isset($profile['status']) && $profile['status'] === 'verified') ? 'selected' : '' ?>>Verified</option>
-                        <option value="rejected" <?= (isset($profile['status']) && $profile['status'] === 'rejected') ? 'selected' : '' ?>>Rejected</option>
                         <option value="inactive" <?= (isset($profile['status']) && $profile['status'] === 'inactive') ? 'selected' : '' ?>>Inactive</option>
                     </select>
                 </div>

@@ -2,31 +2,40 @@
 <?= $this->include('admin/layouts/sidebar'); ?>
 
 <div class="space-y-6" x-data="commissionManager()">
-  <!-- Header -->
-  <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-4 border-b border-gray-200 px-4 sm:px-6">
+<!-- Header -->
+<div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-4 border-b border-gray-200 px-4 sm:px-6">
     <div class="w-full lg:w-auto">
-      <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
-        <i class="fas fa-wallet text-blue-600"></i> Manajemen Komisi Vendor
-      </h1>
-      <p class="mt-1 text-sm text-gray-600">Kelola dan verifikasi komisi semua vendor</p>
+        <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <i class="fas fa-wallet text-blue-600"></i> Manajemen Komisi Vendor
+        </h1>
+        <p class="mt-1 text-sm text-gray-600">Kelola dan verifikasi komisi semua vendor</p>
     </div>
     
-    <!-- Bulk Actions -->
+    <!-- Bulk Actions & Export -->
     <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-      <div class="flex gap-2 w-full sm:w-auto">
-        <select x-model="bulkAction" class="rounded-lg border-gray-300 text-sm py-2 px-3 w-full sm:w-40">
-          <option value="">Aksi Massal</option>
-          <option value="verify">Verifikasi & Bayar</option>
-          <option value="delete">Hapus</option>
-        </select>
-        <button @click="executeBulkAction()" 
-                :disabled="!bulkAction || selectedCommissions.length === 0"
-                class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors whitespace-nowrap w-full sm:w-auto">
-          Terapkan
-        </button>
-      </div>
+        <!-- Export Button -->
+        <a href="<?= site_url('admin/commissions/export-csv') . 
+            ($vendor_id && $vendor_id !== 'all' ? '?vendor_id=' . $vendor_id : '') . 
+            ($status && $status !== 'all' ? ($vendor_id && $vendor_id !== 'all' ? '&' : '?') . 'status=' . $status : '') ?>" 
+           class="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center gap-2 w-full sm:w-auto justify-center">
+            <i class="fas fa-file-export"></i> Export CSV
+        </a>
+        
+        <!-- Bulk Actions -->
+        <div class="flex gap-2 w-full sm:w-auto">
+            <select x-model="bulkAction" class="rounded-lg border-gray-300 text-sm py-2 px-3 w-full sm:w-40">
+                <option value="">Aksi Massal</option>
+                <option value="verify">Verifikasi Pembayaran</option>
+                <option value="delete">Hapus</option>
+            </select>
+            <button @click="executeBulkAction()" 
+                    :disabled="!bulkAction || selectedCommissions.length === 0"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors whitespace-nowrap w-full sm:w-auto">
+                Terapkan
+            </button>
+        </div>
     </div>
-  </div>
+</div>
 
   <!-- Filter Section -->
   <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mx-4 sm:mx-6">
@@ -252,7 +261,7 @@
                     <?php if ($currentStatus === 'unpaid'): ?>
                       <button @click="confirmAction('verify', <?= $c['id'] ?>)"
                               class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1">
-                        <i class="fas fa-check mr-1"></i> Verifikasi & Bayar
+                        <i class="fas fa-check mr-1"></i> Verifikasi Pembayaran
                       </button>
                     <?php endif; ?>
                     
@@ -474,7 +483,7 @@ function commissionManager() {
         selectedCommissions: [],
         loading: false,
         actionLabels: {
-            'verify': 'Verifikasi & Bayar',
+            'verify': 'Verifikasi Pembayaran',
             'delete': 'Hapus'
         },
         notification: {
@@ -487,7 +496,7 @@ function commissionManager() {
         
         get modalTitle() {
             const titles = {
-                'verify': 'Konfirmasi Verifikasi & Pembayaran',
+                'verify': 'Konfirmasi Verifikasi Pembayaran',
                 'delete': 'Konfirmasi Penghapusan'
             };
             return titles[this.actionType] || 'Konfirmasi';
@@ -563,6 +572,47 @@ function commissionManager() {
                     'error',
                     'Gagal',
                     error.message || 'Terjadi kesalahan saat memproses permintaan'
+                );
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async exportCsv() {
+            this.loading = true;
+            
+            try {
+                // Build URL dengan filter yang aktif
+                const url = new URL('<?= site_url('admin/commissions/export-csv') ?>');
+                
+                // Tambahkan parameter filter jika ada
+                const urlParams = new URLSearchParams(window.location.search);
+                const vendorId = urlParams.get('vendor_id');
+                const status = urlParams.get('status');
+                
+                if (vendorId && vendorId !== 'all') {
+                    url.searchParams.set('vendor_id', vendorId);
+                }
+                
+                if (status && status !== 'all') {
+                    url.searchParams.set('status', status);
+                }
+                
+                // Trigger download
+                window.location.href = url.toString();
+                
+                this.showNotification(
+                    'success', 
+                    'Export Berhasil', 
+                    'Data komisi berhasil diunduh. File akan segera tersedia.'
+                );
+                
+            } catch (error) {
+                console.error('Error exporting CSV:', error);
+                this.showNotification(
+                    'error',
+                    'Export Gagal',
+                    'Terjadi kesalahan saat mengekspor data. Silakan coba lagi.'
                 );
             } finally {
                 this.loading = false;
