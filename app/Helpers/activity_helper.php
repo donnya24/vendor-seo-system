@@ -14,7 +14,7 @@ if (!function_exists('log_activity_auto')) {
      * @param string|null $description  Deskripsi tambahan aktivitas
      * @param array       $extraData    Data tambahan opsional (mis. module, vendor_id, dll)
      */
-    function log_activity_auto(string $action, string $description = null, array $extraData = []): bool
+    function log_activity_auto(string $action, ?string $description = null, array $extraData = []): bool
     {
         try {
             $auth = service('auth');

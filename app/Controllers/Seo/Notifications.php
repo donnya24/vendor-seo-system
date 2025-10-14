@@ -79,7 +79,7 @@ class Notifications extends BaseController
             $isPrivate    = ((int)($r['user_id'] ?? 0) === $uid);
             $r['is_read'] = $isPrivate ? (int)($r['n_is_read'] ?? 0) : (int)($r['s_is_read'] ?? 0);
             $r['date']    = !empty($r['date']) ? date('Y-m-d H:i', strtotime($r['date'])) : '-';
-            unset($r['n_is_read'], $r['s_is_read'], $r['s_hidden']);
+            unset($r['n_is_read'], $r['s_read'], $r['s_hidden']);
             return $r;
         }, $rows);
     }
@@ -110,7 +110,7 @@ class Notifications extends BaseController
         return view('Seo/layouts/seo_master', [
             'title'            => 'Notifikasi',
             'profile'          => $sp ?? [],
-            'notifications'    => $items,
+            'notifications'    => $items, // Perbaikan: gunakan 'notifications' sebagai key
             'stats'            => ['unread' => $unread],
             'openNotifModal'   => true,
             'suppress_content' => true,

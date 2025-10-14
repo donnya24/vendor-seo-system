@@ -6,9 +6,9 @@ use CodeIgniter\Model;
 
 class SeoProfilesModel extends Model
 {
-    protected $table         = 'seo_profiles';
-    protected $primaryKey    = 'id';
-    protected $allowedFields = [
+    protected $table            = 'seo_profiles';
+    protected $primaryKey       = 'id';
+    protected $allowedFields    = [
         'user_id',
         'name',
         'phone',
@@ -17,35 +17,41 @@ class SeoProfilesModel extends Model
         'created_at',
         'updated_at'
     ];
-    protected $useTimestamps = true; // Aktifkan timestamps otomatis
-    protected $returnType    = 'array';
-    protected $dateFormat    = 'datetime';
+
+    // ✅ Lebih aman: timestamps otomatis CI4 akan set created_at & updated_at
+    protected $useTimestamps    = true;
+    protected $createdField     = 'created_at';
+    protected $updatedField     = 'updated_at';
+
+    protected $returnType       = 'array';
+    protected $dateFormat       = 'datetime';
 
     /**
-     * Mendapatkan profil SEO berdasarkan user_id
+     * ✅ Ambil profil SEO berdasarkan user_id
      */
     public function getByUserId($userId)
     {
-        return $this->where('user_id', $userId)->first();
+        return $this->where('user_id', (int)$userId)->first();
     }
 
     /**
-     * Mendapatkan profil SEO berdasarkan user_id atau buat baru jika belum ada
+     * ✅ Ambil atau buat profil SEO berdasarkan user_id
+     * Perbaikan:
+     * - Gunakan primary key (`id`) saat update, bukan `user_id`
+     * - Hindari insert duplikat
+     * - Pastikan timestamp otomatis aktif
      */
     public function getOrCreateByUserId($userId, $data = [])
     {
         $profile = $this->getByUserId($userId);
-        
+
         if ($profile) {
-            // Update profil yang ada
-            $this->update($userId, $data);
-            return $profile;
+            // Update profil yang ada (pakai id, bukan user_id)
+            $this->update($profile['id'], $data);
+            return $this->find($profile['id']);
         } else {
             // Buat profil baru
-            $data['user_id'] = $userId;
-            $data['created_at'] = date('Y-m-d H:i:s');
-            $data['updated_at'] = date('Y-m-d H:i:s');
-            
+            $data['user_id'] = (int)$userId;
             $this->insert($data);
             return $this->find($this->insertID());
         }

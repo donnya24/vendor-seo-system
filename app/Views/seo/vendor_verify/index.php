@@ -110,6 +110,12 @@
                             class="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-green-600 text-white text-xs font-medium shadow-sm hover:bg-green-700 focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition">
                       <i class="fas fa-check"></i> Approve
                     </button>
+
+                    <!-- Button Reject -->
+                    <button @click="confirmReject(<?= $vendor['id'] ?>, '<?= esc($vendor['business_name']) ?>')"
+                            class="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-red-600 text-white text-xs font-medium shadow-sm hover:bg-red-700 focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition">
+                      <i class="fas fa-times"></i> Reject
+                    </button>
                   <?php else: ?>
                     <span class="px-3 py-1.5 rounded-md bg-gray-100 text-gray-600 text-xs">Tidak Ada Aksi</span>
                   <?php endif; ?>
@@ -172,6 +178,63 @@
     </div>
   </div>
 
+  <!-- Modal Konfirmasi Reject -->
+  <div x-show="showRejectModal" x-cloak
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
+      x-transition:enter="transition ease-out duration-300"
+      x-transition:enter-start="opacity-0"
+      x-transition:enter-end="opacity-100"
+      x-transition:leave="transition ease-in duration-200"
+      x-transition:leave-start="opacity-100"
+      x-transition:leave-end="opacity-0">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-md"
+          @click.stop
+          x-transition:enter="transition ease-out duration-300"
+          x-transition:enter-start="opacity-0 scale-95 translate-y-1"
+          x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+          x-transition:leave="transition ease-in duration-200"
+          x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+          x-transition:leave-end="opacity-0 scale-95 translate-y-1">
+          <div class="p-6">
+              <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-red-100">
+                  <i class="fas fa-times text-red-600 text-2xl"></i>
+              </div>
+              <h3 class="text-lg font-semibold text-center text-gray-900 mb-2">Konfirmasi Reject</h3>
+              <p class="text-gray-600 text-center mb-4">
+                  Apakah Anda yakin ingin menolak vendor <span class="font-semibold" x-text="vendorName"></span>?
+              </p>
+              
+              <!-- Input Alasan Reject -->
+              <div class="mb-4">
+                  <label for="rejectReason" class="block text-sm font-medium text-gray-700 mb-2">
+                      Alasan Penolakan <span class="text-red-500">*</span>
+                  </label>
+                  <textarea 
+                      id="rejectReason"
+                      x-model="rejectReason"
+                      placeholder="Masukkan alasan penolakan vendor..."
+                      rows="3"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
+                      required></textarea>
+                  <p class="text-xs text-gray-500 mt-1">Alasan penolakan akan dikirim ke vendor</p>
+              </div>
+              
+              <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                  <button @click="showRejectModal = false"
+                          class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 font-medium transition">
+                      Batal
+                  </button>
+                  <button @click="executeReject()"
+                          :disabled="!rejectReason.trim()"
+                          :class="!rejectReason.trim() ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'"
+                          class="px-4 py-2 text-white rounded-lg font-medium transition">
+                      Reject Vendor
+                  </button>
+              </div>
+          </div>
+      </div>
+  </div>
+
   <!-- Notification Toast -->
   <div x-show="notification.show" x-cloak
        x-transition:enter="transition ease-out duration-300"
@@ -218,8 +281,10 @@
 function vendorManager() {
     return {
         showConfirmModal: false,
+        showRejectModal: false,
         vendorId: null,
         vendorName: '',
+        rejectReason: '',
         loading: false,
         notification: {
             show: false,
@@ -233,6 +298,13 @@ function vendorManager() {
             this.vendorId = id;
             this.vendorName = name;
             this.showConfirmModal = true;
+        },
+        
+        confirmReject(id, name) {
+            this.vendorId = id;
+            this.vendorName = name;
+            this.rejectReason = '';
+            this.showRejectModal = true;
         },
         
         async executeApprove() {
@@ -277,6 +349,62 @@ function vendorManager() {
                 );
             } finally {
                 this.loading = false;
+            }
+        },
+        
+        async executeReject() {
+            if (!this.rejectReason.trim()) {
+                this.showNotification(
+                    'error', 
+                    'Gagal', 
+                    'Alasan penolakan harus diisi'
+                );
+                return;
+            }
+            
+            this.showRejectModal = false;
+            this.loading = true;
+            
+            const url = `<?= site_url('seo/vendor_verify/reject') ?>/${this.vendorId}`;
+                
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        '<?= csrf_token() ?>': '<?= csrf_hash() ?>',
+                        reject_reason: this.rejectReason
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.showNotification(
+                        'success', 
+                        'Berhasil', 
+                        `Vendor ${this.vendorName} berhasil ditolak`
+                    );
+                    
+                    // Reload setelah delay
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    throw new Error(data.message || 'Terjadi kesalahan');
+                }
+            } catch (error) {
+                this.showNotification(
+                    'error', 
+                    'Gagal', 
+                    error.message || 'Terjadi kesalahan saat memproses permintaan'
+                );
+            } finally {
+                this.loading = false;
+                this.rejectReason = '';
             }
         },
         

@@ -18,8 +18,6 @@ class UserModel extends ShieldUserModel
         'created_at',
         'updated_at',
         'deleted_at'
-        // HAPUS: 'email', 'name', 'password_hash', 'reset_token', 'reset_expires_at'
-        // karena kolom ini tidak ada di tabel users
     ];
 
     protected $useTimestamps = true;

@@ -30,10 +30,10 @@
 
     <!-- Body -->
     <div class="max-h-96 overflow-y-auto divide-y">
-      <?php if (empty($modalNotifications)): ?>
+      <?php if (empty($notifications)): ?> <!-- Perbaikan: gunakan $notifications bukan $modalNotifications -->
         <div class="p-4 text-center text-sm text-gray-500">Tidak ada notifikasi.</div>
       <?php else: ?>
-        <?php foreach ($modalNotifications as $n): ?>
+        <?php foreach ($notifications as $n): ?> <!-- Perbaikan: gunakan $notifications bukan $modalNotifications -->
           <div class="p-4 flex justify-between items-start hover:bg-gray-50">
             <div class="min-w-0 pr-3">
               <p class="text-sm font-semibold text-gray-900 truncate">

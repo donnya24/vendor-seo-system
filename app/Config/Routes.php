@@ -47,18 +47,40 @@ $routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 
         $routes->post('update', 'Profile::update'); // Update profile
         $routes->post('password-update', 'Profile::passwordUpdate'); // Update password
     });
-    // app/Config/Routes.php
-    $routes->group('admin/areas', ['namespace' => 'App\Controllers\Admin'], function($routes){
-        $routes->get('/', 'VendorAreas::index');
-        $routes->get('create', 'VendorAreas::create');
-        $routes->get('edit/(:num)', 'VendorAreas::edit/$1');
-        $routes->get('search', 'VendorAreas::search');
-        $routes->post('attach', 'VendorAreas::attach');
-        $routes->post('delete', 'VendorAreas::delete');
-        $routes->post('clear-all/(:num)', 'VendorAreas::clearAll/$1');
-        $routes->delete('clear-all/(:num)', 'VendorAreas::clearAll/$1');
-        $routes->get('get-selected-areas/(:num)', 'VendorAreas::getSelectedAreas/$1');
+
+    // ===== NOTIFICATION HEADER ROUTES (BELL ICON) =====
+    $routes->group('notifications', function($routes) {
+        $routes->get('modal-data', 'Notifications::modalData'); // Data untuk modal header
+        $routes->post('markRead/(:num)', 'Notifications::markRead/$1');
+        $routes->post('markAllRead', 'Notifications::markAllRead');
+        $routes->post('delete/(:num)', 'Notifications::delete/$1');
+        $routes->post('deleteAll', 'Notifications::deleteAll');
+    }); 
+    
+    
+    // ===== KELOLA NOTIFIKASI ROUTES =====
+    $routes->group('kelola-notifikasi', function($routes) {
+        $routes->get('/', 'KelolaNotifikasi::index');
+        $routes->get('create', 'KelolaNotifikasi::create');
+        $routes->get('edit/(:num)', 'KelolaNotifikasi::edit/$1');
+        $routes->get('get-users', 'KelolaNotifikasi::getUsers');
+        $routes->post('store', 'KelolaNotifikasi::store');
+        $routes->post('update/(:num)', 'KelolaNotifikasi::update/$1');
+        $routes->post('delete/(:num)', 'KelolaNotifikasi::delete/$1');
+        $routes->post('delete-all', 'KelolaNotifikasi::deleteAll');
+        $routes->get('user-state', 'KelolaNotifikasi::userState');
+        $routes->post('user-state/delete-all', 'KelolaNotifikasi::deleteAllUserState');
     });
+        
+    // Add this route to map /admin/areas to VendorAreas controller
+    $routes->get('areas', 'VendorAreas::index');
+    $routes->get('areas/create', 'VendorAreas::create');
+    $routes->get('areas/edit/(:segment)', 'VendorAreas::edit/$1');
+    $routes->post('areas/attach', 'VendorAreas::attach');
+    $routes->post('areas/delete', 'VendorAreas::delete');
+    $routes->get('areas/search', 'VendorAreas::search');
+    $routes->get('areas/get-selected-areas/(:segment)', 'VendorAreas::getSelectedAreas/$1');
+    $routes->post('areas/clear-all/(:segment)', 'VendorAreas::clearAll/$1');
 
     // Vendor Services & Products
     $routes->get('services', 'VendorServicesProducts::index');
@@ -69,6 +91,7 @@ $routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 
     $routes->post('services/delete_multiple', 'VendorServicesProducts::deleteMultiple');
     $routes->post('services/delete/(:num)', 'VendorServicesProducts::delete/$1');
     $routes->get('services/search', 'VendorServicesProducts::search');
+
     // Management User Vendor Routes
     $routes->group('uservendor', ['namespace' => 'App\Controllers\Admin'], function($routes){
         $routes->get('/', 'UserVendor::index');
@@ -97,12 +120,30 @@ $routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 
         $routes->post('toggle-suspend-seo/(:num)', 'UserSeo::toggleSuspendSeo/$1');
     });
 
+        // Tambahkan route untuk approve dan reject vendor request dengan format dash-separated
+    $routes->post('dashboard/approve-vendor-request', 'Dashboard::approveVendorRequest');
+    $routes->post('dashboard/reject-vendor-request', 'Dashboard::rejectVendorRequest');
+
     // Vendors
     $routes->get('vendors',                   'Vendors::index');
     $routes->get('vendors/(:num)',            'Vendors::show/$1');
     $routes->post('vendors/(:num)/verify',    'Vendors::verify/$1');
     $routes->post('vendors/(:num)/unverify',  'Vendors::unverify/$1');
     $routes->post('vendors/(:num)/commission','Vendors::setCommission/$1');
+
+    // Targets Route
+    $routes->group('targets', function($routes){
+        $routes->get('/', 'Targets::index');
+        $routes->post('store', 'Targets::store');
+        $routes->post('update/(:num)', 'Targets::update/$1');
+        $routes->get('edit/(:num)', 'Targets::edit/$1');
+        $routes->post('delete/(:num)', 'Targets::delete/$1');
+        $routes->get('export-csv', 'Targets::exportCsv');
+    });
+
+    //Reports
+    $routes->get('reports', 'Reports::index');
+     $routes->get('reports/export-csv', 'Reports::exportCsv');
 
     // Leads
     $routes->group('leads', function($routes){
@@ -111,8 +152,9 @@ $routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 
         $routes->get('edit/(:num)', 'Leads::edit/$1');
         $routes->post('update/(:num)', 'Leads::update/$1');
         $routes->post('delete/(:num)', 'Leads::delete/$1');
-        $routes->post('delete-all', 'Leads::deleteAll'); // Tambahkan ini
+        $routes->post('delete-all', 'Leads::deleteAll');
         $routes->get('(:num)', 'Leads::show/$1');
+         $routes->get('export', 'Leads::export');
     });
 
     // Vendor Requests (Approve / Reject) - Legacy routes
@@ -124,6 +166,7 @@ $routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 
     $routes->post('commissions/verify/(:num)', 'Commissions::verify/$1');
     $routes->post('commissions/delete/(:num)', 'Commissions::delete/$1');
     $routes->post('commissions/bulk-action', 'Commissions::bulkAction');
+    $routes->get('commissions/export-csv', 'Commissions::exportCsv');
         
     // Announcements
     $routes->get('announcements',                 'Announcements::index');
@@ -133,12 +176,12 @@ $routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 
     $routes->post('announcements/(:num)/update',  'Announcements::update/$1');
     $routes->post('announcements/(:num)/delete',  'Announcements::delete/$1');
 
-    // Notifications
-    $routes->get('notifications', 'Notifications::index');
-    $routes->post('notifications/markRead/(:num)', 'Notifications::markRead/$1');
-    $routes->post('notifications/markAllRead', 'Notifications::markAllRead');
-    $routes->post('notifications/delete/(:num)', 'Notifications::delete/$1');
-    $routes->post('notifications/deleteAll', 'Notifications::deleteAll');
+
+    // Admin - SEO Management
+    $routes->group('admin/seo-management', static function($routes) {
+        $routes->get('/', 'SeoManagement::index');
+        $routes->post('toggle-status/(:num)', 'SeoManagement::toggleStatus/$1');
+    });
 
     // Activity Routes - DIPERBAIKI
     $routes->get('activities/vendor', 'ActivityVendor::index');
@@ -203,6 +246,7 @@ $routes->get('admin/dashboard/index', static fn () => redirect()->to('/admin/das
     // Approve Vendor
     $routes->get('vendor', 'Vendor_verify::index');
     $routes->post('vendor_verify/approve/(:num)', 'Vendor_verify::approve/$1');
+    $routes->post('vendor_verify/reject/(:num)',        'Vendor_verify::reject/$1');
 
     // Log Activity
     $routes->get('logs', 'Logs::index');

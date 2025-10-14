@@ -1,6 +1,42 @@
 <?php
 // File: app/Views/seo/layouts/sidebar.php
+
+// Ambil status SEO dari model
+$seoProfileModel = new \App\Models\SeoProfilesModel();
+$seoProfile = $seoProfileModel->getByUserId(user_id()); // Sesuaikan dengan cara Anda mendapatkan user_id
+$isActive = $seoProfile && ($seoProfile['status'] ?? '') === 'active';
+
+// Helper untuk cek menu aktif
+if (!function_exists('isActive')) {
+    function isActive(...$segments) {
+        $cur = current_url();
+        foreach ($segments as $seg) {
+            if (strpos($cur, site_url($seg)) !== false) return true;
+        }
+        return false;
+    }
+}
+
+// Helper untuk render nav item dengan pengecekan status
+if (!function_exists('navItem')) {
+    function navItem($canAccess, $url, $icon, $label, $active = false) {
+        $href = $canAccess ? site_url($url) : 'javascript:void(0)';
+        $class = 'flex items-center px-4 py-3 rounded-lg transition-all duration-200 group ';
+        $class .= $active ? 'bg-blue-700 ' : 'hover:bg-blue-700/50 ';
+        $class .= !$canAccess ? 'opacity-50 cursor-not-allowed ' : 'cursor-pointer ';
+        $title = !$canAccess ? ' title="Akun tidak aktif"' : '';
+
+        return '<a href="'.$href.'" class="'.$class.'"'.$title.'>
+                <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-700/30 group-hover:bg-blue-600/30 mr-3">
+                    <i class="'.$icon.'"></i>
+                </div>
+                <span class="font-medium">'.$label.'</span>
+                '.($active ? '<div class="ml-auto w-2 h-2 rounded-full bg-white"></div>' : '').'
+            </a>';
+    }
+}
 ?>
+
 <!-- SIDEBAR -->
 <aside 
     x-data="{ confirmLogout: false }"
@@ -19,6 +55,21 @@
     </div>
   </div>
 
+  <!-- Alert jika akun inactive -->
+  <?php if (!$isActive): ?>
+  <div class="mx-4 mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
+    <div class="flex items-start">
+      <i class="fas fa-exclamation-triangle text-red-300 text-sm mt-0.5 mr-2"></i>
+      <div class="leading-snug">
+        <p class="text-red-200 text-sm font-semibold">Akun Tidak Aktif</p>
+        <p class="text-red-200/90 text-xs mt-0.5">
+          Akses Anda terhadap fitur-fitur dashboard dibatasi.
+        </p>
+      </div>
+    </div>
+  </div>
+  <?php endif; ?>
+
   <!-- Navigasi Sidebar -->
   <nav class="flex-1 py-4 px-3 overflow-y-auto">
     <div class="space-y-1">
@@ -32,20 +83,14 @@
           ['url' => 'seo/vendor', 'icon' => 'fas fa-building', 'label' => 'Vendors', 'key' => 'vendor'],
           ['url' => 'seo/logs', 'icon' => 'fas fa-history', 'label' => 'Log Aktivitas', 'key' => 'logs'],
       ];
+      
       foreach($menuItems as $item):
-          $active = ($activeMenu ?? '') === $item['key'] ? 'bg-blue-700' : '';
+          $active = ($activeMenu ?? '') === $item['key'];
+          // Hanya dashboard yang bisa diakses jika inactive, sisanya tidak
+          $canAccess = $isActive || $item['key'] === 'dashboard';
+          echo navItem($canAccess, $item['url'], $item['icon'], $item['label'], $active);
+      endforeach;
       ?>
-      <a href="<?= site_url($item['url']) ?>" 
-         class="flex items-center px-4 py-3 rounded-lg transition-all duration-200 <?= $active ?> hover:bg-blue-700/50 group">
-        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-700/30 group-hover:bg-blue-600/30 mr-3">
-          <i class="<?= $item['icon'] ?>"></i>
-        </div>
-        <span class="font-medium"><?= $item['label'] ?></span>
-        <?php if (($activeMenu ?? '') === $item['key']): ?>
-          <div class="ml-auto w-2 h-2 rounded-full bg-white"></div>
-        <?php endif; ?>
-      </a>
-      <?php endforeach; ?>
     </div>
   </nav>
 
