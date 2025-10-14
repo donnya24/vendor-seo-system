@@ -4,16 +4,19 @@ namespace App\Controllers\Auth;
 use CodeIgniter\Controller;
 use CodeIgniter\Shield\Entities\User;
 use App\Models\VendorProfilesModel;
+use App\Models\SeoProfilesModel;
 
 class AuthController extends Controller
 {
     protected $auth;
     protected $vendorProfilesModel;
+    protected $seoProfilesModel;
 
     public function __construct()
     {
         $this->auth = service('auth');
         $this->vendorProfilesModel = new VendorProfilesModel();
+        $this->seoProfilesModel = new SeoProfilesModel();
     }
 
     // ===== LOGIN =====
@@ -56,6 +59,26 @@ class AuthController extends Controller
         if ($result->isOK()) {
             $user = $this->auth->user();
             
+            // ✅ CEK STATUS USER: Hanya inactive yang tidak bisa login
+            $statusCheck = $this->checkUserStatus($user);
+            if (!$statusCheck['success']) {
+                $this->auth->logout();
+                
+                // Log activity untuk login ditolak karena status inactive
+                log_activity_auto('login_blocked', 'Login ditolak - status ' . $statusCheck['role'] . ' ' . $statusCheck['reason'] . ': ' . $email, [
+                    'module' => 'auth',
+                    'reason' => $statusCheck['reason']
+                ]);
+                
+                // ✅ Hanya tampilkan kontak admin untuk status inactive
+                session()->setFlashdata('error', $statusCheck['message']);
+                if ($statusCheck['reason'] === 'vendor_inactive' || $statusCheck['reason'] === 'seo_inactive') {
+                    session()->setFlashdata('show_contact', true);
+                }
+                
+                return redirect()->back()->withInput();
+            }
+            
             if ($remember === true) {
                 helper('auth_remember');
                 try {
@@ -77,6 +100,64 @@ class AuthController extends Controller
         ]);
         
         return redirect()->back()->withInput()->with('error', 'Login gagal. Periksa kembali kredensial Anda.');
+    }
+
+    // ===== CEK STATUS USER =====
+    private function checkUserStatus($user)
+    {
+        // Default response - allow login
+        $response = [
+            'success' => true,
+            'message' => '',
+            'role' => '',
+            'reason' => ''
+        ];
+
+        // Cek status user berdasarkan role
+        if ($user->inGroup('vendor')) {
+            $response['role'] = 'vendor';
+            $vendorProfile = $this->vendorProfilesModel->getByUserId($user->id);
+            
+            if (!$vendorProfile) {
+                $response['success'] = false;
+                $response['message'] = 'Profil vendor tidak ditemukan. Silakan hubungi administrator.';
+                $response['reason'] = 'vendor_profile_not_found';
+            } elseif ($vendorProfile['status'] === 'inactive') {
+                // ✅ HANYA INACTIVE YANG TIDAK BISA LOGIN
+                $response['success'] = false;
+                $response['message'] = 'Akun vendor Anda dinonaktifkan. Silakan hubungi administrator.';
+                $response['reason'] = 'vendor_inactive';
+            }
+            // ✅ PENDING & REJECTED TETAP BISA LOGIN
+            // elseif ($vendorProfile['status'] === 'rejected') {
+            //     // Tetap bisa login meski rejected
+            // } elseif ($vendorProfile['status'] === 'pending') {
+            //     // Tetap bisa login meski pending
+            // }
+            
+        } elseif ($user->inGroup('seoteam')) {
+            $response['role'] = 'seoteam';
+            $seoProfile = $this->seoProfilesModel->getByUserId($user->id);
+            
+            if (!$seoProfile) {
+                $response['success'] = false;
+                $response['message'] = 'Profil SEO tidak ditemukan. Silakan hubungi administrator.';
+                $response['reason'] = 'seo_profile_not_found';
+            } elseif ($seoProfile['status'] === 'inactive') {
+                // ✅ HANYA INACTIVE YANG TIDAK BISA LOGIN
+                $response['success'] = false;
+                $response['message'] = 'Akun SEO Anda dinonaktifkan. Silakan hubungi administrator.';
+                $response['reason'] = 'seo_inactive';
+            }
+            // ✅ SEO dengan status lain tetap bisa login
+        }
+        
+        // Untuk admin, selalu allow login
+        elseif ($user->inGroup('admin')) {
+            $response['role'] = 'admin';
+        }
+
+        return $response;
     }
 
     // ===== LOGOUT =====
