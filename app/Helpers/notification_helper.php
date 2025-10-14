@@ -49,7 +49,7 @@ if (!function_exists('create_notification_for_group_with_profiles')) {
     /**
      * Helper untuk membuat notifikasi untuk grup tertentu dengan relasi profil
      */
-    function create_notification_for_group_with_profiles($group, $title, $message, $linkUrl = '', $type = 'general')
+    function create_notification_for_group_with_profiles($group, $title, $message, $linkUrl = '')
     {
         $notificationModel = new NotificationsModel();
         $db = \Config\Database::connect();
@@ -77,7 +77,8 @@ if (!function_exists('create_notification_for_group_with_profiles')) {
             return false;
         }
 
-        return $notificationModel->createForUsersWithProfiles($targetUsers, $title, $message, $linkUrl, $type);
+        // Hapus parameter $type karena tidak diterima oleh fungsi createForUsersWithProfiles
+        return $notificationModel->createForUsersWithProfiles($targetUsers, $title, $message, $linkUrl);
     }
 }
 
