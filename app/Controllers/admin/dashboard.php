@@ -2,17 +2,34 @@
 
 namespace App\Controllers\Admin;
 
-use App\Controllers\BaseController;
+use App\Controllers\Admin\BaseAdminController;
 use App\Models\VendorProfilesModel;
 use App\Models\LeadsModel;
 use App\Models\CommissionsModel;
 use App\Models\SeoKeywordTargetsModel;
 use App\Models\SeoProfilesModel;
+use App\Models\ActivityLogsModel;
 
-class Dashboard extends BaseController
+class Dashboard extends BaseAdminController
 {
+    protected ActivityLogsModel $activityLogsModel;
+
+    public function __construct()
+    {
+        $this->activityLogsModel = new ActivityLogsModel();
+    }
+
     public function index()
     {
+        // Log activity akses dashboard
+        $this->logActivity(
+            'view_dashboard',
+            'Mengakses dashboard admin'
+        );
+
+        // Load common data for header
+        $commonData = $this->loadCommonData();
+        
         // Total vendor yang sudah verified
         $vendorModel = new VendorProfilesModel();
         $totalVendors = $vendorModel->where('status', 'verified')->countAllResults();
@@ -27,26 +44,22 @@ class Dashboard extends BaseController
         $monthTo   = date('Y-m-t');
 
         // === METRIK ===
-        // For today's leads, check if today's date falls within the date range
         $todayLeads = $leads->where('tanggal_mulai <=', $today)
                             ->where('tanggal_selesai >=', $today)
                             ->selectSum('jumlah_leads_masuk', 'total_masuk')
                             ->first()['total_masuk'] ?? 0;
 
-        // For monthly deals, check for overlapping periods
         $monthlyDeals = $leads->where('tanggal_mulai <=', $monthTo)
                               ->where('tanggal_selesai >=', $monthFrom)
                               ->selectSum('jumlah_leads_closing', 'total_close')
                               ->first()['total_close'] ?? 0;
 
-        // PERBAIKAN: Total komisi dengan status paid (tanpa filter tanggal)
         $commissionsModel = new CommissionsModel();
         $totalCommissionPaid = $commissionsModel
             ->where('status', 'paid')
             ->selectSum('amount', 'total_commission')
             ->first()['total_commission'] ?? 0;
 
-        // Total komisi bulan ini (status paid) - untuk informasi tambahan
         $monthlyCommissionPaid = $commissionsModel
             ->where('status', 'paid')
             ->where('paid_at >=', $monthFrom . ' 00:00:00')
@@ -54,18 +67,15 @@ class Dashboard extends BaseController
             ->selectSum('amount', 'total_commission')
             ->first()['total_commission'] ?? 0;
 
-        // Ambil top keyword
         $seoKeywordModel = new SeoKeywordTargetsModel();
         $topKeyword = $seoKeywordModel
-        ->orderBy('current_position', 'ASC')  // posisi terbaik = 1 paling atas
+        ->orderBy('current_position', 'ASC')
         ->first();
         $topKeyword = $topKeyword ? $topKeyword['keyword'] : '-';
 
-        // Total leads masuk (keseluruhan)
         $totalLeadsIn = $leads->selectSum('jumlah_leads_masuk', 'total_masuk')
                               ->first()['total_masuk'] ?? 0;
 
-        // Total leads closing (keseluruhan)
         $totalLeadsClosing = $leads->selectSum('jumlah_leads_closing', 'total_close')
                                    ->first()['total_close'] ?? 0;
 
@@ -87,7 +97,6 @@ class Dashboard extends BaseController
             return 'COALESCE(' . implode(', ', $parts) . ", '') AS {$asAlias}";
         };
 
-        // Cek keberadaan tabel vendor_profiles
         $vpTableExists = (bool) $db->query("SHOW TABLES LIKE 'vendor_profiles'")->getRowArray();
 
         if ($vpTableExists) {
@@ -100,7 +109,6 @@ class Dashboard extends BaseController
             $hasCommType = in_array('commission_type', $vpFields, true);
             $hasCreated  = in_array('created_at',           $vpFields, true);
 
-            // kandidat kolom untuk kontak
             $phoneCandidates = ['phone','telepon','telp','no_telp','nohp','hp','kontak','contact','phone_number','telpon'];
             $waCandidates    = ['whatsapp_number','whatsapp','wa','no_wa','nowa','whatsappno','wa_number'];
 
@@ -112,6 +120,7 @@ class Dashboard extends BaseController
             $qb = $db->table('vendor_profiles vp')
                 ->select("
                     vp.id,
+                    vp.user_id,
                     COALESCE(vp.business_name, '-') AS usaha,
                     COALESCE(vp.owner_name,   '-')  AS pemilik,
                     {$phoneExpr},
@@ -122,11 +131,9 @@ class Dashboard extends BaseController
                     ".($hasStatus? "COALESCE(vp.status,'pending')" : "'pending'")." AS status
                 ");
 
-            // ==== Hanya ambil vendor dengan status 'pending' ====
             if ($hasStatus) {
                 $qb->where('vp.status', 'pending');
             } else {
-                // Jika kolom status tidak ada, asumsikan semua vendor adalah pending
                 $qb->where('1=1');
             }
 
@@ -135,7 +142,6 @@ class Dashboard extends BaseController
                                      ->get()->getResultArray();
         }
 
-        // === Fallback: dari commissions bila masih kosong ===
         if (empty($commissionRequests)) {
             $cmTableExists = (bool) $db->query("SHOW TABLES LIKE 'commissions'")->getRowArray();
             if ($cmTableExists) {
@@ -143,20 +149,19 @@ class Dashboard extends BaseController
                 $hasCMCreate = in_array('created_at', $cmFields, true);
                 $orderCol2   = $hasCMCreate ? 'c.created_at' : 'c.id';
 
-                // kita butuh lagi field vendor_profiles untuk menyusun kontak
                 $vpFields = $db->getFieldNames('vendor_profiles');
                 $phoneCandidates = ['phone','telepon','telp','no_telp','nohp','hp','kontak','contact','phone_number','telpon'];
                 $waCandidates    = ['whatsapp_number','whatsapp','wa','no_wa','nowa','whatsappno','wa_number'];
                 $phoneExpr = $buildCoalesce($phoneCandidates, $vpFields, 'vp', 'phone');
                 $waExpr    = $buildCoalesce($waCandidates,    $vpFields, 'vp', 'wa');
                 
-                // Cek apakah kolom requested_commission ada di tabel commissions
                 $hasRequestedCommission = in_array('requested_commission', $cmFields, true);
                 $commissionExpr = $hasRequestedCommission ? "COALESCE(c.requested_commission, 0)" : "0";
 
                 $commissionRequests = $db->table('commissions c')
                     ->select("
                         c.id,
+                        vp.user_id,
                         COALESCE(vp.business_name, '-') AS usaha,
                         COALESCE(vp.owner_name,   '-')  AS pemilik,
                         {$phoneExpr},
@@ -167,7 +172,6 @@ class Dashboard extends BaseController
                         COALESCE(c.status,'pending') AS status
                     ")
                     ->join('vendor_profiles vp', 'vp.id = c.vendor_id', 'left')
-                    // Hanya ambil yang statusnya pending
                     ->where('c.status', 'pending')
                     ->orderBy($orderCol2, 'DESC')
                     ->limit(3)
@@ -175,14 +179,14 @@ class Dashboard extends BaseController
             }
         }
 
-        return view('admin/dashboard', [
+        return view('admin/dashboard', array_merge([
             'page'  => 'Dashboard',
             'stats' => [
                 'totalVendors' => (int) $totalVendors,
                 'todayLeads'   => (int) $todayLeads,
                 'monthlyDeals' => (int) $monthlyDeals,
-                'totalCommissionPaid' => (float) $totalCommissionPaid, // PERBAIKAN: Total komisi paid keseluruhan
-                'monthlyCommissionPaid' => (float) $monthlyCommissionPaid, // Total komisi paid bulan ini
+                'totalCommissionPaid' => (float) $totalCommissionPaid,
+                'monthlyCommissionPaid' => (float) $monthlyCommissionPaid,
                 'topKeyword'   => $topKeyword,
                 'totalLeadsIn' => (int) $totalLeadsIn,
                 'totalLeadsClosing' => (int) $totalLeadsClosing,
@@ -191,16 +195,110 @@ class Dashboard extends BaseController
             ],
             'commissionRequests' => $commissionRequests,
             'recentLeads' => $this->fetchRecentLeads(),
+        ], $commonData));
+    }
+
+    public function approveVendorRequest()
+    {
+        $id = $this->request->getPost('id');
+        
+        if (!$id) {
+            return $this->response->setJSON([
+                'status' => 'error',
+                'message' => 'ID vendor tidak ditemukan'
+            ]);
+        }
+
+        $vendorModel = new VendorProfilesModel();
+        /** @var array|null $vendor */
+        $vendor = $vendorModel->find($id);
+        
+        if (!$vendor) {
+            return $this->response->setJSON([
+                'status' => 'error',
+                'message' => 'Data vendor tidak ditemukan'
+            ]);
+        }
+
+        // Update status vendor
+        $vendorModel->update($id, ['status' => 'verified']);
+        
+        // Log activity approve vendor
+        $this->logActivity(
+            'approve_vendor',
+            'Menyetujui pengajuan vendor: ' . $vendor['business_name'],
+            ['vendor_id' => $id, 'vendor_name' => $vendor['business_name']]
+        );
+        
+        // Kirim notifikasi ke vendor
+        $this->sendVendorStatusNotification($vendor, 'verified');
+
+        return $this->response->setJSON([
+            'status' => 'success',
+            'message' => 'Vendor berhasil disetujui'
+        ]);
+    }
+
+    public function rejectVendorRequest()
+    {
+        $id = $this->request->getPost('id');
+        $reason = $this->request->getPost('reason');
+        
+        if (!$id) {
+            return $this->response->setJSON([
+                'status' => 'error',
+                'message' => 'ID vendor tidak ditemukan'
+            ]);
+        }
+
+        if (!$reason) {
+            return $this->response->setJSON([
+                'status' => 'error',
+                'message' => 'Alasan penolakan harus diisi'
+            ]);
+        }
+
+        $vendorModel = new VendorProfilesModel();
+        /** @var array|null $vendor */
+        $vendor = $vendorModel->find($id);
+        
+        if (!$vendor) {
+            return $this->response->setJSON([
+                'status' => 'error',
+                'message' => 'Data vendor tidak ditemukan'
+            ]);
+        }
+
+        // Update status vendor
+        $vendorModel->update($id, ['status' => 'rejected', 'rejection_reason' => $reason]);
+        
+        // Log activity reject vendor
+        $this->logActivity(
+            'reject_vendor',
+            'Menolak pengajuan vendor: ' . $vendor['business_name'] . ' dengan alasan: ' . $reason,
+            ['vendor_id' => $id, 'vendor_name' => $vendor['business_name'], 'reason' => $reason]
+        );
+        
+        // Kirim notifikasi ke vendor
+        $this->sendVendorStatusNotification($vendor, 'rejected', $reason);
+
+        return $this->response->setJSON([
+            'status' => 'success',
+            'message' => 'Vendor berhasil ditolak'
         ]);
     }
 
     public function stats()
     {
-        // Total vendor yang sudah verified
+        // Log activity akses stats API
+        $this->logActivity(
+            'view_stats',
+            'Mengakses data statistik dashboard'
+        );
+
         $vendorModel = new VendorProfilesModel();
         $totalVendors = $vendorModel->where('status', 'verified')->countAllResults();
 
-        // Total tim SEO yang aktif
         $seoModel = new SeoProfilesModel();
         $totalSeoTeam = $seoModel->where('status', 'active')->countAllResults();
 
@@ -209,26 +307,22 @@ class Dashboard extends BaseController
         $monthFrom = date('Y-m-01');
         $monthTo   = date('Y-m-t');
 
-        // For today's leads, check if today's date falls within the date range
         $todayLeads = $leads->where('tanggal_mulai <=', $today)
                             ->where('tanggal_selesai >=', $today)
                             ->selectSum('jumlah_leads_masuk', 'total_masuk')
                             ->first()['total_masuk'] ?? 0;
 
-        // For monthly deals, check for overlapping periods
         $monthlyDeals = $leads->where('tanggal_mulai <=', $monthTo)
                               ->where('tanggal_selesai >=', $monthFrom)
                               ->selectSum('jumlah_leads_closing', 'total_close')
                               ->first()['total_close'] ?? 0;
 
-        // PERBAIKAN: Total komisi dengan status paid (tanpa filter tanggal)
         $commissionsModel = new CommissionsModel();
         $totalCommissionPaid = $commissionsModel
             ->where('status', 'paid')
             ->selectSum('amount', 'total_commission')
             ->first()['total_commission'] ?? 0;
 
-        // Total komisi bulan ini (status paid)
         $monthlyCommissionPaid = $commissionsModel
             ->where('status', 'paid')
             ->where('paid_at >=', $monthFrom . ' 00:00:00')
@@ -236,7 +330,6 @@ class Dashboard extends BaseController
             ->selectSum('amount', 'total_commission')
             ->first()['total_commission'] ?? 0;
 
-        // Ambil top keyword
         $seoKeywordModel = new SeoKeywordTargetsModel();
         $topKeyword = $seoKeywordModel
             ->select('keyword')
@@ -248,19 +341,25 @@ class Dashboard extends BaseController
             'totalVendors' => (int) $totalVendors,
             'todayLeads'   => (int) $todayLeads,
             'monthlyDeals' => (int) $monthlyDeals,
-            'totalCommissionPaid' => (float) $totalCommissionPaid, // PERBAIKAN: Total komisi paid keseluruhan
-            'monthlyCommissionPaid' => (float) $monthlyCommissionPaid, // Total komisi paid bulan ini
+            'totalCommissionPaid' => (float) $totalCommissionPaid,
+            'monthlyCommissionPaid' => (float) $monthlyCommissionPaid,
             'topKeyword'   => $topKeyword,
             'totalSeoTeam' => (int) $totalSeoTeam,
         ]);
     }
 
-    // Tambahkan metode baru untuk menampilkan detail leads dalam format JSON
     public function getLeadDetail($id)
     {
+        // Log activity view detail leads
+        $this->logActivity(
+            'view_lead_detail',
+            'Melihat detail leads dengan ID: ' . $id,
+            ['lead_id' => $id]
+        );
+
         $leadsModel = new LeadsModel();
         
-        // Get lead with vendor information
+        /** @var array|null $lead */
         $lead = $leadsModel
             ->select('leads.*, vendor_profiles.business_name')
             ->join('vendor_profiles', 'vendor_profiles.id = leads.vendor_id', 'left')
@@ -273,7 +372,6 @@ class Dashboard extends BaseController
             ]);
         }
 
-        // Format data untuk response
         $data = [
             'id' => $lead['id'],
             'vendor' => $lead['business_name'] ?? '-',
@@ -292,9 +390,14 @@ class Dashboard extends BaseController
 
     private function fetchRecentLeads(): array
     {
+        // Log activity fetch recent leads
+        $this->logActivity(
+            'view_recent_leads',
+            'Mengambil data leads terbaru'
+        );
+
         $leadsModel = new LeadsModel();
 
-        // Ambil 10 leads terbaru beserta business_name dari vendor_profiles
         $rows = $leadsModel
             ->select('leads.id, leads.vendor_id, leads.jumlah_leads_masuk, leads.jumlah_leads_closing, leads.tanggal_mulai, leads.tanggal_selesai, leads.updated_at, COALESCE(vendor_profiles.business_name, "-") AS business_name')
             ->join('vendor_profiles', 'leads.vendor_id = vendor_profiles.id', 'left')
@@ -302,22 +405,108 @@ class Dashboard extends BaseController
             ->limit(10)
             ->findAll();
 
-        // Normalisasi data untuk view
         return array_map(static function ($r) {
             return [
-                'id_leads'      => isset($r['id']) ? (string)$r['id'] : '-',               // ID leads
-                'vendor_id'     => isset($r['vendor_id']) ? (string)$r['vendor_id'] : '-', // ID vendor
-                'business_name' => !empty($r['business_name']) ? $r['business_name'] : '-',// Nama usaha vendor
-                'layanan'       => '-',                                                     // Placeholder layanan
+                'id_leads'      => isset($r['id']) ? (string)$r['id'] : '-',
+                'vendor_id'     => isset($r['vendor_id']) ? (string)$r['vendor_id'] : '-',
+                'business_name' => !empty($r['business_name']) ? $r['business_name'] : '-',
+                'layanan'       => '-',
                 'masuk'         => isset($r['jumlah_leads_masuk']) ? (int)$r['jumlah_leads_masuk'] : 0,
-                'diproses'      => 0,                                                      // Placeholder diproses
-                'ditolak'       => 0,                                                      // Placeholder ditolak
+                'diproses'      => 0,
+                'ditolak'       => 0,
                 'closing'       => isset($r['jumlah_leads_closing']) ? (int)$r['jumlah_leads_closing'] : 0,
-                'tanggal_mulai' => $r['tanggal_mulai'] ?? '-',                              // Tanggal mulai periode
-                'tanggal_selesai' => $r['tanggal_selesai'] ?? '-',                           // Tanggal selesai periode
-                'updated_at'    => $r['updated_at'] ?? '-',                                 // Update terakhir
-                'detail_url'    => isset($r['id']) ? site_url('admin/leads/'.$r['id']) : '#', // Link detail
+                'tanggal_mulai' => $r['tanggal_mulai'] ?? '-',
+                'tanggal_selesai' => $r['tanggal_selesai'] ?? '-',
+                'updated_at'    => $r['updated_at'] ?? '-',
+                'detail_url'    => isset($r['id']) ? site_url('admin/leads/'.$r['id']) : '#',
             ];
         }, $rows ?? []);
+    }
+
+    /**
+     * Simpan activity log
+     */
+    private function logActivity($action, $description, $additionalData = [])
+    {
+        try {
+            $user = service('auth')->user();
+            
+            $data = [
+                'user_id'     => $user ? $user->id : null,
+                'module'      => 'dashboard',
+                'action'      => $action,
+                'description' => $description,
+                'ip_address'  => $this->request->getIPAddress(),
+                'user_agent'  => (string) $this->request->getUserAgent(),
+                'created_at'  => date('Y-m-d H:i:s'),
+            ];
+
+            if (!empty($additionalData)) {
+                $data['additional_data'] = json_encode($additionalData);
+            }
+
+            $this->activityLogsModel->insert($data);
+        } catch (\Throwable $e) {
+            log_message('error', 'Failed to log activity in Dashboard: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Kirim notifikasi status vendor ke vendor
+     */
+    private function sendVendorStatusNotification($vendorData, $status, $reason = null)
+    {
+        try {
+            $db = \Config\Database::connect();
+            
+            $vendorName = $vendorData['business_name'] ?? 'Vendor Tidak Dikenal';
+            $vendorUserId = $vendorData['user_id'] ?? null;
+            
+            if (!$vendorUserId) {
+                log_message('error', 'Vendor user_id tidak ditemukan untuk notifikasi');
+                return;
+            }
+
+            // Tentukan pesan berdasarkan status
+            $title = '';
+            $message = '';
+            
+            switch ($status) {
+                case 'verified':
+                    $title = 'Verifikasi Vendor Diterima';
+                    $message = "Selamat! Vendor {$vendorName} telah diverifikasi dan aktif.";
+                    break;
+                    
+                case 'rejected':
+                    $title = 'Verifikasi Vendor Ditolak';
+                    $message = "Maaf, vendor {$vendorName} ditolak.";
+                    if ($reason) {
+                        $message .= " Alasan: {$reason}";
+                    }
+                    break;
+                    
+                default:
+                    return; // Tidak kirim notifikasi untuk status lain
+            }
+
+            // Kirim notifikasi ke vendor
+            $db->table('notifications')->insert([
+                'user_id' => $vendorUserId,
+                'vendor_id' => $vendorData['id'] ?? null, // vendor_profiles.id
+                'seo_id' => null,
+                'type' => 'system',
+                'title' => $title,
+                'message' => $message,
+                'is_read' => 0,
+                'read_at' => null,
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
+
+            log_message('info', "Notifikasi status vendor berhasil dikirim: {$vendorName} - {$status}");
+
+        } catch (\Throwable $e) {
+            log_message('error', 'Gagal mengirim notifikasi status vendor: ' . $e->getMessage());
+        }
     }
 }

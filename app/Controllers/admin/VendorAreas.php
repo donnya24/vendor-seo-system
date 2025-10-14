@@ -2,13 +2,13 @@
 
 namespace App\Controllers\Admin;
 
-use App\Controllers\BaseController;
+use App\Controllers\Admin\BaseAdminController; // Perbaikan: Extend BaseAdminController
 use App\Models\AreasModel;
 use App\Models\VendorAreasModel;
 use App\Models\VendorProfilesModel;
 use App\Models\ActivityLogsModel;
 
-class VendorAreas extends BaseController
+class VendorAreas extends BaseAdminController // Perbaikan: Extend BaseAdminController
 {
     protected $areasModel;
     protected $vendorAreasModel;
@@ -17,6 +17,7 @@ class VendorAreas extends BaseController
 
     public function __construct()
     {
+        // Hapus parent::__construct() karena BaseController tidak memiliki constructor
         $this->areasModel = new AreasModel();
         $this->vendorAreasModel = new VendorAreasModel();
         $this->vendorProfilesModel = new VendorProfilesModel();
@@ -128,9 +129,19 @@ class VendorAreas extends BaseController
 
     public function index()
     {
-        // Get all vendors with their areas
+        // Log activity akses halaman area vendor
+        $this->writeLog(
+            'view_vendor_areas',
+            'Mengakses halaman manajemen area vendor'
+        );
+
+        // Load common data for header (termasuk notifikasi)
+        $commonData = $this->loadCommonData();
+        
+        // PERBAIKAN: Hanya get vendors dengan status verified
         $vendors = $this->vendorProfilesModel
             ->select('id, business_name, status, phone')
+            ->where('status', 'verified')  // Hanya vendor yang verified
             ->orderBy('business_name', 'ASC')
             ->findAll();
 
@@ -174,119 +185,159 @@ class VendorAreas extends BaseController
             ];
         }
 
-        $data = [
+        // Merge dengan common data (termasuk notifikasi)
+        return view('admin/vendor_areas/index', array_merge([
             'title' => 'Area Layanan Vendor',
             'vendorAreas' => $vendorAreas
-        ];
-
-        return view('admin/vendor_areas/index', $data);
-    }
-
-    public function manage($vendorId = null)
-    {
-        if ($vendorId) {
-            // Edit mode - dengan vendor_id
-            return $this->edit($vendorId);
-        } else {
-            // Create mode - tanpa vendor_id
-            return $this->create();
-        }
+        ], $commonData));
     }
 
     public function create()
     {
-        // Get vendors that don't have any areas yet
-        $vendorsWithAreas = $this->vendorAreasModel
-            ->select('vendor_id')
-            ->distinct()
-            ->findAll();
-        
-        $vendorIdsWithAreas = array_column($vendorsWithAreas, 'vendor_id');
-        
-        $vendors = $this->vendorProfilesModel
-            ->select('id, business_name, status, phone')
-            ->whereNotIn('id', $vendorIdsWithAreas) // Only vendors without areas
-            ->orderBy('business_name', 'ASC')
-            ->findAll();
+        // Log activity akses form create area vendor
+        $this->writeLog(
+            'view_create_vendor_area',
+            'Mengakses form create area vendor'
+        );
 
-        $isModal = $this->request->isAJAX() || $this->request->getGet('modal') === '1';
+        // Load common data for header (termasuk notifikasi)
+        $commonData = $this->loadCommonData();
 
-        return view('admin/vendor_areas/create', [
-            'title' => 'Tambah Area Layanan Vendor',
-            'vendors' => $vendors,
-            'isModal' => $isModal,
-        ]);
+        try {
+            // Get all verified vendors
+            $allVerifiedVendors = $this->vendorProfilesModel
+                ->select('id, business_name, status, phone')
+                ->where('status', 'verified')  // Hanya vendor yang verified
+                ->orderBy('business_name', 'ASC')
+                ->findAll();
+
+            // Get vendors that already have areas
+            $vendorsWithAreas = $this->vendorAreasModel
+                ->select('vendor_areas.vendor_id')
+                ->join('vendor_profiles', 'vendor_profiles.id = vendor_areas.vendor_id')
+                ->where('vendor_profiles.status', 'verified')  // Hanya vendor yang verified
+                ->distinct()
+                ->findAll();
+            
+            $vendorIdsWithAreas = array_column($vendorsWithAreas, 'vendor_id');
+            
+            // Filter vendors untuk hanya menampilkan yang belum memiliki area
+            $vendors = [];
+            foreach ($allVerifiedVendors as $vendor) {
+                if (!in_array($vendor['id'], $vendorIdsWithAreas)) {
+                    $vendors[] = $vendor;
+                }
+            }
+
+            // Debug: Log vendors data
+            log_message('debug', 'Verified vendors without areas: ' . json_encode($vendors));
+
+            $isModal = $this->request->isAJAX() || $this->request->getGet('modal') === '1';
+
+            if ($isModal) {
+                return view('admin/vendor_areas/modal_create', [
+                    'title' => 'Tambah Area Layanan Vendor',
+                    'vendors' => $vendors,
+                    'vendorIdsWithAreas' => $vendorIdsWithAreas,
+                    'isModal' => $isModal,
+                    'vendor' => [], // Empty vendor for create mode
+                    'selectedAreas' => [],
+                    'isAllIndonesia' => false
+                ]);
+            }
+
+            // Merge dengan common data (termasuk notifikasi)
+            return view('admin/vendor_areas/create', array_merge([
+                'title' => 'Tambah Area Layanan Vendor',
+                'vendors' => $vendors,
+                'vendorIdsWithAreas' => $vendorIdsWithAreas,
+                'isModal' => $isModal,
+                'vendor' => [], // Empty vendor for create mode
+                'selectedAreas' => [],
+                'isAllIndonesia' => false
+            ], $commonData));
+        } catch (\Exception $e) {
+            log_message('error', 'Error in VendorAreas::create: ' . $e->getMessage());
+            
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'status' => 'error',
+                    'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                ]);
+            }
+            
+            return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
     }
 
     public function edit($vendorId)
-    {
-        $vendor = $this->vendorProfilesModel->find($vendorId);
-        if (!$vendor) {
-            return redirect()->to(site_url('admin/areas'))
-                ->with('error', 'Vendor tidak ditemukan.');
-        }
+{
+    // Log activity akses form edit area vendor
+    $this->writeLog(
+        'view_edit_vendor_area',
+        'Mengakses form edit area vendor',
+        null // Perbaikan: Menghapus array dan mengganti dengan null
+    );
 
-        // Ambil data vendor dan area dari URL jika ada
-        $vendorFromUrl = $this->request->getGet('vendor');
-        $areasFromUrl = $this->request->getGet('areas');
-        
-        $selectedAreas = [];
-        
-        // Jika ada data area dari URL, gunakan itu
-        if (!empty($areasFromUrl)) {
-            $areasData = json_decode(urldecode($areasFromUrl), true);
-            if (is_array($areasData)) {
-                foreach ($areasData as $area) {
-                    $selectedAreas[] = [
-                        'id' => (int)$area['id'],
-                        'name' => $area['name'],
-                        'type' => $area['type'],
-                        'path' => $area['path'] ?? $area['name']
-                    ];
-                }
-            }
-        }
-        
-        // Jika tidak ada data dari URL atau data kosong, ambil dari database
-        if (empty($selectedAreas)) {
-            $vendorAreas = $this->vendorAreasModel
-                ->select('areas.id, areas.name, areas.type, areas.parent_id')
-                ->join('areas', 'areas.id = vendor_areas.area_id', 'inner')
-                ->where('vendor_areas.vendor_id', $vendorId)
-                ->orderBy('areas.name', 'ASC')
-                ->findAll();
+    // Load common data for header (termasuk notifikasi)
+    $commonData = $this->loadCommonData();
 
-            foreach ($vendorAreas as $area) {
-                $areaPath = $this->buildPathById((int)$area['id']);
-                $selectedAreas[] = [
-                    'id' => (int)$area['id'],
-                    'name' => $area['name'],
-                    'type' => $area['type'],
-                    'path' => $areaPath
-                ];
-            }
+    $vendor = $this->vendorProfilesModel->find($vendorId);
+    if (!$vendor) {
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Vendor tidak ditemukan.']);
         }
+        return redirect()->to(site_url('admin/areas'))
+            ->with('error', 'Vendor tidak ditemukan.');
+    }
 
+    // Get vendor areas from database
+    $vendorAreas = $this->vendorAreasModel
+        ->select('areas.id, areas.name, areas.type, areas.parent_id')
+        ->join('areas', 'areas.id = vendor_areas.area_id', 'inner')
+        ->where('vendor_areas.vendor_id', $vendorId)
+        ->orderBy('areas.name', 'ASC')
+        ->findAll();
+
+    $selectedAreas = [];
+    $isAllIndonesia = false;
+
+    foreach ($vendorAreas as $area) {
+        $areaPath = $this->buildPathById((int)$area['id']);
+        $selectedAreas[] = [
+            'id' => (int)$area['id'],
+            'name' => $area['name'],
+            'type' => $area['type'],
+            'path' => $areaPath
+        ];
+        
         // Check for "Seluruh Indonesia"
-        $isAll = false;
-        foreach ($selectedAreas as $area) {
-            if (strcasecmp($area['name'], 'Seluruh Indonesia') === 0) { 
-                $isAll = true; 
-                break; 
-            }
+        if (strcasecmp($area['name'], 'Seluruh Indonesia') === 0) { 
+            $isAllIndonesia = true; 
         }
+    }
 
-        $isModal = $this->request->isAJAX() || $this->request->getGet('modal') === '1';
+    $isModal = $this->request->isAJAX() || $this->request->getGet('modal') === '1';
 
-        return view('admin/vendor_areas/edit', [
+    if ($isModal) {
+        return view('admin/vendor_areas/modal_edit', [
             'title'          => 'Edit Area Layanan - ' . $vendor['business_name'],
             'vendor'         => $vendor,
             'selectedAreas'  => $selectedAreas,
-            'isAllIndonesia' => $isAll,
+            'isAllIndonesia' => $isAllIndonesia,
             'isModal'        => $isModal,
         ]);
     }
 
+    // Merge dengan common data (termasuk notifikasi)
+    return view('admin/vendor_areas/edit', array_merge([
+        'title'          => 'Edit Area Layanan - ' . $vendor['business_name'],
+        'vendor'         => $vendor,
+        'selectedAreas'  => $selectedAreas,
+        'isAllIndonesia' => $isAllIndonesia,
+        'isModal'        => $isModal,
+    ], $commonData));
+}
     /* ===================== API ===================== */
 
     public function search()
@@ -423,11 +474,31 @@ class VendorAreas extends BaseController
 
                 $db->transComplete();
                 $this->writeLog('set', 'Set area: Seluruh Indonesia untuk vendor ' . $businessName, $aid);
+                
+                // Log activity attach area vendor
+                $this->logActivity(
+                    'attach_vendor_area',
+                    'Menambahkan area "Seluruh Indonesia" untuk vendor: ' . $businessName,
+                    [
+                        'vendor_id' => $vendorId,
+                        'area_id' => $aid,
+                        'area_name' => 'Seluruh Indonesia'
+                    ]
+                );
             } else {
                 if (empty($areaIds)) {
                     // Clear all areas
                     $db->transComplete();
                     $this->writeLog('set', 'Kosongkan area layanan untuk vendor ' . $businessName, null);
+                    
+                    // Log activity clear areas vendor
+                    $this->logActivity(
+                        'clear_vendor_areas',
+                        'Menghapus semua area untuk vendor: ' . $businessName,
+                        [
+                            'vendor_id' => $vendorId
+                        ]
+                    );
                 } else {
                     $existIds = $this->areasModel->whereIn('id', $areaIds)->select('id')->findColumn('id');
 
@@ -452,6 +523,17 @@ class VendorAreas extends BaseController
 
                     $db->transComplete();
                     $this->writeLog('set', 'Set area (' . count($existIds) . '): ' . $this->describeAreas($existIds, 8, true) . ' untuk vendor ' . $businessName, null);
+                    
+                    // Log activity attach areas vendor
+                    $this->logActivity(
+                        'attach_vendor_areas',
+                        'Menambahkan ' . count($existIds) . ' area untuk vendor: ' . $businessName,
+                        [
+                            'vendor_id' => $vendorId,
+                            'area_ids' => $existIds,
+                            'area_count' => count($existIds)
+                        ]
+                    );
                 }
             }
 
@@ -506,6 +588,17 @@ class VendorAreas extends BaseController
                 $desc .= ': ' . $this->buildPathById((int)$area['id']); 
             }
             $this->writeLog('delete', $desc, $areaId);
+            
+            // Log activity delete area vendor
+            $this->logActivity(
+                'delete_vendor_area',
+                $desc,
+                [
+                    'vendor_id' => $vendorId,
+                    'area_id' => $areaId,
+                    'area_name' => $area ? $area['name'] : 'Unknown'
+                ]
+            );
 
             return $this->response->setJSON([
                 'status' => 'success',
@@ -539,6 +632,15 @@ class VendorAreas extends BaseController
             if ($deleted) {
                 $this->writeLog('clear', 'Hapus semua area untuk vendor: ' . $businessName, null);
                 
+                // Log activity clear all areas vendor
+                $this->logActivity(
+                    'clear_all_vendor_areas',
+                    'Menghapus semua area untuk vendor: ' . $businessName,
+                    [
+                        'vendor_id' => $vendorId
+                    ]
+                );
+                
                 if ($this->request->isAJAX()) {
                     return $this->response->setJSON([
                         'status' => 'success',
@@ -560,6 +662,35 @@ class VendorAreas extends BaseController
                 ]);
             }
             return redirect()->to(site_url('admin/areas'))->with('error', 'Gagal menghapus area dari vendor: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Log activity untuk admin
+     */
+    private function logActivity($action, $description, $additionalData = [])
+    {
+        try {
+            $user = service('auth')->user();
+            
+            $data = [
+                'user_id'     => $user ? $user->id : null,
+                'module'      => 'admin_vendor_areas',
+                'action'      => $action,
+                'description' => $description,
+                'ip_address'  => $this->request->getIPAddress(),
+                'user_agent'  => (string) $this->request->getUserAgent(),
+                'created_at'  => date('Y-m-d H:i:s'),
+            ];
+
+            if (!empty($additionalData)) {
+                $data['additional_data'] = json_encode($additionalData);
+            }
+
+            $this->activityLogsModel->insert($data);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Failed to log activity in VendorAreas: ' . $e->getMessage());
         }
     }
 }

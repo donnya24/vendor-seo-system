@@ -2,33 +2,46 @@
 
 namespace App\Controllers\Admin;
 
-use App\Controllers\BaseController;
+use App\Controllers\Admin\BaseAdminController; // Perbaikan: Extend BaseAdminController
 use App\Models\SeoProfilesModel;
 use App\Models\IdentityModel;
 use App\Models\UserModel;
+use App\Models\ActivityLogsModel; // Tambahkan model ActivityLogs
 use CodeIgniter\Shield\Entities\User as ShieldUser;
 use CodeIgniter\Database\Exceptions\DatabaseException;
 
-class UserSeo extends BaseController
+class UserSeo extends BaseAdminController // Perbaikan: Extend BaseAdminController
 {
     protected $users;
     protected $db;
     protected $seoModel;
     protected $identityModel;
     protected $userModel;
+    protected $activityLogsModel; // Tambahkan property
 
     public function __construct()
     {
-        $this->users         = service('auth')->getProvider();
-        $this->db            = db_connect();
-        $this->seoModel      = new SeoProfilesModel();
+        // Hapus parent::__construct() karena BaseController tidak memiliki constructor
+        $this->users = service('auth')->getProvider();
+        $this->db = db_connect();
+        $this->seoModel = new SeoProfilesModel();
         $this->identityModel = new IdentityModel();
-        $this->userModel     = new UserModel();
+        $this->userModel = new UserModel();
+        $this->activityLogsModel = new ActivityLogsModel(); // Inisialisasi model
     }
 
     // ========== LIST ==========
     public function index()
     {
+        // Log activity akses halaman user SEO
+        $this->logActivity(
+            'view_user_seo',
+            'Mengakses halaman manajemen user SEO'
+        );
+
+        // Load common data for header (termasuk notifikasi)
+        $commonData = $this->loadCommonData();
+        
         // Query untuk user SEO
         // Query ini sudah benar untuk hard delete, karena jika user dihapus,
         // data di auth_groups_users juga hilang, sehingga user tidak akan muncul.
@@ -54,24 +67,35 @@ class UserSeo extends BaseController
             ];
         }, $users);
 
-        return view('admin/userseo/index', [
+        // Merge dengan common data (termasuk notifikasi)
+        return view('admin/userseo/index', array_merge([
             'page'  => 'Users SEO',
             'users' => $users,
-        ]);
+        ], $commonData));
     }
 
     // ========== CREATE ==========
     public function create()
     {
+        // Log activity akses form create user SEO
+        $this->logActivity(
+            'view_create_user_seo',
+            'Mengakses form create user SEO'
+        );
+
+        // Load common data for header (termasuk notifikasi)
+        $commonData = $this->loadCommonData();
+
         // Handle AJAX request untuk modal - return HTML langsung
         if ($this->request->isAJAX()) {
             return view('admin/userseo/modal_create');
         }
 
         // fallback untuk non-AJAX
-        return view('admin/userseo/create', [
+        // Merge dengan common data (termasuk notifikasi)
+        return view('admin/userseo/create', array_merge([
             'page' => 'Users SEO',
-        ]);
+        ], $commonData));
     }
 
     // ========== STORE ==========
@@ -162,7 +186,7 @@ class UserSeo extends BaseController
                 $this->setSingleGroup((int) $userId, 'seoteam');
 
                 // seo profile
-                $this->seoModel->insert([
+                $seoProfileId = $this->seoModel->insert([
                     'user_id'     => $userId,
                     'name'        => $fullname,
                     'phone'       => $phone,
@@ -170,6 +194,19 @@ class UserSeo extends BaseController
                     'created_at'  => date('Y-m-d H:i:s'),
                     'updated_at'  => date('Y-m-d H:i:s'),
                 ]);
+
+                // Log activity create user SEO
+                $this->logActivity(
+                    'create_user_seo',
+                    'Membuat user SEO baru: ' . $username,
+                    [
+                        'user_id' => $userId,
+                        'seo_profile_id' => $seoProfileId,
+                        'username' => $username,
+                        'email' => $email,
+                        'fullname' => $fullname
+                    ]
+                );
 
                 log_message('info', "User SEO berhasil dibuat: {$username} ({$email})");
 
@@ -220,6 +257,13 @@ class UserSeo extends BaseController
     // ========== EDIT ==========
     public function edit($id)
     {
+        // Log activity akses form edit user SEO
+        $this->logActivity(
+            'view_edit_user_seo',
+            'Mengakses form edit user SEO',
+            ['user_id' => $id]
+        );
+
         $user = $this->users->asArray()->find($id);
         if (!$user) {
             if ($this->request->isAJAX()) {
@@ -246,13 +290,17 @@ class UserSeo extends BaseController
             'profile' => $profile,
         ];
 
+        // Load common data for header (termasuk notifikasi)
+        $commonData = $this->loadCommonData();
+
         // Return HTML untuk modal AJAX
         if ($this->request->isAJAX()) {
             return view('admin/userseo/modal_edit', $data);
         }
 
         // Fallback untuk non-AJAX
-        return view('admin/userseo/edit', $data);
+        // Merge dengan common data (termasuk notifikasi)
+        return view('admin/userseo/edit', array_merge($data, $commonData));
     }
 
     // ========== UPDATE ==========//
@@ -373,6 +421,18 @@ class UserSeo extends BaseController
                     $this->seoModel->insert($data);
                 }
 
+                // Log activity update user SEO
+                $this->logActivity(
+                    'update_user_seo',
+                    'Memperbarui user SEO: ' . $username,
+                    [
+                        'user_id' => $id,
+                        'username' => $username,
+                        'email' => $email,
+                        'fullname' => $fullname
+                    ]
+                );
+
                 log_message('info', "User SEO berhasil diupdate: {$username}");
 
                 return $this->response->setJSON([
@@ -432,6 +492,10 @@ class UserSeo extends BaseController
                     ]);
                 }
 
+                // Get user data for logging
+                $user = $this->users->find($id);
+                $username = $user ? $user->username : 'Unknown';
+
                 // Hapus dari tabel terkait terlebih dahulu untuk menjaga integritas
                 if ($this->db->tableExists('auth_groups_users')) {
                     $this->db->table('auth_groups_users')->where('user_id', $id)->delete();
@@ -446,6 +510,16 @@ class UserSeo extends BaseController
                 // Hard delete user dari tabel 'users'
                 // Parameter 'false' memaksa penghapusan permanen
                 $this->users->delete($id, false);
+
+                // Log activity delete user SEO
+                $this->logActivity(
+                    'delete_user_seo',
+                    'Menghapus user SEO: ' . $username,
+                    [
+                        'user_id' => $id,
+                        'username' => $username
+                    ]
+                );
 
                 log_message('warning', "User SEO berhasil dihapus PERMANEN: ID {$id}");
 
@@ -471,6 +545,10 @@ class UserSeo extends BaseController
             return redirect()->to(site_url('admin/userseo'))->with('error', 'User bukan Tim SEO');
         }
 
+        // Get user data for logging
+        $user = $this->users->find($id);
+        $username = $user ? $user->username : 'Unknown';
+
         if ($this->db->tableExists('auth_groups_users')) {
             $this->db->table('auth_groups_users')->where('user_id', $id)->delete();
         }
@@ -480,6 +558,16 @@ class UserSeo extends BaseController
         
         // Hard delete user dari tabel 'users'
         $this->users->delete($id, false);
+
+        // Log activity delete user SEO
+        $this->logActivity(
+            'delete_user_seo',
+            'Menghapus user SEO: ' . $username,
+            [
+                'user_id' => $id,
+                'username' => $username
+            ]
+        );
 
         return redirect()->to(site_url('admin/userseo'))->with('success', 'User SEO berhasil dihapus secara permanen.');
     }
@@ -553,12 +641,29 @@ class UserSeo extends BaseController
                     }
                 }
                 
+                // 🔔 KIRIM NOTIFIKASI JIKA UPDATE BERHASIL
+                if ($updateResult) {
+                    $this->sendSeoStatusNotification($sp, $newStatus);
+                }
+
                 // Cek error database
                 $error = $this->seoModel->errors();
                 if ($error) {
                     log_message('error', 'Model errors: ' . json_encode($error));
                     throw new \Exception('Database error: ' . json_encode($error));
                 }
+                
+                // Log activity toggle suspend SEO
+                $this->logActivity(
+                    'toggle_suspend_seo',
+                    $message,
+                    [
+                        'user_id' => $id,
+                        'seo_profile_id' => $sp['id'] ?? null,
+                        'old_status' => $currentStatus,
+                        'new_status' => $newStatus
+                    ]
+                );
                 
                 log_message('debug', 'Toggle suspend SEO success: ' . $message);
                 
@@ -624,12 +729,13 @@ class UserSeo extends BaseController
             ->update();
     }
 
-    private function updateEmailIdentity(int $userId, string $email, string $name = null): void
+    // Perbaikan: Tambahkan nullable type hint secara eksplisit
+    private function updateEmailIdentity(int $userId, string $email, ?string $name = null): void
     {
         $data = ['secret' => $email];
         
         // Tambahkan nama jika ada
-        if ($name) {
+        if ($name !== null) {
             $data['name'] = $name;
         }
         
@@ -645,5 +751,78 @@ class UserSeo extends BaseController
             ->where(['user_id' => $userId, 'type' => 'email_password'])
             ->set('name', $name)
             ->update();
+    }
+
+    /**
+     * Kirim notifikasi status SEO ke user yang bersangkutan
+     */
+    private function sendSeoStatusNotification($seoData, $status)
+    {
+        try {
+            $db = \Config\Database::connect();
+            
+            $seoName = $seoData['name'] ?? 'SEO Tidak Dikenal';
+            $seoProfileId = $seoData['id'] ?? null; // ID dari seo_profiles
+            $userId = $seoData['user_id'] ?? null; // ID user yang bersangkutan
+            $statusText = $status === 'active' ? 'diaktifkan' : 'dinonaktifkan';
+            
+            // Pastikan kita memiliki user_id
+            if (!$userId) {
+                log_message('error', 'User ID tidak ditemukan di data SEO untuk notifikasi');
+                return;
+            }
+
+            // Ambil admin name
+            $currentUser = service('auth')->user();
+            $adminName = $currentUser->username ?? 'Administrator';
+            
+            // Kirim notifikasi hanya ke user yang bersangkutan
+            $db->table('notifications')->insert([
+                'user_id' => $userId, // Hanya user ini yang menerima notifikasi
+                'vendor_id' => null,
+                'seo_id' => $seoProfileId, 
+                'type' => 'system',
+                'title' => 'Status Akun Anda',
+                'message' => "Akun Anda telah {$statusText} oleh {$adminName}",
+                'is_read' => 0,
+                'read_at' => null,
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
+
+            log_message('info', "Notifikasi status SEO berhasil dikirim: {$seoName} - {$status} ke user ID: {$userId}");
+
+        } catch (\Throwable $e) {
+            log_message('error', 'Gagal mengirim notifikasi status SEO: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Log activity untuk admin
+     */
+    private function logActivity($action, $description, $additionalData = [])
+    {
+        try {
+            $user = service('auth')->user();
+            
+            $data = [
+                'user_id'     => $user ? $user->id : null,
+                'module'      => 'admin_user_seo',
+                'action'      => $action,
+                'description' => $description,
+                'ip_address'  => $this->request->getIPAddress(),
+                'user_agent'  => (string) $this->request->getUserAgent(),
+                'created_at'  => date('Y-m-d H:i:s'),
+            ];
+
+            if (!empty($additionalData)) {
+                $data['additional_data'] = json_encode($additionalData);
+            }
+
+            $this->activityLogsModel->insert($data);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Failed to log activity in UserSeo: ' . $e->getMessage());
+        }
     }
 }

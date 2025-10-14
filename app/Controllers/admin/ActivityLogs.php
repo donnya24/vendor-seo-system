@@ -1,13 +1,17 @@
 <?php
+
 namespace App\Controllers\Admin;
 
-use App\Controllers\BaseController;
+use App\Controllers\Admin\BaseAdminController;
 use App\Models\ActivityLogsModel;
 
-class ActivityLogs extends BaseController
+class ActivityLogs extends BaseAdminController
 {
     public function index()
     {
+        // Load common data for header
+        $commonData = $this->loadCommonData();
+        
         // Pastikan user yang login adalah admin
         $user = service('auth')->user();
         if (!$user || !in_array($user->username, ['admin', 'Administrator Utama'])) {
@@ -27,13 +31,11 @@ class ActivityLogs extends BaseController
             ->findAll();
 
         // Render view dengan data yang diperlukan
-        return view('admin/activitylogs/index', [
+        return view('admin/activitylogs/index', array_merge([
             'title' => 'Activity Logs - Admin',
             'logs' => $logs,
             'page' => 'Activity Logs',
-            'profilePhoto' => session()->get('profile_photo') ?? null,
-            'notifications' => session()->get('notifications') ?? []
-        ]);
+        ], $commonData));
     }
 
     public function deleteAll()

@@ -2,29 +2,43 @@
 
 namespace App\Controllers\Admin;
 
-use App\Controllers\BaseController;
+use App\Controllers\Admin\BaseAdminController; // Perbaikan: Extend BaseAdminController
 use App\Models\VendorProfilesModel;
 use App\Models\IdentityModel;
+use App\Models\ActivityLogsModel; // Tambahkan model ActivityLogs
 use CodeIgniter\Shield\Entities\User as ShieldUser;
+use CodeIgniter\Database\Exceptions\DatabaseException;
 
-class UserVendor extends BaseController
+class UserVendor extends BaseAdminController // Perbaikan: Extend BaseAdminController
 {
     protected $users;
     protected $db;
     protected $vendorModel;
     protected $identityModel;
+    protected $activityLogsModel; // Tambahkan property
 
     public function __construct()
     {
+        // Hapus parent::__construct() karena BaseController tidak memiliki constructor
         $this->users         = service('auth')->getProvider();
         $this->db            = db_connect();
         $this->vendorModel   = new VendorProfilesModel();
         $this->identityModel = new IdentityModel();
+        $this->activityLogsModel = new ActivityLogsModel(); // Inisialisasi model
     }
 
     // ========== LIST ==========
     public function index()
     {
+        // Log activity akses halaman user vendor
+        $this->logActivity(
+            'view_user_vendor',
+            'Mengakses halaman manajemen user vendor'
+        );
+
+        // Load common data for header (termasuk notifikasi)
+        $commonData = $this->loadCommonData();
+        
         // Query untuk VENDOR - dengan semua field komisi
         $users = $this->db->table('users u')
             ->select('u.id, u.username, 
@@ -70,24 +84,35 @@ class UserVendor extends BaseController
             ];
         }, $users);
 
-        return view('admin/uservendor/index', [
+        // Merge dengan common data (termasuk notifikasi)
+        return view('admin/uservendor/index', array_merge([
             'page'  => 'Users Vendor',
             'users' => $users,
-        ]);
+        ], $commonData));
     }
 
     // ========== CREATE ==========
     public function create()
     {
+        // Log activity akses form create user vendor
+        $this->logActivity(
+            'view_create_user_vendor',
+            'Mengakses form create user vendor'
+        );
+
+        // Load common data for header (termasuk notifikasi)
+        $commonData = $this->loadCommonData();
+
         // Handle AJAX request untuk modal - return HTML langsung
         if ($this->request->isAJAX()) {
             return view('admin/uservendor/modal_create');
         }
 
         // fallback untuk non-AJAX
-        return view('admin/uservendor/create', [
+        // Merge dengan common data (termasuk notifikasi)
+        return view('admin/uservendor/create', array_merge([
             'page' => 'Users Vendor',
-        ]);
+        ], $commonData));
     }
 
     // ========== STORE ==========
@@ -105,6 +130,14 @@ class UserVendor extends BaseController
                 $email    = trim((string) $this->request->getPost('email'));
                 $password = (string) $this->request->getPost('password');
                 
+                // Validasi input required
+                if (empty($username) || empty($email) || empty($password)) {
+                    return $this->response->setJSON([
+                        'status' => 'error',
+                        'message' => 'Username, email, dan password wajib diisi'
+                    ]);
+                }
+
                 // Validasi password
                 if (strlen($password) < 8) {
                     return $this->response->setJSON([
@@ -119,6 +152,26 @@ class UserVendor extends BaseController
                     return $this->response->setJSON([
                         'status' => 'error',
                         'message' => 'Konfirmasi password tidak sama'
+                    ]);
+                }
+
+                // Cek duplikasi username
+                $existingUser = $this->users->where('username', $username)->first();
+                if ($existingUser) {
+                    return $this->response->setJSON([
+                        'status' => 'error',
+                        'message' => 'Username sudah digunakan',
+                        'field' => 'username'
+                    ]);
+                }
+
+                // Cek duplikasi email
+                $existingEmail = $this->identityModel->where('secret', $email)->first();
+                if ($existingEmail) {
+                    return $this->response->setJSON([
+                        'status' => 'error',
+                        'message' => 'Email sudah digunakan',
+                        'field' => 'email'
                     ]);
                 }
 
@@ -236,16 +289,55 @@ class UserVendor extends BaseController
                     'last_active' => $userAfterUpdate->last_active
                 ]));
 
+                // Log activity create user vendor
+                $this->logActivity(
+                    'create_user_vendor',
+                    'Membuat user vendor baru: ' . $username,
+                    [
+                        'user_id' => $userId,
+                        'vendor_profile_id' => $insertResult,
+                        'username' => $username,
+                        'email' => $email,
+                        'business_name' => $businessName
+                    ]
+                );
+
+                log_message('info', "User vendor berhasil dibuat: {$username} ({$email})");
+
                 return $this->response->setJSON([
                     'status' => 'success',
                     'message' => 'User Vendor berhasil dibuat'
                 ]);
 
+            } catch (DatabaseException $e) {
+                // Tangani error duplikasi dari database
+                if ($e->getCode() === 1062) { // MySQL error code for duplicate entry
+                    $message = $e->getMessage();
+                    if (strpos($message, 'users.username') !== false) {
+                        return $this->response->setJSON([
+                            'status' => 'error',
+                            'message' => 'Username sudah digunakan',
+                            'field' => 'username'
+                        ]);
+                    } elseif (strpos($message, 'auth_identities.secret') !== false) {
+                        return $this->response->setJSON([
+                            'status' => 'error',
+                            'message' => 'Email sudah digunakan',
+                            'field' => 'email'
+                        ]);
+                    }
+                }
+                
+                log_message('error', 'Store Database Error: ' . $e->getMessage());
+                return $this->response->setJSON([
+                    'status' => 'error',
+                    'message' => 'Terjadi kesalahan database. Silakan coba lagi.'
+                ]);
             } catch (\Exception $e) {
                 log_message('error', 'Store Error: ' . $e->getMessage());
                 return $this->response->setJSON([
                     'status' => 'error',
-                    'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                    'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()
                 ]);
             }
         }
@@ -255,14 +347,24 @@ class UserVendor extends BaseController
             'message' => 'Request harus AJAX'
         ]);
     }
+    
     // ========== EDIT ==========
     public function edit($id)
     {
-        // Perbaikan: Pastikan method bisa diakses via AJAX dan non-AJAX
+        // Log activity akses form edit user vendor
+        $this->logActivity(
+            'view_edit_user_vendor',
+            'Mengakses form edit user vendor',
+            ['user_id' => $id]
+        );
+
         $user = $this->users->asArray()->find($id);
         if (!$user) {
             if ($this->request->isAJAX()) {
-                return $this->response->setStatusCode(404)->setJSON(['error' => 'User tidak ditemukan']);
+                return $this->response->setJSON([
+                    'status' => 'error',
+                    'message' => 'User tidak ditemukan'
+                ]);
             }
             return redirect()->to(site_url('admin/uservendor'))->with('error', 'User tidak ditemukan');
         }
@@ -280,13 +382,17 @@ class UserVendor extends BaseController
             'profile' => $profile,
         ];
 
+        // Load common data for header (termasuk notifikasi)
+        $commonData = $this->loadCommonData();
+
         // Return HTML untuk modal AJAX
         if ($this->request->isAJAX()) {
             return view('admin/uservendor/modal_edit', $data);
         }
 
         // Fallback untuk non-AJAX
-        return view('admin/uservendor/edit', $data);
+        // Merge dengan common data (termasuk notifikasi)
+        return view('admin/uservendor/edit', array_merge($data, $commonData));
     }
 
     // ========== UPDATE ==========
@@ -311,6 +417,34 @@ class UserVendor extends BaseController
                         'status' => 'error',
                         'message' => 'User tidak ditemukan'
                     ]);
+                }
+
+                // Cek duplikasi username jika berubah
+                if ($username !== $user->username) {
+                    $existingUser = $this->users->where('username', $username)->first();
+                    if ($existingUser) {
+                        return $this->response->setJSON([
+                            'status' => 'error',
+                            'message' => 'Username sudah digunakan',
+                            'field' => 'username'
+                        ]);
+                    }
+                }
+
+                // Ambil email lama dengan lebih aman
+                $identity = $this->identityModel->where(['user_id' => $id, 'type' => 'email_password'])->first();
+                $oldEmail = ($identity && isset($identity['secret'])) ? $identity['secret'] : '';
+
+                // Cek duplikasi email jika berubah
+                if (!empty($email) && $email !== $oldEmail) {
+                    $existingEmail = $this->identityModel->where('secret', $email)->first();
+                    if ($existingEmail) {
+                        return $this->response->setJSON([
+                            'status' => 'error',
+                            'message' => 'Email sudah digunakan',
+                            'field' => 'email'
+                        ]);
+                    }
                 }
 
                 // Update username
@@ -376,15 +510,50 @@ class UserVendor extends BaseController
                     $this->vendorModel->insert($data);
                 }
 
+                // Log activity update user vendor
+                $this->logActivity(
+                    'update_user_vendor',
+                    'Memperbarui user vendor: ' . $username,
+                    [
+                        'user_id' => $id,
+                        'username' => $username,
+                        'email' => $email,
+                        'business_name' => $businessName
+                    ]
+                );
+
+                log_message('info', "User vendor berhasil diupdate: {$username}");
+
                 return $this->response->setJSON([
                     'status' => 'success',
                     'message' => 'User Vendor berhasil diupdate'
                 ]);
 
             } catch (\Exception $e) {
+                // Tangani SEMUA jenis exception, termasuk DatabaseException
+                log_message('error', 'Update Error: ' . $e->getMessage());
+                log_message('error', $e->getTraceAsString()); // Tambahkan trace untuk debugging lebih lanjut
+                
+                // Cek apakah ini error duplikasi dari database
+                if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                    if (strpos($e->getMessage(), 'users.username') !== false) {
+                        return $this->response->setJSON([
+                            'status' => 'error',
+                            'message' => 'Username sudah digunakan',
+                            'field' => 'username'
+                        ]);
+                    } elseif (strpos($e->getMessage(), 'auth_identities.secret') !== false) {
+                        return $this->response->setJSON([
+                            'status' => 'error',
+                            'message' => 'Email sudah digunakan',
+                            'field' => 'email'
+                        ]);
+                    }
+                }
+                
                 return $this->response->setJSON([
                     'status' => 'error',
-                    'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                    'message' => 'Terjadi kesalahan server. Silakan coba lagi.'
                 ]);
             }
         }
@@ -415,6 +584,12 @@ class UserVendor extends BaseController
                         'message' => 'User bukan Vendor'
                     ]);
                 }
+                
+                // Get user data for logging
+                $user = $this->users->find($id);
+                $username = $user ? $user->username : 'Unknown';
+                $vendorProfile = $this->vendorModel->where('user_id', $id)->first();
+                $businessName = $vendorProfile ? $vendorProfile['business_name'] : 'Unknown';
                 
                 // Mulai transaksi
                 $this->db->transStart();
@@ -461,6 +636,17 @@ class UserVendor extends BaseController
                 
                 log_message('debug', 'Delete vendor success - user completely removed');
                 
+                // Log activity delete user vendor
+                $this->logActivity(
+                    'delete_user_vendor',
+                    'Menghapus user vendor: ' . $username . ' (' . $businessName . ')',
+                    [
+                        'user_id' => $id,
+                        'username' => $username,
+                        'business_name' => $businessName
+                    ]
+                );
+                
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'User Vendor berhasil dihapus.',
@@ -486,6 +672,7 @@ class UserVendor extends BaseController
             'message' => 'Request harus AJAX'
         ]);
     }
+    
     // ========== GET VENDOR DATA ==========
     public function getVendorData($id)
     {
@@ -551,6 +738,7 @@ class UserVendor extends BaseController
                 log_message('debug', 'Current vendor status: ' . ($vp['status'] ?? 'pending'));
                 
                 $currentStatus = $vp['status'] ?? 'pending';
+                $vendorName = $vp['business_name'] ?? 'Unknown';
                 
                 // LOGIC: Pisahkan status verification dan active/inactive
                 $isCurrentlyActive = !in_array($currentStatus, ['inactive']);
@@ -559,13 +747,15 @@ class UserVendor extends BaseController
                     // Aktifkan vendor - kembalikan ke status verification sebelumnya
                     $previousVerificationStatus = $vp['inactive_reason'] ?? 'pending';
                     $newStatus = $previousVerificationStatus;
-                    $message = 'Vendor diaktifkan kembali.';
+                    $message = 'Vendor ' . $vendorName . ' diaktifkan kembali.';
                     $isActive = true;
+                    $notificationStatus = 'active';
                 } else {
                     // Nonaktifkan vendor - simpan status verification saat ini
                     $newStatus = 'inactive';
-                    $message = 'Vendor dinonaktifkan.';
+                    $message = 'Vendor ' . $vendorName . ' dinonaktifkan.';
                     $isActive = false;
+                    $notificationStatus = 'inactive';
                 }
                 
                 log_message('debug', 'New vendor status: ' . $newStatus);
@@ -608,6 +798,24 @@ class UserVendor extends BaseController
                         $updateResult = true; // Anggap sukses jika tidak ada perubahan
                     }
                 }
+                
+                // 🔔 KIRIM NOTIFIKASI JIKA UPDATE BERHASIL
+                if ($updateResult) {
+                    $this->sendVendorStatusNotification($vp, $notificationStatus);
+                }
+                
+                // Log activity toggle suspend vendor
+                $this->logActivity(
+                    'toggle_suspend_vendor',
+                    $message,
+                    [
+                        'user_id' => $id,
+                        'vendor_profile_id' => $vp['id'] ?? null,
+                        'old_status' => $currentStatus,
+                        'new_status' => $newStatus,
+                        'vendor_name' => $vendorName
+                    ]
+                );
                 
                 log_message('debug', 'Toggle suspend vendor success: ' . $message);
                 
@@ -666,6 +874,7 @@ class UserVendor extends BaseController
                     ]);
                 }
 
+                $vendorName = $vp['business_name'] ?? 'Unknown';
                 log_message('debug', 'Current vendor status: ' . ($vp['status'] ?? 'pending'));
                 
                 // Update status menjadi verified
@@ -700,11 +909,29 @@ class UserVendor extends BaseController
                     }
                 }
                 
+                // 🔔 KIRIM NOTIFIKASI JIKA UPDATE BERHASIL
+                if ($updateResult) {
+                    $this->sendVendorStatusNotification($vp, 'verified');
+                }
+                
+                // Log activity verify vendor
+                $this->logActivity(
+                    'verify_vendor',
+                    'Memverifikasi vendor: ' . $vendorName,
+                    [
+                        'user_id' => $id,
+                        'vendor_profile_id' => $vp['id'] ?? null,
+                        'old_status' => $vp['status'] ?? 'pending',
+                        'new_status' => 'verified',
+                        'vendor_name' => $vendorName
+                    ]
+                );
+                
                 log_message('debug', 'Verify vendor success');
                 
                 return $this->response->setJSON([
                     'success' => true,
-                    'message' => 'Vendor berhasil diverifikasi.',
+                    'message' => 'Vendor ' . $vendorName . ' berhasil diverifikasi.',
                     'new_status' => 'verified',
                     'new_label' => 'Verified'
                 ]);
@@ -765,6 +992,7 @@ class UserVendor extends BaseController
                     ]);
                 }
 
+                $vendorName = $vp['business_name'] ?? 'Unknown';
                 log_message('debug', 'Current vendor status: ' . ($vp['status'] ?? 'pending'));
                 
                 // Update status menjadi rejected dan simpan alasan
@@ -799,11 +1027,30 @@ class UserVendor extends BaseController
                     }
                 }
                 
+                // 🔔 KIRIM NOTIFIKASI JIKA UPDATE BERHASIL
+                if ($updateResult) {
+                    $this->sendVendorStatusNotification($vp, 'rejected', $rejectReason);
+                }
+                
+                // Log activity reject vendor
+                $this->logActivity(
+                    'reject_vendor',
+                    'Menolak vendor: ' . $vendorName . ' dengan alasan: ' . $rejectReason,
+                    [
+                        'user_id' => $id,
+                        'vendor_profile_id' => $vp['id'] ?? null,
+                        'old_status' => $vp['status'] ?? 'pending',
+                        'new_status' => 'rejected',
+                        'rejection_reason' => $rejectReason,
+                        'vendor_name' => $vendorName
+                    ]
+                );
+                
                 log_message('debug', 'Reject vendor success');
                 
                 return $this->response->setJSON([
                     'success' => true,
-                    'message' => 'Vendor berhasil ditolak.',
+                    'message' => 'Vendor ' . $vendorName . ' berhasil ditolak.',
                     'new_status' => 'rejected',
                     'new_label' => 'Rejected'
                 ]);
@@ -869,5 +1116,103 @@ class UserVendor extends BaseController
             ->where(['user_id' => $userId, 'type' => 'email_password'])
             ->set('secret', $email)
             ->update();
+    }
+
+    /**
+     * Kirim notifikasi status vendor ke vendor
+     */
+    private function sendVendorStatusNotification($vendorData, $status, $reason = null)
+    {
+        try {
+            $db = \Config\Database::connect();
+            
+            $vendorName = $vendorData['business_name'] ?? 'Vendor Tidak Dikenal';
+            $vendorUserId = $vendorData['user_id'] ?? null;
+            
+            if (!$vendorUserId) {
+                log_message('error', 'Vendor user_id tidak ditemukan untuk notifikasi');
+                return;
+            }
+
+            // Tentukan pesan berdasarkan status
+            $title = '';
+            $message = '';
+            
+            switch ($status) {
+                case 'verified':
+                    $title = 'Verifikasi Vendor Diterima';
+                    $message = "Selamat! Vendor {$vendorName} telah diverifikasi dan aktif.";
+                    break;
+                    
+                case 'rejected':
+                    $title = 'Verifikasi Vendor Ditolak';
+                    $message = "Maaf, vendor {$vendorName} ditolak.";
+                    if ($reason) {
+                        $message .= " Alasan: {$reason}";
+                    }
+                    break;
+                    
+                case 'inactive':
+                    $title = 'Vendor Dinonaktifkan';
+                    $message = "Vendor {$vendorName} telah dinonaktifkan oleh Admin.";
+                    break;
+                    
+                case 'active':
+                    $title = 'Vendor Diaktifkan';
+                    $message = "Vendor {$vendorName} telah diaktifkan kembali oleh Admin.";
+                    break;
+                    
+                default:
+                    return; // Tidak kirim notifikasi untuk status lain
+            }
+
+            // Kirim notifikasi ke vendor
+            $db->table('notifications')->insert([
+                'user_id' => $vendorUserId,
+                'vendor_id' => $vendorData['id'] ?? null, // vendor_profiles.id
+                'seo_id' => null,
+                'type' => 'system',
+                'title' => $title,
+                'message' => $message,
+                'is_read' => 0,
+                'read_at' => null,
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
+
+            log_message('info', "Notifikasi status vendor berhasil dikirim: {$vendorName} - {$status}");
+
+        } catch (\Throwable $e) {
+            log_message('error', 'Gagal mengirim notifikasi status vendor: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Log activity untuk admin
+     */
+    private function logActivity($action, $description, $additionalData = [])
+    {
+        try {
+            $user = service('auth')->user();
+            
+            $data = [
+                'user_id'     => $user ? $user->id : null,
+                'module'      => 'admin_user_vendor',
+                'action'      => $action,
+                'description' => $description,
+                'ip_address'  => $this->request->getIPAddress(),
+                'user_agent'  => (string) $this->request->getUserAgent(),
+                'created_at'  => date('Y-m-d H:i:s'),
+            ];
+
+            if (!empty($additionalData)) {
+                $data['additional_data'] = json_encode($additionalData);
+            }
+
+            $this->activityLogsModel->insert($data);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Failed to log activity in UserVendor: ' . $e->getMessage());
+        }
     }
 }

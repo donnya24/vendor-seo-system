@@ -2,23 +2,33 @@
 
 namespace App\Controllers\Admin;
 
-use App\Controllers\BaseController;
+use App\Controllers\Admin\BaseAdminController; // Perbaikan: Extend BaseAdminController
 use App\Models\ActivityLogsModel;
 use App\Models\VendorProfilesModel;
 
-class ActivityVendor extends BaseController
+class ActivityVendor extends BaseAdminController // Perbaikan: Extend BaseAdminController
 {
     protected $activityLogs;
     protected $vendorProfiles;
 
     public function __construct()
     {
+        // Hapus parent::__construct() karena BaseController tidak memiliki constructor
         $this->activityLogs   = new ActivityLogsModel();
         $this->vendorProfiles = new VendorProfilesModel();
     }
 
     public function index()
     {
+        // Log activity akses halaman aktivitas vendor
+        $this->logActivity(
+            'view_activity_vendor',
+            'Mengakses halaman aktivitas vendor'
+        );
+
+        // Load common data for header (termasuk notifikasi)
+        $commonData = $this->loadCommonData();
+        
         $request = service('request');
         $vendorId = $request->getGet('vendor_id');
 
@@ -47,7 +57,8 @@ class ActivityVendor extends BaseController
             'vendor_id' => $vendorId,
         ];
 
-        return view('admin/activityvendor/index', $data);
+        // Merge dengan common data (termasuk notifikasi)
+        return view('admin/activityvendor/index', array_merge($data, $commonData));
     }
 
     public function deleteAll()
@@ -55,6 +66,13 @@ class ActivityVendor extends BaseController
         // Pastikan hanya admin yang bisa hapus
         $user = service('auth')->user();
         if (!$user || !in_array($user->username, ['admin', 'Administrator Utama'])) {
+            // Log percobaan akses tidak sah
+            $this->logActivity(
+                'unauthorized_access',
+                'Percobaan menghapus aktivitas vendor tanpa izin',
+                ['target' => 'delete_all_activity_vendor']
+            );
+            
             return redirect()->back()->with('error', 'Anda tidak memiliki akses untuk melakukan aksi ini.');
         }
 
@@ -82,15 +100,47 @@ class ActivityVendor extends BaseController
             }
 
             // Log aktivitas hapus semua
-            log_activity_auto('delete_all', "Menghapus {$deletedCount} riwayat aktivitas vendor" . (!empty($vendorId) ? " untuk vendor ID {$vendorId}" : ""), [
-                'module' => 'admin_activity_vendor',
-                'deleted_count' => $deletedCount,
-                'filtered_vendor' => $vendorId ?? 'all'
-            ]);
+            $this->logActivity(
+                'delete_all_activity_vendor',
+                "Menghapus {$deletedCount} riwayat aktivitas vendor" . (!empty($vendorId) ? " untuk vendor ID {$vendorId}" : ""),
+                [
+                    'module' => 'admin_activity_vendor',
+                    'deleted_count' => $deletedCount,
+                    'filtered_vendor' => $vendorId ?? 'all'
+                ]
+            );
 
             return redirect()->back()->with('success', "Berhasil menghapus {$deletedCount} riwayat aktivitas vendor.");
         }
 
         return redirect()->back()->with('error', 'Tidak ada data yang bisa dihapus.');
+    }
+
+    /**
+     * Log activity untuk admin
+     */
+    private function logActivity($action, $description, $additionalData = [])
+    {
+        try {
+            $user = service('auth')->user();
+            
+            $data = [
+                'user_id'     => $user ? $user->id : null,
+                'module'      => 'admin_activity_vendor',
+                'action'      => $action,
+                'description' => $description,
+                'ip_address'  => $this->request->getIPAddress(),
+                'user_agent'  => (string) $this->request->getUserAgent(),
+                'created_at'  => date('Y-m-d H:i:s'),
+            ];
+
+            if (!empty($additionalData)) {
+                $data['additional_data'] = json_encode($additionalData);
+            }
+
+            $this->activityLogs->insert($data);
+        } catch (\Throwable $e) {
+            log_message('error', 'Failed to log activity in ActivityVendor: ' . $e->getMessage());
+        }
     }
 }
