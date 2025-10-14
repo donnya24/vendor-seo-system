@@ -34,7 +34,20 @@ class ServicesProducts extends BaseController
         $this->vendorId   = $this->vendorProfile['id'] ?? null;
         $this->isVerified = ($this->vendorProfile['status'] ?? '') === 'verified';
 
-        return (bool) $this->vendorId;
+        return (bool) $this->vendorProfile;
+    }
+
+    private function checkVerifiedAccess(): bool
+    {
+        if (! $this->initVendor()) {
+            return false;
+        }
+        
+        if (! $this->isVerified) {
+            return false;
+        }
+        
+        return true;
     }
 
     private function withVendorData(array $data = [])
@@ -79,9 +92,9 @@ class ServicesProducts extends BaseController
     /* ----------------------------- List ----------------------------- */
     public function index()
     {
-        if (! $this->initVendor()) {
+        if (! $this->checkVerifiedAccess()) {
             return redirect()->to(site_url('vendoruser/dashboard'))
-                ->with('error', 'Profil vendor belum ada. Lengkapi profil terlebih dulu.');
+                ->with('error', 'Akun vendor Anda belum diverifikasi. Silakan lengkapi profil dan tunggu verifikasi dari admin.');
         }
 
         $list = (new VendorServicesProductsModel())
@@ -110,8 +123,9 @@ class ServicesProducts extends BaseController
 
     public function createGroup()
     {
-        if (! $this->initVendor()) {
-            return $this->response->setStatusCode(400)->setBody('Profil vendor belum ada.');
+        if (! $this->checkVerifiedAccess()) {
+            return redirect()->to(site_url('vendoruser/dashboard'))
+                ->with('error', 'Akun vendor Anda belum diverifikasi. Silakan lengkapi profil dan tunggu verifikasi dari admin.');
         }
 
         $this->logActivity('view_form', 'Membuka form tambah layanan/produk');
@@ -122,11 +136,8 @@ class ServicesProducts extends BaseController
 
     public function store()
     {
-        if (! $this->initVendor()) {
-            if ($this->request->isAJAX()) {
-                return $this->respondAjax('error', 'Profil vendor belum ada. Lengkapi profil terlebih dulu.', 400);
-            }
-            return redirect()->back()->with('error', 'Profil vendor belum ada. Lengkapi profil terlebih dulu.');
+        if (! $this->checkVerifiedAccess()) {
+            return $this->respondAjax('error', 'Akun vendor Anda belum diverifikasi. Silakan lengkapi profil dan tunggu verifikasi dari admin.', 400);
         }
 
         // Validasi input
@@ -279,8 +290,9 @@ class ServicesProducts extends BaseController
 
     public function editGroup()
     {
-        if (! $this->initVendor()) {
-            return $this->response->setStatusCode(400)->setBody('Profil vendor belum ada.');
+        if (! $this->checkVerifiedAccess()) {
+            return redirect()->to(site_url('vendoruser/dashboard'))
+                ->with('error', 'Akun vendor Anda belum diverifikasi. Silakan lengkapi profil dan tunggu verifikasi dari admin.');
         }
 
         $serviceName = trim((string) $this->request->getGet('service_name'));
@@ -319,8 +331,8 @@ class ServicesProducts extends BaseController
 
     public function updateGroup()
     {
-        if (! $this->initVendor()) {
-            return $this->respondAjax('error', 'Profil vendor belum ada.', 400);
+        if (! $this->checkVerifiedAccess()) {
+            return $this->respondAjax('error', 'Akun vendor Anda belum diverifikasi. Silakan lengkapi profil dan tunggu verifikasi dari admin.', 400);
         }
 
         $m = new VendorServicesProductsModel();
@@ -429,8 +441,8 @@ class ServicesProducts extends BaseController
     /* ---------------------------- Delete ---------------------------- */
     public function delete($id)
     {
-        if (! $this->initVendor()) {
-            return $this->respondAjax('error', 'Profil vendor belum ada.', 400);
+        if (! $this->checkVerifiedAccess()) {
+            return $this->respondAjax('error', 'Akun vendor Anda belum diverifikasi. Silakan lengkapi profil dan tunggu verifikasi dari admin.', 400);
         }
 
         $m  = new VendorServicesProductsModel();
@@ -451,8 +463,8 @@ class ServicesProducts extends BaseController
 
     public function deleteMultiple()
     {
-        if (! $this->initVendor()) {
-            return $this->respondAjax('error', 'Profil vendor belum ada.', 400);
+        if (! $this->checkVerifiedAccess()) {
+            return $this->respondAjax('error', 'Akun vendor Anda belum diverifikasi. Silakan lengkapi profil dan tunggu verifikasi dari admin.', 400);
         }
 
         $payload = $this->request->isAJAX() ? $this->request->getJSON(true) : $this->request->getPost();

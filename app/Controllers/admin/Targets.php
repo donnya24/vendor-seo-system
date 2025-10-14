@@ -30,7 +30,7 @@ class Targets extends BaseAdminController
         );
 
         // Load common data for header (termasuk notifikasi)
-        $commonData = $this->loadCommonData();
+        $commonData = method_exists($this, 'loadCommonData') ? $this->loadCommonData() : [];
         
         // Ambil filter dari query string
         $vendorId = $this->request->getGet('vendor_id');
@@ -329,7 +329,7 @@ class Targets extends BaseAdminController
     /**
      * Log activity untuk admin
      */
-    private function logActivity($action, $description, $additionalData = [])
+    private function logActivity(string $action, string $description, array $additionalData = []): void
     {
         try {
             $user = service('auth')->user();

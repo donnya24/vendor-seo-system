@@ -23,7 +23,20 @@ class Areas extends BaseController
         $this->vendorId   = $this->vendorProfile['id'] ?? 0;
         $this->isVerified = ($this->vendorProfile['status'] ?? '') === 'verified';
 
-        return (bool) $this->vendorId;
+        return (bool) $this->vendorProfile;
+    }
+
+    private function checkVerifiedAccess(): bool
+    {
+        if (! $this->initVendor()) {
+            return false;
+        }
+        
+        if (! $this->isVerified) {
+            return false;
+        }
+        
+        return true;
     }
 
     private function withVendorData(array $data = []): array
@@ -65,9 +78,9 @@ class Areas extends BaseController
 
     public function index()
     {
-        if (! $this->initVendor()) {
+        if (! $this->checkVerifiedAccess()) {
             return redirect()->to(site_url('vendoruser/dashboard'))
-                ->with('error', 'Profil vendor belum ada. Lengkapi profil terlebih dulu.');
+                ->with('error', 'Akun vendor Anda belum diverifikasi. Silakan lengkapi profil dan tunggu verifikasi dari admin.');
         }
 
         // Log aktivitas view
@@ -113,9 +126,9 @@ class Areas extends BaseController
 
     public function create()
     {
-        if (! $this->initVendor()) {
+        if (! $this->checkVerifiedAccess()) {
             return redirect()->to(site_url('vendoruser/dashboard'))
-                ->with('error', 'Profil vendor belum ada.');
+                ->with('error', 'Akun vendor Anda belum diverifikasi. Silakan lengkapi profil dan tunggu verifikasi dari admin.');
         }
 
         // Log aktivitas create form
@@ -136,8 +149,9 @@ class Areas extends BaseController
 
     public function edit()
     {
-        if (! $this->initVendor()) {
-            return $this->response->setStatusCode(403)->setBody('Unauthorized');
+        if (! $this->checkVerifiedAccess()) {
+            return redirect()->to(site_url('vendoruser/dashboard'))
+                ->with('error', 'Akun vendor Anda belum diverifikasi. Silakan lengkapi profil dan tunggu verifikasi dari admin.');
         }
 
         // Log aktivitas edit form
@@ -232,10 +246,10 @@ class Areas extends BaseController
     /* ===================== API ===================== */
 
    public function search()
-    {
+   {
         // Inisialisasi vendor untuk mendapatkan vendor_id
-        if (! $this->initVendor()) {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Unauthorized']);
+        if (! $this->checkVerifiedAccess()) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Akun vendor Anda belum diverifikasi. Silakan lengkapi profil dan tunggu verifikasi dari admin.']);
         }
 
         $q = trim((string) ($this->request->getGet('q') ?? ''));
@@ -281,8 +295,8 @@ class Areas extends BaseController
     {
         $isAjax = $this->request->isAJAX();
 
-        if (! $this->initVendor()) {
-            $msg = ['status'=>'error','message'=>'Profil vendor belum ada.'];
+        if (! $this->checkVerifiedAccess()) {
+            $msg = ['status'=>'error','message'=>'Akun vendor Anda belum diverifikasi. Silakan lengkapi profil dan tunggu verifikasi dari admin.'];
             return $isAjax
                 ? $this->response->setJSON($msg)
                 : redirect()->back()->with('error', $msg['message']);
@@ -407,8 +421,8 @@ class Areas extends BaseController
         if (! $this->request->isAJAX()) {
             return $this->response->setJSON(['status'=>'error','message'=>'Invalid request']);
         }
-        if (! $this->initVendor()) {
-            return $this->response->setJSON(['status'=>'error','message'=>'Profil vendor belum ada.']);
+        if (! $this->checkVerifiedAccess()) {
+            return $this->response->setJSON(['status'=>'error','message'=>'Akun vendor Anda belum diverifikasi. Silakan lengkapi profil dan tunggu verifikasi dari admin.']);
         }
 
         $aid  = (int)$this->request->getPost('area_id');
@@ -449,8 +463,9 @@ class Areas extends BaseController
 
     public function form()
     {
-        if (! $this->initVendor()) {
-            return redirect()->to(site_url('vendoruser/dashboard'));
+        if (! $this->checkVerifiedAccess()) {
+            return redirect()->to(site_url('vendoruser/dashboard'))
+                ->with('error', 'Akun vendor Anda belum diverifikasi. Silakan lengkapi profil dan tunggu verifikasi dari admin.');
         }
         
         // Log aktivitas form
