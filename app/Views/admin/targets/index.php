@@ -1,11 +1,7 @@
 <?= $this->include('admin/layouts/header') ?>
 <?= $this->include('admin/layouts/sidebar') ?>
 
-<<<<<<< HEAD
 <div class="p-6 space-y-6 index-page" x-data="seoTargets()" x-init="init()">
-=======
-<div class="p-6 space-y-6" x-data="seoTargets()" x-init="init()">
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
     <head>
         <meta name="csrf-token-name" content="<?= csrf_token() ?>">
         <meta name="csrf-token" content="<?= csrf_hash() ?>">
@@ -17,7 +13,6 @@
             <h1 class="text-2xl font-bold text-gray-900">Management Targets SEO</h1>
             <p class="mt-1 text-sm text-gray-600">Kelola target keyword untuk semua vendor</p>
         </div>
-<<<<<<< HEAD
         <div class="flex gap-2">
             <a href="<?= site_url('admin/targets/export-csv') ?>?<?= $_SERVER['QUERY_STRING'] ?? '' ?>" 
             class="inline-flex items-center px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg shadow-sm transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
@@ -27,11 +22,6 @@
                 <i class="fas fa-plus mr-2"></i> Buat Target
             </button>
         </div>
-=======
-        <button @click="openModal()" class="inline-flex items-center px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-            <i class="fas fa-plus mr-2"></i> Buat Target
-        </button>
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
     </div>
 
     <!-- Filter Section -->
@@ -239,7 +229,6 @@
     </div>
 
     <!-- Modal Form -->
-<<<<<<< HEAD
     <div x-show="showModal" x-cloak
         class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm"
         style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh;"
@@ -265,39 +254,21 @@
                 <h3 class="text-xl font-semibold text-gray-900" x-text="modalTitle"></h3>
                 <button @click="closeModal()" 
                         class="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100">
-=======
-    <div x-show="showModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-        <div class="relative bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <!-- Modal Header -->
-            <div class="sticky top-0 bg-white z-10 px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                <h3 class="text-xl font-semibold text-gray-900" x-text="modalTitle"></h3>
-                <button @click="closeModal()" class="text-gray-400 hover:text-gray-500">
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
                     <i class="fas fa-times text-xl"></i>
                 </button>
             </div>
 
-<<<<<<< HEAD
             <!-- FORM DIMULAI DI SINI - MEMBUNGKUS SELURUH KONTEN MODAL -->
             <form @submit.prevent="submitForm" class="flex-1 overflow-y-auto flex flex-col">
                 <div class="p-6 flex-1">
-=======
-            <!-- Modal Body -->
-            <div class="p-6">
-                <form x-ref="targetForm" @submit.prevent="submitForm" class="space-y-5">
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
                     <input type="hidden" name="id" x-model="form.id">
 
                     <!-- Vendor Selection -->
                     <div>
                         <label for="vendor_id" class="block text-sm font-medium text-gray-700 mb-1">Vendor</label>
-<<<<<<< HEAD
                         <select id="vendor_id" x-model="form.vendor_id" 
                                 class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-2 px-3" 
                                 required>
-=======
-                        <select id="vendor_id" x-model="form.vendor_id" class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-2 px-3" required>
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
                             <option value="">Pilih Vendor</option>
                             <?php foreach($vendors as $vendor): ?>
                                 <option value="<?= $vendor['id'] ?>"><?= esc($vendor['business_name']) ?> (ID: <?= $vendor['id'] ?>)</option>
@@ -308,32 +279,23 @@
                     <!-- Project Name -->
                     <div>
                         <label for="project_name" class="block text-sm font-medium text-gray-700 mb-1">Project Name</label>
-<<<<<<< HEAD
                         <input type="text" id="project_name" x-model="form.project_name" 
                             class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-2 px-3" 
                             required>
-=======
-                        <input type="text" id="project_name" x-model="form.project_name" class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-2 px-3" required>
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
                     </div>
 
                     <!-- Keyword -->
                     <div>
                         <label for="keyword" class="block text-sm font-medium text-gray-700 mb-1">Keyword</label>
-<<<<<<< HEAD
                         <input type="text" id="keyword" x-model="form.keyword" 
                             class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-2 px-3" 
                             required>
-=======
-                        <input type="text" id="keyword" x-model="form.keyword" class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-2 px-3" required>
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
                     </div>
 
                     <!-- Current & Target -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label for="current_position" class="block text-sm font-medium text-gray-700 mb-1">Current Position</label>
-<<<<<<< HEAD
                             <input type="number" id="current_position" x-model="form.current_position" min="1" 
                                 class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-2 px-3">
                         </div>
@@ -342,37 +304,22 @@
                             <input type="number" id="target_position" x-model="form.target_position" min="1" 
                                 class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-2 px-3" 
                                 required>
-=======
-                            <input type="number" id="current_position" x-model="form.current_position" min="1" class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-2 px-3">
-                        </div>
-                        <div>
-                            <label for="target_position" class="block text-sm font-medium text-gray-700 mb-1">Target Position</label>
-                            <input type="number" id="target_position" x-model="form.target_position" min="1" class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-2 px-3" required>
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
                         </div>
                     </div>
 
                     <!-- Deadline -->
                     <div>
                         <label for="deadline" class="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
-<<<<<<< HEAD
                         <input type="date" id="deadline" x-model="form.deadline" 
                             class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-2 px-3">
-=======
-                        <input type="date" id="deadline" x-model="form.deadline" class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-2 px-3">
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
                     </div>
 
                     <!-- Priority & Status -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label for="priority" class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-<<<<<<< HEAD
                             <select id="priority" x-model="form.priority" 
                                     class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-2 px-3">
-=======
-                            <select id="priority" x-model="form.priority" class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-2 px-3">
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
                                 <option value="low">Low</option>
                                 <option value="medium">Medium</option>
                                 <option value="high">High</option>
@@ -380,12 +327,8 @@
                         </div>
                         <div>
                             <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-<<<<<<< HEAD
                             <select id="status" x-model="form.status" 
                                     class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-2 px-3">
-=======
-                            <select id="status" x-model="form.status" class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-2 px-3">
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
                                 <option value="pending">Pending</option>
                                 <option value="in_progress">In Progress</option>
                                 <option value="completed">Completed</option>
@@ -396,7 +339,6 @@
                     <!-- Notes -->
                     <div>
                         <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-<<<<<<< HEAD
                         <textarea id="notes" x-model="form.notes" rows="3" 
                                 class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-2 px-3"></textarea>
                     </div>
@@ -414,27 +356,10 @@
                     </button>
                 </div>
             </form>
-=======
-                        <textarea id="notes" x-model="form.notes" rows="3" class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-2 px-3"></textarea>
-                    </div>
-
-                    <!-- Buttons -->
-                    <div class="flex flex-col sm:flex-row sm:justify-end gap-3 pt-4 border-t border-gray-200">
-                        <button type="button" @click="closeModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 font-medium">
-                            Batal
-                        </button>
-                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
-                            Simpan
-                        </button>
-                    </div>
-                </form>
-            </div>
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
         </div>
     </div>
 
     <!-- Modal Konfirmasi Hapus -->
-<<<<<<< HEAD
     <div x-show="showDeleteModal" x-cloak
          class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm"
          style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh;"
@@ -460,14 +385,6 @@
                 <h3 class="text-lg font-semibold text-gray-900">Konfirmasi Hapus</h3>
                 <button @click="showDeleteModal = false" 
                         class="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100">
-=======
-    <div x-show="showDeleteModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-        <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md">
-            <!-- Modal Header -->
-            <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                <h3 class="text-lg font-semibold text-gray-900">Konfirmasi Hapus</h3>
-                <button @click="showDeleteModal = false" class="text-gray-400 hover:text-gray-500">
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
                     <i class="fas fa-times text-xl"></i>
                 </button>
             </div>
@@ -482,19 +399,12 @@
                 
                 <!-- Buttons -->
                 <div class="flex flex-col sm:flex-row sm:justify-center gap-3">
-<<<<<<< HEAD
                     <button @click="showDeleteModal = false" 
                             class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 font-medium transition-colors">
                         Batal
                     </button>
                     <button @click="executeDelete()" 
                             class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors">
-=======
-                    <button @click="showDeleteModal = false" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 font-medium">
-                        Batal
-                    </button>
-                    <button @click="executeDelete()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium">
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
                         Hapus Target
                     </button>
                 </div>
@@ -503,7 +413,6 @@
     </div>
 
     <!-- Notification Toast -->
-<<<<<<< HEAD
     <div x-show="notification.show" x-cloak
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="opacity-0 transform translate-y-2"
@@ -512,9 +421,6 @@
          x-transition:leave-start="opacity-100 transform translate-y-0"
          x-transition:leave-end="opacity-0 transform translate-y-2"
          class="fixed bottom-4 right-4 z-[10001] bg-white rounded-lg shadow-lg border-l-4 p-4 max-w-md"
-=======
-    <div x-show="notification.show" x-cloak class="fixed bottom-4 right-4 z-50 bg-white rounded-lg shadow-lg border-l-4 p-4 max-w-md"
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
          :class="{
            'border-green-500': notification.type === 'success',
            'border-red-500': notification.type === 'error'
@@ -531,12 +437,8 @@
                 <p class="mt-1 text-sm text-gray-500" x-text="notification.message"></p>
             </div>
             <div class="ml-auto pl-3">
-<<<<<<< HEAD
                 <button @click="notification.show = false" 
                         class="text-gray-400 hover:text-gray-500 focus:outline-none transition-colors">
-=======
-                <button @click="notification.show = false" class="text-gray-400 hover:text-gray-500">
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
                     <i class="fas fa-times"></i>
                 </button>
             </div>
@@ -544,15 +446,11 @@
     </div>
 
     <!-- Loading Overlay -->
-<<<<<<< HEAD
     <div x-show="loading" x-cloak
          class="fixed inset-0 z-[10002] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm"
          style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh;">
         
         <!-- Loading Content -->
-=======
-    <div x-show="loading" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
         <div class="relative bg-white rounded-lg p-6 flex flex-col items-center shadow-xl">
             <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
             <p class="text-gray-700 font-medium">Memproses...</p>
@@ -560,7 +458,6 @@
     </div>
 </div>
 
-<<<<<<< HEAD
 <style>
 /* PERBAIKAN: CSS khusus untuk halaman index agar tidak mempengaruhi modal lain */
 .index-page .fixed.inset-0 {
@@ -625,8 +522,6 @@ body.modal-open {
 }
 </style>
 
-=======
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
 <script>
 function seoTargets() {
     return {
@@ -675,13 +570,9 @@ function seoTargets() {
             this.modalTitle = 'Tambah Target';
             this.resetForm();
             this.showModal = true;
-<<<<<<< HEAD
             // Lock body scroll
             document.body.classList.add('modal-open');
             document.body.style.overflow = 'hidden';
-=======
-            document.body.classList.add('modal-open');
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
         },
         resetForm() {
             this.form = {
@@ -699,20 +590,12 @@ function seoTargets() {
         },
         closeModal() {
             this.showModal = false;
-<<<<<<< HEAD
             // Unlock body scroll
             document.body.classList.remove('modal-open');
             document.body.style.overflow = '';
         },
         edit(id) {
             this.loading = true;
-=======
-            document.body.classList.remove('modal-open');
-        },
-        edit(id) {
-            this.loading = true;
-            // PERBAIKAN: Gunakan URL yang benar - admin/targets
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
             fetch(`<?= site_url('admin/targets/edit') ?>/${id}`, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
@@ -729,10 +612,7 @@ function seoTargets() {
                 this.form = { ...this.form, ...data.data };
                 this.showModal = true;
                 document.body.classList.add('modal-open');
-<<<<<<< HEAD
                 document.body.style.overflow = 'hidden';
-=======
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
                 this.loading = false;
             })
             .catch(err => {
@@ -744,10 +624,7 @@ function seoTargets() {
             this.deleteId = id;
             this.showDeleteModal = true;
             document.body.classList.add('modal-open');
-<<<<<<< HEAD
             document.body.style.overflow = 'hidden';
-=======
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
         },
         executeDelete() {
             if (!this.deleteId) return;
@@ -755,10 +632,7 @@ function seoTargets() {
             this.loading = true;
             this.showDeleteModal = false;
             document.body.classList.remove('modal-open');
-<<<<<<< HEAD
             document.body.style.overflow = '';
-=======
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
             
             const csrfName = document.querySelector('meta[name="csrf-token-name"]').content;
             const csrfHash = document.querySelector('meta[name="csrf-token"]').content;
@@ -766,10 +640,6 @@ function seoTargets() {
             const formData = new FormData();
             formData.append(csrfName, csrfHash);
 
-<<<<<<< HEAD
-=======
-            // PERBAIKAN: Gunakan URL yang benar - admin/targets
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
             fetch(`<?= site_url('admin/targets/delete') ?>/${this.deleteId}`, {
                 method: 'POST',
                 headers: { 'X-Requested-With': 'XMLHttpRequest' },
@@ -810,10 +680,6 @@ function seoTargets() {
                 formData.append(key, this.form[key] ?? '');
             }
 
-<<<<<<< HEAD
-=======
-            // PERBAIKAN: Gunakan URL yang benar - admin/targets
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
             const url = this.form.id
                 ? `<?= site_url('admin/targets/update') ?>/${this.form.id}`
                 : `<?= site_url('admin/targets/store') ?>`;
@@ -864,10 +730,7 @@ document.addEventListener('keydown', (e) => {
         if (manager.showDeleteModal) {
             manager.showDeleteModal = false;
             document.body.classList.remove('modal-open');
-<<<<<<< HEAD
             document.body.style.overflow = '';
-=======
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
         }
     }
 });

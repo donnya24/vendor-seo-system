@@ -10,7 +10,6 @@
 
   <!-- Header -->
   <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-<<<<<<< HEAD
       <div>
           <h2 class="text-2xl font-bold text-gray-900">SEO Reports - Admin</h2>
           <p class="mt-1 text-sm text-gray-600">Laporan performa keyword yang sudah completed (Akses Admin)</p>
@@ -21,12 +20,6 @@
               <i class="fas fa-file-csv mr-2"></i> Export CSV
           </a>
       </div>
-=======
-    <div>
-      <h2 class="text-2xl font-bold text-gray-900">SEO Reports - Admin</h2>
-      <p class="mt-1 text-sm text-gray-600">Laporan performa keyword yang sudah completed (Akses Admin)</p>
-    </div>
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
   </div>
 
   <!-- Filter Section -->

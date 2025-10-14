@@ -41,11 +41,11 @@ $routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 
 
     // === ROUTES PROFILE YANG DIPERBAIKI ===
     $routes->group('profile', function($routes) {
-        $routes->get('/', 'Profile::index');
-        $routes->get('edit-modal', 'Profile::editModal');
-        $routes->get('password-modal', 'Profile::passwordModal');
-        $routes->post('update', 'Profile::update');
-        $routes->post('password-update', 'Profile::passwordUpdate');
+        $routes->get('/', 'Profile::index'); // Halaman utama profile
+        $routes->get('edit-modal', 'Profile::editModal'); // Modal edit (AJAX)
+        $routes->get('password-modal', 'Profile::passwordModal'); // Modal password (AJAX)
+        $routes->post('update', 'Profile::update'); // Update profile
+        $routes->post('password-update', 'Profile::passwordUpdate'); // Update password
     });
 
     // ===== NOTIFICATION HEADER ROUTES (BELL ICON) =====
@@ -82,7 +82,6 @@ $routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 
     $routes->get('areas/get-selected-areas/(:segment)', 'VendorAreas::getSelectedAreas/$1');
     $routes->post('areas/clear-all/(:segment)', 'VendorAreas::clearAll/$1');
 
-<<<<<<< HEAD
     // Vendor Services & Products
     $routes->get('services', 'VendorServicesProducts::index');
     $routes->get('services/create', 'VendorServicesProducts::create');
@@ -95,10 +94,6 @@ $routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 
 
     // Management User Vendor Routes
     $routes->group('uservendor', ['namespace' => 'App\Controllers\Admin'], function($routes){
-=======
-    // User Vendor Routes
-    $routes->group('uservendor', function($routes){
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
         $routes->get('/', 'UserVendor::index');
         $routes->get('create', 'UserVendor::create');
         $routes->post('store', 'UserVendor::store');
@@ -114,13 +109,8 @@ $routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 
         $routes->post('(:num)/suspend', 'UserVendor::toggleSuspend/$1');
     });
 
-<<<<<<< HEAD
     // Management User SEO Routes
     $routes->group('userseo', ['namespace' => 'App\Controllers\Admin'], function($routes){
-=======
-    // User SEO Routes
-    $routes->group('userseo', function($routes){
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
         $routes->get('/', 'UserSeo::index');
         $routes->get('create', 'UserSeo::create');
         $routes->post('store', 'UserSeo::store');    
@@ -141,40 +131,20 @@ $routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 
     $routes->post('vendors/(:num)/unverify',  'Vendors::unverify/$1');
     $routes->post('vendors/(:num)/commission','Vendors::setCommission/$1');
 
-<<<<<<< HEAD
     // Targets Route
-=======
-    // **PERBAIKAN: SEO Targets Routes - SESUAIKAN DENGAN CONTROLLER YANG ADA**
-    $routes->group('seo-targets', function($routes){
-        $routes->get('/', 'SeoTargets::index');
-        $routes->post('store', 'SeoTargets::store');
-        $routes->post('update/(:num)', 'SeoTargets::update/$1');
-        $routes->get('edit/(:num)', 'SeoTargets::edit/$1');
-        $routes->post('delete/(:num)', 'SeoTargets::delete/$1');
-    });
-
-    // **SEO TARGETS ROUTES - DIPERBAIKI**
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
     $routes->group('targets', function($routes){
         $routes->get('/', 'Targets::index');
         $routes->post('store', 'Targets::store');
         $routes->post('update/(:num)', 'Targets::update/$1');
         $routes->get('edit/(:num)', 'Targets::edit/$1');
         $routes->post('delete/(:num)', 'Targets::delete/$1');
-<<<<<<< HEAD
         $routes->get('export-csv', 'Targets::exportCsv');
-=======
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
     });
 
     //Reports
     $routes->get('reports', 'Reports::index');
-<<<<<<< HEAD
      $routes->get('reports/export-csv', 'Reports::exportCsv');
 
-=======
-    
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
     // Leads
     $routes->group('leads', function($routes){
         $routes->get('/', 'Leads::index');
@@ -187,7 +157,7 @@ $routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 
          $routes->get('export', 'Leads::export');
     });
 
-    // Vendor Requests
+    // Vendor Requests (Approve / Reject) - Legacy routes
     $routes->post('vendorrequests/approve', 'VendorRequests::approve');
     $routes->post('vendorrequests/reject',  'VendorRequests::reject');
 
@@ -213,7 +183,7 @@ $routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 
         $routes->post('toggle-status/(:num)', 'SeoManagement::toggleStatus/$1');
     });
 
-    // Activity Routes
+    // Activity Routes - DIPERBAIKI
     $routes->get('activities/vendor', 'ActivityVendor::index');
     $routes->post('activities/vendor/delete-all', 'ActivityVendor::deleteAll');
 

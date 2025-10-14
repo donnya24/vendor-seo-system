@@ -2,7 +2,6 @@
 
 namespace App\Controllers\Admin;
 
-<<<<<<< HEAD
 use App\Controllers\Admin\BaseAdminController; // Perbaikan: Extend BaseAdminController
 use App\Models\SeoKeywordTargetsModel;
 use App\Models\VendorProfilesModel;
@@ -20,26 +19,10 @@ class Reports extends BaseAdminController // Perbaikan: Extend BaseAdminControll
         $this->targetModel = new SeoKeywordTargetsModel();
         $this->vendorModel = new VendorProfilesModel();
         $this->activityLogsModel = new ActivityLogsModel(); // Inisialisasi model
-=======
-use App\Controllers\BaseController;
-use App\Models\SeoKeywordTargetsModel;
-use App\Models\VendorProfilesModel;
-
-class Reports extends BaseController
-{
-    protected $targetModel;
-    protected $vendorModel;
-
-    public function __construct()
-    {
-        $this->targetModel = new SeoKeywordTargetsModel();
-        $this->vendorModel = new VendorProfilesModel();
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
     }
 
     public function index()
     {
-<<<<<<< HEAD
         // Log activity akses halaman reports
         $this->logActivity(
             'view_reports',
@@ -49,8 +32,6 @@ class Reports extends BaseController
         // Load common data for header (termasuk notifikasi)
         $commonData = $this->loadCommonData();
         
-=======
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
         // Ambil filter dari query string
         $vendorId = $this->request->getGet('vendor_id');
         $vendorId = $vendorId ? (int) $vendorId : null;
@@ -109,27 +90,18 @@ class Reports extends BaseController
             }
         }
 
-<<<<<<< HEAD
         // Log aktivitas view reports dengan filter
         $logDescription = "Melihat laporan SEO completed (Admin)";
         $extraData = [
             'module' => 'admin_reports',
             'role' => 'admin'
         ];
-=======
-        // Log aktivitas view reports
-        $logDescription = "Melihat laporan SEO completed (Admin)";
-        $extraData = ['module' => 'reports', 'role' => 'admin'];
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
         
         if (!empty($vendorId)) {
             $vendorName = $this->getVendorName($vendorId, $vendors);
             $logDescription .= " untuk vendor {$vendorName}";
             $extraData['vendor_id'] = $vendorId;
-<<<<<<< HEAD
             $extraData['vendor_name'] = $vendorName;
-=======
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
         } else {
             $logDescription .= " semua vendor";
         }
@@ -138,7 +110,6 @@ class Reports extends BaseController
             $positionLabel = $this->getPositionLabel($position);
             $logDescription .= " dengan posisi {$positionLabel}";
             $extraData['position_filter'] = $position;
-<<<<<<< HEAD
             $extraData['position_label'] = $positionLabel;
         }
 
@@ -151,23 +122,12 @@ class Reports extends BaseController
 
         // Merge dengan common data (termasuk notifikasi)
         return view('admin/reports/index', array_merge([
-=======
-        }
-
-        log_activity_auto('view', $logDescription, $extraData);
-
-        return view('admin/reports/index', [
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
             'title'      => 'Laporan SEO - Admin',
             'reports'    => $reports,
             'vendorId'   => $vendorId,
             'position'   => $position,
             'vendors'    => $vendors,
-<<<<<<< HEAD
         ], $commonData));
-=======
-        ]);
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
     }
 
     /**
@@ -196,7 +156,6 @@ class Reports extends BaseController
         ];
         return $labels[$position] ?? $position;
     }
-<<<<<<< HEAD
 
     /**
      * Log activity untuk admin
@@ -345,6 +304,4 @@ class Reports extends BaseController
         fclose($output);
         exit;
     }
-=======
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
 }

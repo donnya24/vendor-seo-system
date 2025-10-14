@@ -2,7 +2,6 @@
 
 namespace App\Controllers\Admin;
 
-<<<<<<< HEAD
 use App\Controllers\Admin\BaseAdminController;
 use App\Models\SeoKeywordTargetsModel;
 use App\Models\VendorProfilesModel;
@@ -20,26 +19,10 @@ class Targets extends BaseAdminController
         $this->model = new SeoKeywordTargetsModel();
         $this->vendorModel = new VendorProfilesModel();
         $this->activityLogsModel = new ActivityLogsModel();
-=======
-use App\Controllers\BaseController;
-use App\Models\SeoKeywordTargetsModel;
-use App\Models\VendorProfilesModel;
-
-class Targets extends BaseController
-{
-    protected $model;
-    protected $vendorModel;
-
-    public function __construct()
-    {
-        $this->model = new SeoKeywordTargetsModel();
-        $this->vendorModel = new VendorProfilesModel();
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
     }
 
     public function index()
     {
-<<<<<<< HEAD
         // Log activity akses halaman targets
         $this->logActivity(
             'view_targets',
@@ -49,8 +32,6 @@ class Targets extends BaseController
         // Load common data for header (termasuk notifikasi)
         $commonData = $this->loadCommonData();
         
-=======
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
         // Ambil filter dari query string
         $vendorId = $this->request->getGet('vendor_id');
         $vendorId = $vendorId ? (int) $vendorId : null;
@@ -85,7 +66,6 @@ class Targets extends BaseController
             ->orderBy('created_at', 'DESC')
             ->findAll();
 
-<<<<<<< HEAD
         // Log activity dengan filter
         $filterData = [];
         if (!empty($vendorId)) {
@@ -118,20 +98,13 @@ class Targets extends BaseController
 
         // Merge dengan common data (termasuk notifikasi)
         return view('admin/targets/index', array_merge([
-=======
-        return view('admin/targets/index', [
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
             'title'      => 'SEO Targets - Admin',
             'vendorId'   => $vendorId,
             'priority'   => $priority,
             'status'     => $status,
             'vendors'    => $vendors,
             'targets'    => $targets
-<<<<<<< HEAD
         ], $commonData));
-=======
-        ]);
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
     }
 
     public function store()
@@ -164,7 +137,6 @@ class Targets extends BaseController
 
         try {
             $id = $this->model->insert($insertData, true);
-<<<<<<< HEAD
             
             // Log activity create target
             $this->logActivity(
@@ -192,9 +164,6 @@ class Targets extends BaseController
                 ]
             );
             
-=======
-        } catch (\Exception $e) {
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
             return $this->response->setStatusCode(500)->setJSON([
                 'success' => false,
                 'message' => 'Database error: ' . $e->getMessage()
@@ -242,7 +211,6 @@ class Targets extends BaseController
 
         try {
             $updated = $this->model->update($id, $updateData);
-<<<<<<< HEAD
             
             // Log activity update target
             $this->logActivity(
@@ -271,9 +239,6 @@ class Targets extends BaseController
                 ]
             );
             
-=======
-        } catch (\Exception $e) {
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
             return $this->response->setStatusCode(500)->setJSON([
                 'success' => false,
                 'message' => 'Database error: ' . $e->getMessage()
@@ -297,7 +262,6 @@ class Targets extends BaseController
             return $this->response->setJSON(['success' => false, 'message' => 'Data tidak ditemukan']);
         }
 
-<<<<<<< HEAD
         // Log activity view edit form
         $this->logActivity(
             'view_edit_target',
@@ -308,8 +272,6 @@ class Targets extends BaseController
             ]
         );
 
-=======
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
         return $this->response->setJSON(['success' => true, 'data' => $target]);
     }
 
@@ -326,7 +288,6 @@ class Targets extends BaseController
 
         try {
             $deleted = $this->model->delete($id);
-<<<<<<< HEAD
             
             // Log activity delete target
             $this->logActivity(
@@ -353,9 +314,6 @@ class Targets extends BaseController
                 ]
             );
             
-=======
-        } catch (\Exception $e) {
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
             return $this->response->setStatusCode(500)->setJSON([
                 'success' => false,
                 'message' => 'Database error: ' . $e->getMessage()
@@ -367,7 +325,6 @@ class Targets extends BaseController
             'message' => $deleted ? 'Target berhasil dihapus.' : 'Gagal menghapus target.'
         ]);
     }
-<<<<<<< HEAD
 
     /**
      * Log activity untuk admin
@@ -488,6 +445,4 @@ class Targets extends BaseController
         fclose($output);
         exit;
     }
-=======
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
 }

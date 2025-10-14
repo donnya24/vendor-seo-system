@@ -11,14 +11,42 @@ class Notifications extends BaseController
     protected $db;
     protected string $table = 'notifications';
     protected ActivityLogsModel $activityLogsModel;
+    protected VendorProfilesModel $vendorProfilesModel;
+
+    private $vendorProfile;
+    private $vendorId;
+    private $isVerified;
 
     public function __construct()
     {
         $this->db = db_connect();
         $this->activityLogsModel = new ActivityLogsModel();
+        $this->vendorProfilesModel = new VendorProfilesModel();
+        $this->initVendor();
     }
 
     /** ========== Helpers ========== */
+
+    private function initVendor(): bool
+    {
+        $user = service('auth')->user();
+        $this->vendorProfile = $this->vendorProfilesModel
+            ->where('user_id', (int) $user->id)
+            ->first();
+
+        $this->vendorId   = $this->vendorProfile['id'] ?? 0;
+        $this->isVerified = ($this->vendorProfile['status'] ?? '') === 'verified';
+
+        return (bool) $this->vendorId;
+    }
+
+    private function withVendorData(array $data = []): array
+    {
+        return array_merge($data, [
+            'vp'         => $this->vendorProfile,
+            'isVerified' => $this->isVerified,
+        ]);
+    }
 
     protected function currentUser(): ?\CodeIgniter\Shield\Entities\User
     {
@@ -27,14 +55,7 @@ class Notifications extends BaseController
 
     protected function currentVendorId(): int
     {
-        $user = $this->currentUser();
-        if (!$user) return 0;
-
-        $vp = (new VendorProfilesModel())
-            ->where('user_id', (int) $user->id)
-            ->first();
-
-        return (int)($vp['id'] ?? 0);
+        return $this->vendorId;
     }
 
     /**
@@ -97,6 +118,11 @@ class Notifications extends BaseController
 
     public function index()
     {
+        if (! $this->vendorId) {
+            return redirect()->to(site_url('vendoruser/dashboard'))
+                ->with('error', 'Profil vendor belum ada. Lengkapi profil terlebih dahulu.');
+        }
+
         $user   = $this->currentUser();
         $userId = (int) ($user?->id ?? 0);
 
@@ -108,29 +134,34 @@ class Notifications extends BaseController
         $unread = 0;
         foreach ($items as $it) { if (empty($it['is_read'])) $unread++; }
 
-        $this->logActivity($userId, null, 'view_notifications', 'success', 'Melihat daftar notifikasi', [
-            'notifications_count' => count($items)
-        ]);
-
-        $vp         = (new VendorProfilesModel())->where('user_id', $userId)->first();
-        $isVerified = ($vp['status'] ?? '') === 'verified';
+        // Log aktivitas view notifications
+        if (function_exists('log_activity_auto')) {
+            log_activity_auto('view', 'Melihat daftar notifikasi (' . count($items) . ' item)', [
+                'module' => 'vendor_notifications',
+                'vendor_id' => $this->vendorId
+            ]);
+        }
 
         // 👉 BUKA POPUP: openNotifModal = true, dan suppress_content = true
-        return view('vendoruser/layouts/vendor_master', [
+        return view('vendoruser/layouts/vendor_master', $this->withVendorData([
             'title'            => 'Notifikasi',
-            'vp'               => $vp ?? [],
-            'isVerified'       => $isVerified,
             'notifications'    => $items,
             'stats'            => ['unread' => $unread],
             'openNotifModal'   => true,       // <-- auto-check modal
             'suppress_content' => true,       // <-- jangan render placeholder konten
             // TIDAK perlu content_view/content_data di sini
-        ]);
+        ]));
     }
 
     /** Tandai satu notifikasi dibaca */
     public function markRead($id)
     {
+        if (! $this->vendorId) {
+            return $this->request->isAJAX()
+                ? $this->response->setJSON(['success' => false, 'message' => 'Unauthorized'])
+                : redirect()->back()->with('error', 'Unauthorized.');
+        }
+
         $id     = (int) $id;
         $userId = (int) ($this->currentUser()?->id ?? 0);
 
@@ -154,10 +185,14 @@ class Notifications extends BaseController
             $this->db->query($sql, [$id, $userId]);
         }
 
-        $this->logActivity($userId, null, 'mark_notification_read', 'success', 'Menandai notifikasi sebagai dibaca', [
-            'notification_id'    => $id,
-            'notification_title' => $row['title'] ?? 'Unknown',
-        ]);
+        // Log aktivitas mark read
+        if (function_exists('log_activity_auto')) {
+            log_activity_auto('update', 'Menandai notifikasi sebagai dibaca: ' . ($row['title'] ?? 'Unknown'), [
+                'module' => 'vendor_notifications',
+                'vendor_id' => $this->vendorId,
+                'notification_id' => $id
+            ]);
+        }
 
         return $this->request->isAJAX()
             ? $this->response->setJSON(['success' => true])
@@ -167,6 +202,12 @@ class Notifications extends BaseController
     /** Tandai semua dibaca */
     public function markAllRead()
     {
+        if (! $this->vendorId) {
+            return $this->request->isAJAX()
+                ? $this->response->setJSON(['success' => false, 'message' => 'Unauthorized'])
+                : redirect()->back()->with('error', 'Unauthorized.');
+        }
+
         $userId = (int) ($this->currentUser()?->id ?? 0);
 
         $ids = $this->scopedBuilder()->select('n.id, n.user_id')->get()->getResultArray();
@@ -199,9 +240,13 @@ class Notifications extends BaseController
             }
         }
 
-        $this->logActivity($userId, null, 'mark_all_notifications_read', 'success', 'Menandai semua notifikasi sebagai dibaca', [
-            'notifications_marked' => $marked,
-        ]);
+        // Log aktivitas mark all read
+        if (function_exists('log_activity_auto')) {
+            log_activity_auto('update', 'Menandai semua notifikasi sebagai dibaca (' . $marked . ' item)', [
+                'module' => 'vendor_notifications',
+                'vendor_id' => $this->vendorId
+            ]);
+        }
 
         return $this->request->isAJAX()
             ? $this->response->setJSON(['success' => true, 'marked_count' => $marked])
@@ -211,6 +256,12 @@ class Notifications extends BaseController
     /** Hide satu (per-user) */
     public function delete($id)
     {
+        if (! $this->vendorId) {
+            return $this->request->isAJAX()
+                ? $this->response->setJSON(['success' => false, 'message' => 'Unauthorized'])
+                : redirect()->back()->with('error', 'Unauthorized.');
+        }
+
         $id     = (int) $id;
         $userId = (int) ($this->currentUser()?->id ?? 0);
 
@@ -226,10 +277,14 @@ class Notifications extends BaseController
                 ON DUPLICATE KEY UPDATE hidden=VALUES(hidden), hidden_at=VALUES(hidden_at)";
         $this->db->query($sql, [$id, $userId]);
 
-        $this->logActivity($userId, null, 'hide_notification', 'success', 'Menyembunyikan notifikasi', [
-            'notification_id'    => $id,
-            'notification_title' => $row['title'] ?? 'Unknown',
-        ]);
+        // Log aktivitas delete/hide
+        if (function_exists('log_activity_auto')) {
+            log_activity_auto('delete', 'Menyembunyikan notifikasi: ' . ($row['title'] ?? 'Unknown'), [
+                'module' => 'vendor_notifications',
+                'vendor_id' => $this->vendorId,
+                'notification_id' => $id
+            ]);
+        }
 
         return $this->request->isAJAX()
             ? $this->response->setJSON(['success' => true])
@@ -239,6 +294,12 @@ class Notifications extends BaseController
     /** Hide semua (per-user) */
     public function deleteAll()
     {
+        if (! $this->vendorId) {
+            return $this->request->isAJAX()
+                ? $this->response->setJSON(['success' => false, 'message' => 'Unauthorized'])
+                : redirect()->back()->with('error', 'Unauthorized.');
+        }
+
         $userId = (int) ($this->currentUser()?->id ?? 0);
 
         $ids   = $this->scopedBuilder()->select('n.id')->get()->getResultArray();
@@ -255,36 +316,16 @@ class Notifications extends BaseController
             $this->db->query($sql);
         }
 
-        $this->logActivity($userId, null, 'hide_all_notifications', 'success', 'Menyembunyikan semua notifikasi', [
-            'hidden_count' => $count,
-        ]);
+        // Log aktivitas delete all
+        if (function_exists('log_activity_auto')) {
+            log_activity_auto('delete', 'Menyembunyikan semua notifikasi (' . $count . ' item)', [
+                'module' => 'vendor_notifications',
+                'vendor_id' => $this->vendorId
+            ]);
+        }
 
         return $this->request->isAJAX()
             ? $this->response->setJSON(['success' => true, 'hidden_count' => $count])
             : redirect()->back()->with('success', 'Semua notifikasi disembunyikan.');
-    }
-
-    /** Activity log helper */
-    private function logActivity($userId = null, $vendorId = null, $action = null, $status = null, $description = null, $additionalData = [])
-    {
-        try {
-            $data = [
-                'user_id'     => $userId,
-                'vendor_id'   => $vendorId,
-                'module'      => 'notifications',
-                'action'      => $action,
-                'status'      => $status,
-                'description' => $description,
-                'ip_address'  => $this->request->getIPAddress(),
-                'user_agent'  => $this->request->getUserAgent(),
-                'created_at'  => date('Y-m-d H:i:s'),
-            ];
-            if (!empty($additionalData)) {
-                $data['additional_data'] = json_encode($additionalData);
-            }
-            $this->activityLogsModel->insert($data);
-        } catch (\Throwable $e) {
-            log_message('error', 'Failed to log activity in Notifications: ' . $e->getMessage());
-        }
     }
 }

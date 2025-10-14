@@ -13,7 +13,6 @@
     @click.outside="if (!$store.layout.isDesktop) $store.ui.sidebar = false"
         x-data="{
             activeMenu: '<?= 
-<<<<<<< HEAD
                 url_is("admin/dashboard*") ? "dashboard" :
                 (url_is("admin/userseo*") || url_is("admin/uservendor*") ? "users" :
                 (url_is("admin/vendors*") || url_is("admin/services*") || url_is("admin/areas*") ? "vendors" :
@@ -26,19 +25,6 @@
                 (url_is("admin/kelola-notifikasi*") ? "notifications" :
                 (url_is("admin/activity-logs*") ? "activity-logs" : ""))))))))))
             ?>',
-=======
-                url_is('admin/dashboard*') ? 'dashboard' :
-                (url_is('admin/userseo*') ? 'users' :
-                (url_is('admin/uservendor*') ? 'users' :
-                (url_is('admin/vendors*') || url_is('admin/services*') || url_is('admin/areas*') ? 'vendors' :
-                (url_is('admin/activities/vendor*') || url_is('admin/activities/seo*') ? 'activities' :
-                (url_is('admin/leads*') ? 'leads' :
-                (url_is('admin/commissions*') ? 'commissions' :
-                (url_is('admin/targets*') ? 'targets' :
-                (url_is('admin/reports*') ? 'reports' :
-                (url_is('admin/announcements*') ? 'announcements' :
-                (url_is('admin/activity-logs*') ? 'activity-logs' : '')))))))))) ?>',
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
             userSubmenu: <?= (url_is('admin/userseo*') || url_is('admin/uservendor*')) ? 'true' : 'false' ?>,
             vendorSubmenu: <?= (url_is('admin/vendors*') || url_is('admin/services*') || url_is('admin/areas*')) ? 'true' : 'false' ?>,
             activitySubmenu: <?= (url_is('admin/activities/vendor*') || url_is('admin/activities/seo*')) ? 'true' : 'false' ?>,

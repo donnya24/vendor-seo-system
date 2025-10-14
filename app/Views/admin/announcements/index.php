@@ -1,3 +1,6 @@
+<?= $this->include('admin/layouts/header'); ?>
+<?= $this->include('admin/layouts/sidebar'); ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -113,7 +116,6 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gradient-to-r from-blue-600 to-indigo-700">
                         <tr>
-<<<<<<< HEAD
                             <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Judul</th>
                             <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Konten</th>
                             <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Audience</th>
@@ -121,33 +123,16 @@
                             <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Expired</th>
                             <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Status</th>
                             <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Aksi</th>
-=======
-                            <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Judul</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Konten</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Audience</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Publish</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Expired</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Status</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-white uppercase tracking-wider">Aksi</th>
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         <?php foreach(($items ?? []) as $a): ?>
                             <tr class="hover:bg-gray-50 transition-colors duration-150">
-<<<<<<< HEAD
                                 <td class="px-6 py-4 text-center">
                                     <div class="text-sm font-medium text-gray-900"><?= esc($a['title'] ?? '-') ?></div>
                                 </td>
                                 <td class="px-6 py-4 text-center text-sm text-gray-600"><?= esc(mb_strimwidth($a['content'] ?? '-', 0, 80, '...')) ?></td>
                                 <td class="px-6 py-4 text-center">
-=======
-                                <td class="px-6 py-4">
-                                    <div class="text-sm font-medium text-gray-900"><?= esc($a['title'] ?? '-') ?></div>
-                                </td>
-                                <td class="px-6 py-4 text-sm text-gray-600"><?= esc(mb_strimwidth($a['content'] ?? '-', 0, 80, '...')) ?></td>
-                                <td class="px-6 py-4">
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
                                     <?php
                                         $audienceLabels = ['all'=>'Semua Pengguna','vendor'=>'Vendor','seo_team'=>'Tim SEO'];
                                         $audience = $a['audience'] ?? 'all';
@@ -157,7 +142,6 @@
                                         <?= esc($audienceText) ?>
                                     </span>
                                 </td>
-<<<<<<< HEAD
                                 <td class="px-6 py-4 text-center text-sm text-gray-600">
                                     <?= !empty($a['publish_at']) ? date('d M Y, H:i', strtotime($a['publish_at'])) : '-' ?>
                                 </td>
@@ -165,15 +149,6 @@
                                     <?= !empty($a['expires_at']) ? date('d M Y, H:i', strtotime($a['expires_at'])) : '-' ?>
                                 </td>
                                 <td class="px-6 py-4 text-center">
-=======
-                                <td class="px-6 py-4 text-sm text-gray-600">
-                                    <?= !empty($a['publish_at']) ? date('d M Y, H:i', strtotime($a['publish_at'])) : '-' ?>
-                                </td>
-                                <td class="px-6 py-4 text-sm <?= empty($a['expires_at']) ? 'text-gray-400' : 'text-gray-600' ?>">
-                                    <?= !empty($a['expires_at']) ? date('d M Y, H:i', strtotime($a['expires_at'])) : '-' ?>
-                                </td>
-                                <td class="px-6 py-4">
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
                                     <?php if ($a['status'] === 'active'): ?>
                                         <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                                             <i class="fa fa-check-circle mr-1"></i> Active
@@ -184,11 +159,7 @@
                                         </span>
                                     <?php endif; ?>
                                 </td>
-<<<<<<< HEAD
                                 <td class="px-6 py-4 whitespace-nowrap text-center">
-=======
-                                <td class="px-6 py-4 whitespace-nowrap text-right">
->>>>>>> 8417a51978ca40b7d289c69338618cbffd71b6c8
                                     <button type="button"
                                     onclick="openEditModal(this)"
                                     data-id="<?= $a['id'] ?>"
