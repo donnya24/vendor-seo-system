@@ -35,22 +35,37 @@
       </div>
     </div>
     
-  <div class="overflow-x-auto">
-    <table class="min-w-full text-sm divide-y divide-gray-200">
-      <thead class="bg-blue-600">
-        <tr>
-          <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">No</th>
-          <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Nama Usaha</th>
-          <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Pemilik</th>
-          <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Kontak</th>
-          <th scope="col" class="px-5 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Komisi Diminta</th>
-          <th scope="col" class="px-5 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Status</th>
-          <th scope="col" class="px-5 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Aksi</th>
-        </tr>
-      </thead>
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm divide-y divide-gray-200">
+        <thead class="bg-blue-600">
+          <tr>
+            <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">No</th>
+            <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Nama Usaha</th>
+            <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Pemilik</th>
+            <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Kontak</th>
+            <th scope="col" class="px-5 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Komisi Diminta</th>
+            <th scope="col" class="px-5 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Status</th>
+            <th scope="col" class="px-5 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Action By</th>
+            <th scope="col" class="px-5 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Aksi</th>
+          </tr>
+        </thead>
         <tbody class="bg-white divide-y divide-gray-200">
           <?php if (!empty($vendors)): ?>
-            <?php $no = 1; foreach ($vendors as $vendor): ?>
+            <?php 
+            $no = 1; 
+            foreach ($vendors as $vendor): 
+              // Ambil data user yang melakukan aksi
+              $actionByUser = null;
+              if (!empty($vendor['action_by'])) {
+                $db = \Config\Database::connect();
+                $actionByUser = $db->table('users')
+                                 ->select('users.username, seo_profiles.name as seo_name')
+                                 ->join('seo_profiles', 'seo_profiles.user_id = users.id', 'left')
+                                 ->where('users.id', $vendor['action_by'])
+                                 ->get()
+                                 ->getRowArray();
+              }
+            ?>
               <tr class="hover:bg-gray-50 transition">
                 <td class="px-5 py-4 text-center text-gray-600"><?= $no++ ?></td>
                 <td class="px-5 py-4 font-medium text-gray-900">
@@ -104,27 +119,59 @@
                     </span>
                   <?php endif; ?>
                 </td>
+                <td class="px-5 py-4 text-center text-gray-600 text-xs">
+                  <?php if (!empty($actionByUser)): ?>
+                    <div class="flex flex-col items-center">
+                      <div class="font-medium text-gray-900">
+                        <?= esc($actionByUser['seo_name'] ?? $actionByUser['username'] ?? 'Unknown') ?>
+                      </div>
+                      <div class="text-gray-500 text-xs mt-1">
+                        <?php if (!empty($vendor['approved_at'])): ?>
+                          <?= date('d M Y', strtotime($vendor['approved_at'])) ?>
+                        <?php elseif (!empty($vendor['rejected_at'])): ?>
+                          <?= date('d M Y', strtotime($vendor['rejected_at'])) ?>
+                        <?php elseif (!empty($vendor['updated_at'])): ?>
+                          <?= date('d M Y', strtotime($vendor['updated_at'])) ?>
+                        <?php endif; ?>
+                      </div>
+                    </div>
+                  <?php else: ?>
+                    <span class="text-gray-400">-</span>
+                  <?php endif; ?>
+                </td>
                 <td class="px-5 py-4 text-center">
                   <?php if ($vendor['status'] === 'pending'): ?>
-                    <button @click="confirmApprove(<?= $vendor['id'] ?>, '<?= esc($vendor['business_name']) ?>')"
-                            class="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-green-600 text-white text-xs font-medium shadow-sm hover:bg-green-700 focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition">
-                      <i class="fas fa-check"></i> Approve
-                    </button>
+                    <div class="flex flex-col gap-2 items-center">
+                      <div class="flex gap-2">
+                        <button @click="confirmApprove(<?= $vendor['id'] ?>, '<?= esc($vendor['business_name']) ?>')"
+                                class="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-green-600 text-white text-xs font-medium shadow-sm hover:bg-green-700 focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition">
+                          <i class="fas fa-check"></i> Approve
+                        </button>
 
-                    <!-- Button Reject -->
-                    <button @click="confirmReject(<?= $vendor['id'] ?>, '<?= esc($vendor['business_name']) ?>')"
-                            class="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-red-600 text-white text-xs font-medium shadow-sm hover:bg-red-700 focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition">
-                      <i class="fas fa-times"></i> Reject
-                    </button>
+                        <!-- Button Reject -->
+                        <button @click="confirmReject(<?= $vendor['id'] ?>, '<?= esc($vendor['business_name']) ?>')"
+                                class="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-red-600 text-white text-xs font-medium shadow-sm hover:bg-red-700 focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition">
+                          <i class="fas fa-times"></i> Reject
+                        </button>
+                      </div>
+                    </div>
                   <?php else: ?>
-                    <span class="px-3 py-1.5 rounded-md bg-gray-100 text-gray-600 text-xs">Tidak Ada Aksi</span>
+                    <div class="flex flex-col items-center">
+                      <span class="px-3 py-1.5 rounded-md bg-gray-100 text-gray-600 text-xs mb-1">Tidak Ada Aksi</span>
+                      <?php if (!empty($vendor['rejection_reason'])): ?>
+                        <button @click="$dispatch('show-rejection-reason', {reason: '<?= esc($vendor['rejection_reason']) ?>', vendor: '<?= esc($vendor['business_name']) ?>'})"
+                                class="text-xs text-blue-600 hover:text-blue-800 underline">
+                          Lihat Alasan
+                        </button>
+                      <?php endif; ?>
+                    </div>
                   <?php endif; ?>
                 </td>
               </tr>
             <?php endforeach; ?>
           <?php else: ?>
             <tr>
-              <td colspan="7" class="px-5 py-10 text-center text-gray-500">
+              <td colspan="8" class="px-5 py-10 text-center text-gray-500">
                 <div class="flex flex-col items-center justify-center">
                   <i class="fas fa-building text-gray-300 text-4xl mb-3"></i>
                   <p class="text-lg font-medium text-gray-900">Belum ada data vendor</p>
@@ -138,16 +185,19 @@
     </div>
   </div>
 
-  <!-- Modal Konfirmasi -->
+  <!-- Modal Konfirmasi - PERBAIKAN: Backdrop overlay yang memenuhi seluruh halaman -->
   <div x-show="showConfirmModal" x-cloak
-       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
+       class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm"
+       style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh;"
        x-transition:enter="transition ease-out duration-300"
        x-transition:enter-start="opacity-0"
        x-transition:enter-end="opacity-100"
        x-transition:leave="transition ease-in duration-200"
        x-transition:leave-start="opacity-100"
        x-transition:leave-end="opacity-0">
-    <div class="bg-white rounded-xl shadow-xl w-full max-w-md"
+    
+    <!-- Modal Content -->
+    <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto"
          @click.stop
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="opacity-0 scale-95 translate-y-1"
@@ -155,6 +205,7 @@
          x-transition:leave="transition ease-in duration-200"
          x-transition:leave-start="opacity-100 scale-100 translate-y-0"
          x-transition:leave-end="opacity-0 scale-95 translate-y-1">
+      
       <div class="p-6">
         <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-green-100">
           <i class="fas fa-check text-green-600 text-2xl"></i>
@@ -178,64 +229,100 @@
     </div>
   </div>
 
-  <!-- Modal Konfirmasi Reject -->
+  <!-- Modal Konfirmasi Reject - PERBAIKAN: Backdrop overlay yang memenuhi seluruh halaman -->
   <div x-show="showRejectModal" x-cloak
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
+      class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm"
+      style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh;"
       x-transition:enter="transition ease-out duration-300"
       x-transition:enter-start="opacity-0"
       x-transition:enter-end="opacity-100"
       x-transition:leave="transition ease-in duration-200"
       x-transition:leave-start="opacity-100"
       x-transition:leave-end="opacity-0">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-md"
-          @click.stop
-          x-transition:enter="transition ease-out duration-300"
-          x-transition:enter-start="opacity-0 scale-95 translate-y-1"
-          x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-          x-transition:leave="transition ease-in duration-200"
-          x-transition:leave-start="opacity-100 scale-100 translate-y-0"
-          x-transition:leave-end="opacity-0 scale-95 translate-y-1">
-          <div class="p-6">
-              <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-red-100">
-                  <i class="fas fa-times text-red-600 text-2xl"></i>
-              </div>
-              <h3 class="text-lg font-semibold text-center text-gray-900 mb-2">Konfirmasi Reject</h3>
-              <p class="text-gray-600 text-center mb-4">
-                  Apakah Anda yakin ingin menolak vendor <span class="font-semibold" x-text="vendorName"></span>?
-              </p>
-              
-              <!-- Input Alasan Reject -->
-              <div class="mb-4">
-                  <label for="rejectReason" class="block text-sm font-medium text-gray-700 mb-2">
-                      Alasan Penolakan <span class="text-red-500">*</span>
-                  </label>
-                  <textarea 
-                      id="rejectReason"
-                      x-model="rejectReason"
-                      placeholder="Masukkan alasan penolakan vendor..."
-                      rows="3"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
-                      required></textarea>
-                  <p class="text-xs text-gray-500 mt-1">Alasan penolakan akan dikirim ke vendor</p>
-              </div>
-              
-              <div class="flex flex-col sm:flex-row gap-3 justify-center">
-                  <button @click="showRejectModal = false"
-                          class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 font-medium transition">
-                      Batal
-                  </button>
-                  <button @click="executeReject()"
-                          :disabled="!rejectReason.trim()"
-                          :class="!rejectReason.trim() ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'"
-                          class="px-4 py-2 text-white rounded-lg font-medium transition">
-                      Reject Vendor
-                  </button>
-              </div>
-          </div>
+    
+    <!-- Modal Content -->
+    <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto"
+        @click.stop
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 scale-95 translate-y-1"
+        x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+        x-transition:leave-end="opacity-0 scale-95 translate-y-1">
+      
+      <div class="p-6">
+        <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-red-100">
+          <i class="fas fa-times text-red-600 text-2xl"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-center text-gray-900 mb-2">Konfirmasi Reject</h3>
+        <p class="text-gray-600 text-center mb-4">
+          Apakah Anda yakin ingin menolak vendor <span class="font-semibold" x-text="vendorName"></span>?
+        </p>
+        
+        <!-- Input Alasan Reject -->
+        <div class="mb-4">
+          <label for="rejectReason" class="block text-sm font-medium text-gray-700 mb-2">
+            Alasan Penolakan <span class="text-red-500">*</span>
+          </label>
+          <textarea 
+            id="rejectReason"
+            x-model="rejectReason"
+            placeholder="Masukkan alasan penolakan vendor..."
+            rows="3"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
+            required></textarea>
+          <p class="text-xs text-gray-500 mt-1">Alasan penolakan akan dikirim ke vendor</p>
+        </div>
+        
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+          <button @click="showRejectModal = false"
+                  class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 font-medium transition">
+            Batal
+          </button>
+          <button @click="executeReject()"
+                  :disabled="!rejectReason.trim()"
+                  :class="!rejectReason.trim() ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'"
+                  class="px-4 py-2 text-white rounded-lg font-medium transition">
+            Reject Vendor
+          </button>
+        </div>
       </div>
+    </div>
   </div>
 
-  <!-- Notification Toast -->
+  <!-- Modal Lihat Alasan Reject -->
+  <div x-data="{ showRejectionReason: false, rejectionReason: '', vendorName: '' }"
+       @show-rejection-reason.window="showRejectionReason = true; rejectionReason = $event.detail.reason; vendorName = $event.detail.vendor"
+       x-show="showRejectionReason" x-cloak
+       class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm">
+    
+    <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto"
+         @click.stop>
+      
+      <div class="p-6">
+        <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-blue-100">
+          <i class="fas fa-info-circle text-blue-600 text-2xl"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-center text-gray-900 mb-2">Alasan Penolakan</h3>
+        <p class="text-gray-600 text-center mb-4">
+          Vendor: <span class="font-semibold" x-text="vendorName"></span>
+        </p>
+        
+        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+          <p class="text-gray-700 whitespace-pre-line" x-text="rejectionReason"></p>
+        </div>
+        
+        <div class="flex justify-center mt-6">
+          <button @click="showRejectionReason = false"
+                  class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition">
+            Tutup
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast - PERBAIKAN: Z-index yang lebih tinggi -->
   <div x-show="notification.show" x-cloak
        x-transition:enter="transition ease-out duration-300"
        x-transition:enter-start="opacity-0 transform translate-y-2"
@@ -243,7 +330,7 @@
        x-transition:leave="transition ease-in duration-200"
        x-transition:leave-start="opacity-100 transform translate-y-0"
        x-transition:leave-end="opacity-0 transform translate-y-2"
-       class="fixed bottom-4 right-4 z-50 bg-white rounded-lg shadow-lg border-l-4 p-4 max-w-md"
+       class="fixed bottom-4 right-4 z-[100] bg-white rounded-lg shadow-lg border-l-4 p-4 max-w-md"
        :class="{
          'border-green-500': notification.type === 'success',
          'border-red-500': notification.type === 'error'
@@ -268,14 +355,103 @@
     </div>
   </div>
 
-  <!-- Loading Overlay -->
+  <!-- Loading Overlay - PERBAIKAN: Backdrop overlay yang memenuhi seluruh halaman -->
   <div x-show="loading" x-cloak
-       class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 flex flex-col items-center">
+       class="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm"
+       style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh;">
+    
+    <!-- Loading Content -->
+    <div class="relative bg-white rounded-lg p-6 flex flex-col items-center shadow-xl">
       <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
       <p class="text-gray-700 font-medium">Memproses...</p>
     </div>
   </div>
+</div>
+
+<style>
+/* PERBAIKAN: Backdrop overlay yang memenuhi seluruh halaman */
+.fixed.inset-0 {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    z-index: 100 !important;
+}
+
+/* Pastikan modal backdrop menutupi seluruh viewport */
+.modal-backdrop-full {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    backdrop-filter: blur(4px) !important;
+    z-index: 9998 !important;
+}
+
+/* Loading overlay yang memenuhi halaman */
+.loading-overlay-full {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(0, 0, 0, 0.7) !important;
+    backdrop-filter: blur(8px) !important;
+    z-index: 10000 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Pastikan body tidak scroll saat modal terbuka */
+body.modal-open {
+    overflow: hidden !important;
+    height: 100vh !important;
+    position: fixed !important;
+    width: 100% !important;
+}
+
+/* Style untuk baris error */
+.commission-row-error {
+    animation: pulseError 2s ease-in-out;
+    border-left: 4px solid #ef4444 !important;
+    background-color: #fef2f2 !important;
+}
+
+@keyframes pulseError {
+    0%, 100% { 
+        background-color: rgb(254 242 242);
+    }
+    50% { 
+        background-color: rgb(254 202 202);
+    }
+}
+
+[x-cloak] { 
+    display: none !important; 
+}
+
+/* Pastikan modal content di tengah */
+.modal-content-center {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    z-index: 10000 !important;
+}
+
+/* Smooth transitions untuk semua modal */
+.modal-transition {
+    transition: all 0.3s ease-in-out;
+}
+</style>
 
 <script>
 function vendorManager() {
@@ -298,6 +474,8 @@ function vendorManager() {
             this.vendorId = id;
             this.vendorName = name;
             this.showConfirmModal = true;
+            document.body.classList.add('modal-open');
+            document.body.style.overflow = 'hidden';
         },
         
         confirmReject(id, name) {
@@ -305,51 +483,8 @@ function vendorManager() {
             this.vendorName = name;
             this.rejectReason = '';
             this.showRejectModal = true;
-        },
-        
-        async executeApprove() {
-            this.showConfirmModal = false;
-            this.loading = true;
-            
-            const url = `<?= site_url('seo/vendor_verify/approve') ?>/${this.vendorId}`;
-                
-            try {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    body: JSON.stringify({
-                        '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    this.showNotification(
-                        'success', 
-                        'Berhasil', 
-                        `Vendor ${this.vendorName} berhasil disetujui`
-                    );
-                    
-                    // Reload setelah delay
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1500);
-                } else {
-                    throw new Error(data.message || 'Terjadi kesalahan');
-                }
-            } catch (error) {
-                this.showNotification(
-                    'error', 
-                    'Gagal', 
-                    error.message || 'Terjadi kesalahan saat memproses permintaan'
-                );
-            } finally {
-                this.loading = false;
-            }
+            document.body.classList.add('modal-open');
+            document.body.style.overflow = 'hidden';
         },
         
         async executeReject() {
@@ -365,22 +500,41 @@ function vendorManager() {
             this.showRejectModal = false;
             this.loading = true;
             
+            // Restore body overflow when modal is closed
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            
             const url = `<?= site_url('seo/vendor_verify/reject') ?>/${this.vendorId}`;
                 
             try {
+                const formData = new FormData();
+                formData.append('<?= csrf_token() ?>', '<?= csrf_hash() ?>');
+                formData.append('reject_reason', this.rejectReason);
+                
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
                     },
-                    body: JSON.stringify({
-                        '<?= csrf_token() ?>': '<?= csrf_hash() ?>',
-                        reject_reason: this.rejectReason
-                    })
+                    body: formData
                 });
                 
-                const data = await response.json();
+                // Check if response is JSON
+                const contentType = response.headers.get('content-type');
+                let data;
+                
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    // If not JSON, it's probably an HTML error page
+                    const text = await response.text();
+                    console.error('Server returned HTML instead of JSON:', text.substring(0, 500));
+                    throw new Error('Terjadi kesalahan server. Silakan coba lagi.');
+                }
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 
                 if (data.success) {
                     this.showNotification(
@@ -389,7 +543,6 @@ function vendorManager() {
                         `Vendor ${this.vendorName} berhasil ditolak`
                     );
                     
-                    // Reload setelah delay
                     setTimeout(() => {
                         window.location.reload();
                     }, 1500);
@@ -397,6 +550,7 @@ function vendorManager() {
                     throw new Error(data.message || 'Terjadi kesalahan');
                 }
             } catch (error) {
+                console.error('Error in executeReject:', error);
                 this.showNotification(
                     'error', 
                     'Gagal', 
@@ -405,6 +559,70 @@ function vendorManager() {
             } finally {
                 this.loading = false;
                 this.rejectReason = '';
+            }
+        },
+
+        async executeApprove() {
+            this.showConfirmModal = false;
+            this.loading = true;
+            
+            // Restore body overflow when modal is closed
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            
+            const url = `<?= site_url('seo/vendor_verify/approve') ?>/${this.vendorId}`;
+                
+            try {
+                const formData = new FormData();
+                formData.append('<?= csrf_token() ?>', '<?= csrf_hash() ?>');
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData
+                });
+                
+                // Check if response is JSON
+                const contentType = response.headers.get('content-type');
+                let data;
+                
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    // If not JSON, it's probably an HTML error page
+                    const text = await response.text();
+                    console.error('Server returned HTML instead of JSON:', text.substring(0, 500));
+                    throw new Error('Terjadi kesalahan server. Silakan coba lagi.');
+                }
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                if (data.success) {
+                    this.showNotification(
+                        'success', 
+                        'Berhasil', 
+                        `Vendor ${this.vendorName} berhasil disetujui`
+                    );
+                    
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    throw new Error(data.message || 'Terjadi kesalahan');
+                }
+            } catch (error) {
+                console.error('Error in executeApprove:', error);
+                this.showNotification(
+                    'error', 
+                    'Gagal', 
+                    error.message || 'Terjadi kesalahan saat memproses permintaan'
+                );
+            } finally {
+                this.loading = false;
             }
         },
         
@@ -427,6 +645,23 @@ function vendorManager() {
         }
     }
 }
+
+// Event listener untuk menangani escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const manager = document.querySelector('[x-data]').__x.$data;
+        if (manager.showConfirmModal) {
+            manager.showConfirmModal = false;
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+        }
+        if (manager.showRejectModal) {
+            manager.showRejectModal = false;
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+        }
+    }
+});
 </script>
 
 <?= $this->endSection() ?>

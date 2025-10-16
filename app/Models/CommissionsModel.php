@@ -22,7 +22,7 @@ class CommissionsModel extends Model
         'amount',
         'status',
         'proof',
-        'paid_at', // Hanya jika kolom ini ada di database
+        'paid_at', 
         'created_at',
         'updated_at'
     ];

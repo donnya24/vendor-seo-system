@@ -139,7 +139,6 @@ class Leads extends BaseAdminController // Perbaikan: Extend BaseAdminController
             'jumlah_leads_closing' => $jumlahLeadsClosing,
             'reported_by_vendor'   => $this->request->getPost('reported_by_vendor') ?? 0,
             'assigned_at'          => null,
-            'created_at'           => date('Y-m-d H:i:s'),
             'updated_at'           => date('Y-m-d H:i:s'),
         ]);
 
@@ -323,7 +322,6 @@ class Leads extends BaseAdminController // Perbaikan: Extend BaseAdminController
                 leads.jumlah_leads_closing, 
                 leads.tanggal_mulai, 
                 leads.tanggal_selesai,
-                leads.created_at,
                 leads.updated_at
             ')
             ->join('vendor_profiles', 'vendor_profiles.id = leads.vendor_id', 'left')
@@ -377,7 +375,6 @@ class Leads extends BaseAdminController // Perbaikan: Extend BaseAdminController
                 $lead['jumlah_leads_masuk'],
                 $lead['jumlah_leads_closing'],
                 $periodeTanggal,
-                $lead['created_at'] ? date('Y-m-d H:i:s', strtotime($lead['created_at'])) : '-',
                 $lead['updated_at'] ? date('Y-m-d H:i:s', strtotime($lead['updated_at'])) : '-'
             ]);
         }
@@ -400,7 +397,6 @@ class Leads extends BaseAdminController // Perbaikan: Extend BaseAdminController
                 'description' => $description,
                 'ip_address'  => $this->request->getIPAddress(),
                 'user_agent'  => (string) $this->request->getUserAgent(),
-                'created_at'  => date('Y-m-d H:i:s'),
             ];
 
             if (!empty($additionalData)) {

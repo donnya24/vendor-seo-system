@@ -166,6 +166,7 @@ $routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 
     $routes->post('commissions/verify/(:num)', 'Commissions::verify/$1');
     $routes->post('commissions/delete/(:num)', 'Commissions::delete/$1');
     $routes->post('commissions/bulk-action', 'Commissions::bulkAction');
+     $routes->post('commissions/unpaid/(:num)', 'Commissions::unpaid/$1');
     $routes->get('commissions/export-csv', 'Commissions::exportCsv');
         
     // Announcements
@@ -232,7 +233,7 @@ $routes->get('admin/dashboard/index', static fn () => redirect()->to('/admin/das
     $routes->post('reports/update/(:num)', 'Reports::update/$1');
     $routes->post('reports/delete/(:num)', 'Reports::delete/$1');
 
-    // Commissions (✅ tidak pakai group seo di dalam seo)
+    // Commissions (tidak pakai group seo di dalam seo)
     $routes->get('commissions', 'Commissions::index');
     $routes->post('commissions/approve/(:num)', 'Commissions::approve/$1');
     $routes->post('commissions/reject/(:num)', 'Commissions::reject/$1');
@@ -243,7 +244,7 @@ $routes->get('admin/dashboard/index', static fn () => redirect()->to('/admin/das
     $routes->get('leads', 'Leads::index'); 
     $routes->get('leads/export', 'Leads::export'); 
 
-    // Approve Vendor
+    // Approve & Reject Vendor
     $routes->get('vendor', 'Vendor_verify::index');
     $routes->post('vendor_verify/approve/(:num)', 'Vendor_verify::approve/$1');
     $routes->post('vendor_verify/reject/(:num)',        'Vendor_verify::reject/$1');
@@ -252,7 +253,6 @@ $routes->get('admin/dashboard/index', static fn () => redirect()->to('/admin/das
     $routes->get('logs', 'Logs::index');
     
     // Notifications
-    // Notifications - PERBAIKI ROUTES
     $routes->group('notif', static function ($routes) {
         $routes->get('/', 'Notifications::index');
         $routes->post('mark-read/(:num)', 'Notifications::markRead/$1');

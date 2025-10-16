@@ -6,12 +6,14 @@ use App\Controllers\BaseController;
 use App\Models\VendorProfilesModel;
 use App\Models\NotificationsModel;
 use App\Models\UserModel;
+use App\Models\SeoProfilesModel;
 
 class Profile extends BaseController
 {
     protected $vendorProfilesModel;
     protected $notificationsModel;
     protected $userModel;
+    protected $seoProfilesModel;
 
     private $vendorProfile;
     private $vendorId;
@@ -22,6 +24,7 @@ class Profile extends BaseController
         $this->vendorProfilesModel = new VendorProfilesModel();
         $this->notificationsModel = new NotificationsModel();
         $this->userModel = new UserModel();
+        $this->seoProfilesModel = new SeoProfilesModel();
         $this->initVendor();
     }
 
@@ -311,14 +314,8 @@ class Profile extends BaseController
     private function createCommissionChangeNotification(string $oldCommissionType, $oldCommissionValue, array $newData): void
     {
         try {
-            // Dapatkan semua user yang termasuk dalam grup Admin dan Seoteam
-            $targetUsers = $this->getAdminAndSeoteamUsers();
+            $db = \Config\Database::connect();
             
-            if (empty($targetUsers)) {
-                log_message('error', 'Tidak ada user Admin atau Seoteam ditemukan untuk notifikasi');
-                return;
-            }
-
             // Format nilai komisi lama dan baru
             $oldCommissionFormatted = $this->formatCommissionValue($oldCommissionType, $oldCommissionValue);
             $newCommissionFormatted = $this->formatCommissionValue($newData['commission_type'], 
@@ -328,80 +325,144 @@ class Profile extends BaseController
             $vendorId = $this->vendorId;
 
             // Debug informasi
-            log_message('info', "Membuat notifikasi untuk " . count($targetUsers) . " users");
-            log_message('info', "Vendor: {$vendorName}, Komisi: {$oldCommissionFormatted} -> {$newCommissionFormatted}");
+            log_message('info', "Membuat notifikasi perubahan komisi untuk vendor: {$vendorName}");
+            log_message('info', "Komisi: {$oldCommissionFormatted} -> {$newCommissionFormatted}");
 
-            // Buat notifikasi untuk setiap user dalam grup Admin dan Seoteam
-            $notificationsCreated = 0;
-            foreach ($targetUsers as $user) {
-                $userId = $user['user_id'] ?? null;
-                if (!$userId) continue;
+            // 1. Dapatkan semua admin users yang aktif
+            $adminUsers = $db->table('auth_groups_users agu')
+                ->select('agu.user_id')
+                ->join('users u', 'u.id = agu.user_id')
+                ->where('agu.group', 'admin')
+                ->where('u.active', 1) // Pastikan user aktif
+                ->get()
+                ->getResultArray();
+            
+            log_message('info', "Found " . count($adminUsers) . " active admin users for commission notification");
 
-                $notificationData = [
-                    'user_id' => $userId,
+            // 2. Dapatkan semua SEO users yang aktif
+            // Metode 1: Melalui auth_groups_users (jika SEO users memiliki grup 'seo')
+            $seoUsers = $db->table('auth_groups_users agu')
+                ->select('agu.user_id')
+                ->join('users u', 'u.id = agu.user_id')
+                ->where('agu.group', 'seo')
+                ->where('u.active', 1)
+                ->get()
+                ->getResultArray();
+            
+            // Jika tidak ada SEO users melalui auth_groups, coba metode 2
+            if (empty($seoUsers)) {
+                log_message('info', "No SEO users found through auth_groups, trying seo_profiles table");
+                
+                // Metode 2: Melalui seo_profiles table
+                $seoProfiles = $this->seoProfilesModel
+                    ->select('user_id')
+                    ->where('status', 'active') // Asumsi status aktif
+                    ->findAll();
+                
+                // Konversi ke format yang sama dengan metode 1
+                $seoUsers = array_map(function($profile) {
+                    return ['user_id' => $profile['user_id']];
+                }, $seoProfiles);
+                
+                // Filter hanya user yang aktif di tabel users
+                $activeSeoUserIds = $db->table('users')
+                    ->select('id')
+                    ->whereIn('id', array_column($seoUsers, 'user_id'))
+                    ->where('active', 1)
+                    ->get()
+                    ->getResultArray();
+                
+                // Filter seoUsers untuk hanya menyertakan user yang aktif
+                $activeSeoUserIds = array_column($activeSeoUserIds, 'id');
+                $seoUsers = array_filter($seoUsers, function($user) use ($activeSeoUserIds) {
+                    return in_array($user['user_id'], $activeSeoUserIds);
+                });
+                
+                // Re-index array
+                $seoUsers = array_values($seoUsers);
+            }
+            
+            log_message('info', "Found " . count($seoUsers) . " active SEO users for commission notification");
+            if (empty($seoUsers)) {
+                log_message('warning', "No active SEO users found. Check if group name 'seo' is correct and users are active.");
+            }
+
+            // Siapkan data notifikasi
+            $notifications = [];
+            $now = date('Y-m-d H:i:s');
+
+            // Buat pesan notifikasi
+            $title = 'Pengajuan Perubahan Komisi';
+            $message = "📝 Vendor {$vendorName} mengajukan perubahan komisi dari {$oldCommissionFormatted} menjadi {$newCommissionFormatted}.";
+            $message .= "\n\nDetail Pengajuan:";
+            $message .= "\n• Vendor: {$vendorName}";
+            $message .= "\n• Komisi Lama: {$oldCommissionFormatted}";
+            $message .= "\n• Komisi Baru: {$newCommissionFormatted}";
+            $message .= "\n• Status: Menunggu Verifikasi";
+
+            // Notifikasi untuk semua ADMIN
+            foreach ($adminUsers as $admin) {
+                $notifications[] = [
+                    'user_id' => $admin['user_id'],
                     'vendor_id' => $this->vendorId,
                     'type' => 'commission_change',
-                    'title' => 'Pengajuan Komisi Baru',
-                    'message' => "Vendor <strong>{$vendorName}</strong> mengajukan perubahan komisi dari {$oldCommissionFormatted} menjadi {$newCommissionFormatted}. Silakan review pengajuan ini.",
-                    'link_url' => site_url("admin/vendors/detail/{$vendorId}"),
+                    'title' => $title,
+                    'message' => $message,
                     'is_read' => 0,
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'updated_at' => date('Y-m-d H:i:s')
+                    'created_at' => $now,
+                    'updated_at' => $now
                 ];
-
-                // Debug data notifikasi
-                log_message('info', "Membuat notifikasi untuk user_id: {$userId} (group: {$user['group']})");
-
-                $inserted = $this->notificationsModel->insert($notificationData);
-                if ($inserted) {
-                    $notificationsCreated++;
-                    log_message('info', "Notifikasi berhasil dibuat dengan ID: " . $inserted);
-                } else {
-                    $errors = $this->notificationsModel->errors();
-                    log_message('error', "Gagal membuat notifikasi untuk user {$userId}: " . implode(', ', $errors));
-                }
             }
 
-            // Log aktivitas notifikasi
-            log_message('info', "Total notifikasi berhasil dibuat: {$notificationsCreated} dari " . count($targetUsers) . " target users");
-            
-            if (function_exists('log_activity_auto')) {
-                log_activity_auto('notification', 'Notifikasi pengajuan komisi dibuat untuk admin dan seoteam', [
-                    'module' => 'vendor_profile',
+            // Notifikasi untuk semua SEO
+            foreach ($seoUsers as $seo) {
+                $notifications[] = [
+                    'user_id' => $seo['user_id'],
                     'vendor_id' => $this->vendorId,
-                    'target_users' => count($targetUsers),
-                    'notifications_created' => $notificationsCreated,
-                    'old_commission' => $oldCommissionFormatted,
-                    'new_commission' => $newCommissionFormatted
-                ]);
+                    'type' => 'commission_change',
+                    'title' => $title,
+                    'message' => $message,
+                    'is_read' => 0,
+                    'created_at' => $now,
+                    'updated_at' => $now
+                ];
             }
+
+            // Insert semua notifikasi
+            if (!empty($notifications)) {
+                $this->notificationsModel->insertBatch($notifications);
+                
+                // Log untuk debugging
+                log_message('info', "Created commission change notifications: " . count($notifications) . " notifications sent");
+                
+                // Log aktivitas notifikasi
+                if (function_exists('log_activity_auto')) {
+                    log_activity_auto('notification', 'Notifikasi pengajuan perubahan komisi dibuat untuk admin dan SEO', [
+                        'module' => 'vendor_profile',
+                        'vendor_id' => $this->vendorId,
+                        'target_users' => count($notifications),
+                        'old_commission' => $oldCommissionFormatted,
+                        'new_commission' => $newCommissionFormatted
+                    ]);
+                }
+                
+                return;
+            }
+
+            log_message('warning', "No notifications were created for commission change");
 
         } catch (\Throwable $e) {
             // Log error tanpa mengganggu flow utama
-            log_message('error', 'Gagal membuat notifikasi komisi: ' . $e->getMessage());
+            log_message('error', 'Gagal membuat notifikasi perubahan komisi: ' . $e->getMessage());
+            log_message('error', $e->getTraceAsString());
+            
             if (function_exists('log_activity_auto')) {
-                log_activity_auto('error', 'Gagal membuat notifikasi komisi: ' . $e->getMessage(), [
+                log_activity_auto('error', 'Gagal membuat notifikasi perubahan komisi: ' . $e->getMessage(), [
                     'module' => 'vendor_profile',
                     'vendor_id' => $this->vendorId
                 ]);
             }
         }
-    }
-
-    /**
-     * Mendapatkan semua user yang termasuk dalam grup Admin dan Seoteam
-     */
-    private function getAdminAndSeoteamUsers(): array
-    {
-        $db = \Config\Database::connect();
-        
-        // Cari users dengan group Admin dan Seoteam dari tabel auth_groups_users
-        return $db->table('auth_groups_users agu')
-            ->select('agu.user_id, agu.group, u.email, u.username')
-            ->join('users u', 'u.id = agu.user_id')
-            ->whereIn('agu.group', ['admin', 'seoteam'])
-            ->get()
-            ->getResultArray();
     }
 
     /**

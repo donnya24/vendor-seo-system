@@ -167,9 +167,11 @@
               <tr class="hover:bg-gray-50 transition">
                 <td class="px-5 py-4 text-center text-gray-600"><?= $no++ ?></td>
 
+                <!-- PERBAIKAN: Tampilan periode menjadi sejajar horizontal -->
                 <td class="px-5 py-4">
-                  <div class="text-sm font-medium text-gray-900"><?= esc($c['period_start']) ?></div>
-                  <div class="text-xs text-gray-500">— <?= esc($c['period_end']) ?></div>
+                  <div class="text-sm font-medium text-gray-900 whitespace-nowrap">
+                    <?= esc($c['period_start']) ?> s/d <?= esc($c['period_end']) ?>
+                  </div>
                 </td>
 
                 <td class="px-5 py-4">
@@ -286,7 +288,7 @@
     <?php endif; ?>
   </div>
 
-  <!-- Modal Konfirmasi - PERBAIKAN: Backdrop overlay yang memenuhi seluruh halaman -->
+  <!-- Modal Konfirmasi -->
   <div x-show="showConfirmModal" x-cloak
        class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm"
        style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh;"
@@ -330,7 +332,7 @@
     </div>
   </div>
 
-  <!-- Notification Toast - PERBAIKAN: Z-index yang lebih tinggi -->
+  <!-- Notification Toast -->
   <div x-show="notification.show" x-cloak
        x-transition:enter="transition ease-out duration-300"
        x-transition:enter-start="opacity-0 transform translate-y-2"
@@ -357,7 +359,7 @@
     </div>
   </div>
 
-  <!-- Loading Overlay - PERBAIKAN: Backdrop overlay yang memenuhi seluruh halaman -->
+  <!-- Loading Overlay -->
   <div x-show="loading" x-cloak
        class="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm"
        style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh;">
@@ -371,7 +373,6 @@
 </div>
 
 <style>
-/* PERBAIKAN: Backdrop overlay yang memenuhi seluruh halaman */
 .fixed.inset-0 {
     position: fixed !important;
     top: 0 !important;
@@ -385,7 +386,6 @@
     z-index: 9999 !important;
 }
 
-/* Pastikan modal backdrop menutupi seluruh viewport */
 .modal-backdrop-full {
     position: fixed !important;
     top: 0 !important;
@@ -397,7 +397,6 @@
     z-index: 9998 !important;
 }
 
-/* Loading overlay yang memenuhi halaman */
 .loading-overlay-full {
     position: fixed !important;
     top: 0 !important;
@@ -412,7 +411,6 @@
     justify-content: center !important;
 }
 
-/* Pastikan body tidak scroll saat modal terbuka */
 body.modal-open {
     overflow: hidden !important;
     height: 100vh !important;
@@ -420,7 +418,6 @@ body.modal-open {
     width: 100% !important;
 }
 
-/* Style untuk baris error */
 .commission-row-error {
     animation: pulseError 2s ease-in-out;
     border-left: 4px solid #ef4444 !important;
@@ -440,7 +437,6 @@ body.modal-open {
     display: none !important; 
 }
 
-/* Pastikan modal content di tengah */
 .modal-content-center {
     position: fixed !important;
     top: 50% !important;
@@ -466,7 +462,6 @@ function commissionManager() {
       timeout: null
     },
 
-    // Vendor data for display
     vendors: {
       <?php foreach($vendors as $vendor): ?>
         '<?= $vendor['id'] ?>': '<?= esc($vendor['business_name']) ?>',
@@ -507,7 +502,6 @@ function commissionManager() {
     confirmAction(id) {
       this.commissionId = id;
       this.showConfirmModal = true;
-      // Prevent body scroll
       document.body.classList.add('modal-open');
       document.body.style.overflow = 'hidden';
     },
@@ -515,7 +509,6 @@ function commissionManager() {
     async executeAction() {
       this.showConfirmModal = false;
       this.loading = true;
-      // Restore body scroll
       document.body.classList.remove('modal-open');
       document.body.style.overflow = '';
 
@@ -554,7 +547,6 @@ function commissionManager() {
   };
 }
 
-// Event listener untuk menangani escape key
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     const manager = document.querySelector('[x-data]').__x.$data;

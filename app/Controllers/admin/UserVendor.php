@@ -2,29 +2,28 @@
 
 namespace App\Controllers\Admin;
 
-use App\Controllers\Admin\BaseAdminController; // Perbaikan: Extend BaseAdminController
+use App\Controllers\Admin\BaseAdminController;
 use App\Models\VendorProfilesModel;
 use App\Models\IdentityModel;
-use App\Models\ActivityLogsModel; // Tambahkan model ActivityLogs
+use App\Models\ActivityLogsModel;
 use CodeIgniter\Shield\Entities\User as ShieldUser;
 use CodeIgniter\Database\Exceptions\DatabaseException;
 
-class UserVendor extends BaseAdminController // Perbaikan: Extend BaseAdminController
+class UserVendor extends BaseAdminController
 {
     protected $users;
     protected $db;
     protected $vendorModel;
     protected $identityModel;
-    protected $activityLogsModel; // Tambahkan property
+    protected $activityLogsModel;
 
     public function __construct()
     {
-        // Hapus parent::__construct() karena BaseController tidak memiliki constructor
         $this->users         = service('auth')->getProvider();
         $this->db            = db_connect();
         $this->vendorModel   = new VendorProfilesModel();
         $this->identityModel = new IdentityModel();
-        $this->activityLogsModel = new ActivityLogsModel(); // Inisialisasi model
+        $this->activityLogsModel = new ActivityLogsModel();
     }
 
     // ========== LIST ==========
@@ -39,12 +38,13 @@ class UserVendor extends BaseAdminController // Perbaikan: Extend BaseAdminContr
         // Load common data for header (termasuk notifikasi)
         $commonData = $this->loadCommonData();
         
-        // Query untuk VENDOR - dengan semua field komisi
+        // Query untuk VENDOR - dengan semua field termasuk action_by
         $users = $this->db->table('users u')
             ->select('u.id, u.username, 
                     vp.business_name, vp.owner_name, vp.phone, vp.whatsapp_number,
                     vp.status as vendor_status, vp.commission_type, 
                     vp.requested_commission, vp.requested_commission_nominal,
+                    vp.action_by, vp.approved_at, vp.updated_at,
                     ai.secret as email')
             ->join('auth_groups_users agu', 'agu.user_id = u.id')
             ->join('vendor_profiles vp', 'vp.user_id = u.id', 'left')
@@ -66,6 +66,22 @@ class UserVendor extends BaseAdminController // Perbaikan: Extend BaseAdminContr
                 $commissionDisplay = 'Rp ' . number_format($user['requested_commission_nominal'], 0, ',', '.');
             }
             
+            // PERBAIKAN: Format action by - ambil nama user dari berbagai profile tables
+            $actionByDisplay = '-';
+            $actionDate = null;
+            
+            if (!empty($user['action_by'])) {
+                // Ambil nama user yang melakukan aksi
+                $actionByDisplay = $this->getUserNameById($user['action_by']);
+                
+                // Tentukan tanggal aksi berdasarkan status
+                if ($user['vendor_status'] === 'verified' && !empty($user['approved_at'])) {
+                    $actionDate = $user['approved_at'];
+                } else {
+                    $actionDate = $user['updated_at'];
+                }
+            }
+            
             return [
                 'id' => $user['id'],
                 'username' => $user['username'],
@@ -80,6 +96,9 @@ class UserVendor extends BaseAdminController // Perbaikan: Extend BaseAdminContr
                 'requested_commission_nominal' => $user['requested_commission_nominal'] ?? null,
                 'commission_display' => $commissionDisplay,
                 'is_verified' => $isVerified,
+                'action_by' => $user['action_by'],
+                'action_by_display' => $actionByDisplay, // ✅ Sekarang menampilkan nama, bukan ID
+                'action_date' => $actionDate,
                 'groups' => ['vendor']
             ];
         }, $users);
@@ -396,174 +415,242 @@ class UserVendor extends BaseAdminController // Perbaikan: Extend BaseAdminContr
     }
 
     // ========== UPDATE ==========
-    public function update($id = null)
-    {
-        // Handle AJAX request
-        if ($this->request->isAJAX()) {
-            try {
-                // Pastikan ID tersedia
-                if (!$id) {
-                    $id = $this->request->getPost('id');
-                }
-                
-                $username = trim((string) $this->request->getPost('username'));
-                $newPass  = (string) $this->request->getPost('password');
-                $email    = trim((string) $this->request->getPost('email'));
+public function update($id = null)
+{
+    // Handle AJAX request
+    if ($this->request->isAJAX()) {
+        try {
+            // Pastikan ID tersedia
+            if (!$id) {
+                $id = $this->request->getPost('id');
+            }
+            
+            $username = trim((string) $this->request->getPost('username'));
+            $newPass  = (string) $this->request->getPost('password');
+            $email    = trim((string) $this->request->getPost('email'));
 
-                // Cek user exists
-                $user = $this->users->find($id);
-                if (!$user) {
-                    return $this->response->setJSON([
-                        'status' => 'error',
-                        'message' => 'User tidak ditemukan'
-                    ]);
-                }
-
-                // Cek duplikasi username jika berubah
-                if ($username !== $user->username) {
-                    $existingUser = $this->users->where('username', $username)->first();
-                    if ($existingUser) {
-                        return $this->response->setJSON([
-                            'status' => 'error',
-                            'message' => 'Username sudah digunakan',
-                            'field' => 'username'
-                        ]);
-                    }
-                }
-
-                // Ambil email lama dengan lebih aman
-                $identity = $this->identityModel->where(['user_id' => $id, 'type' => 'email_password'])->first();
-                $oldEmail = ($identity && isset($identity['secret'])) ? $identity['secret'] : '';
-
-                // Cek duplikasi email jika berubah
-                if (!empty($email) && $email !== $oldEmail) {
-                    $existingEmail = $this->identityModel->where('secret', $email)->first();
-                    if ($existingEmail) {
-                        return $this->response->setJSON([
-                            'status' => 'error',
-                            'message' => 'Email sudah digunakan',
-                            'field' => 'email'
-                        ]);
-                    }
-                }
-
-                // Update username
-                $this->users->update($id, ['username' => $username]);
-
-                // Set group
-                $this->setSingleGroup((int) $id, 'vendor');
-
-                // Update email jika diisi
-                if ($email !== '') {
-                    $this->updateEmailIdentity((int) $id, $email);
-                }
-
-                // Update password jika diisi
-                if ($newPass !== '') {
-                    if (strlen($newPass) < 8) {
-                        return $this->response->setJSON([
-                            'status' => 'error',
-                            'message' => 'Password minimal 8 karakter'
-                        ]);
-                    }
-                    $this->resetPasswordByEmailIdentity((int) $id, $newPass);
-                }
-
-                // Handle Vendor profile
-                $businessName = trim((string) $this->request->getPost('business_name'));
-                $ownerName    = trim((string) $this->request->getPost('owner_name'));
-                $phone        = trim((string) $this->request->getPost('phone'));
-                $whatsapp     = trim((string) $this->request->getPost('whatsapp_number'));
-                $vendorStatus = (string) $this->request->getPost('vendor_status');
-                $commissionType = $this->request->getPost('commission_type');
-                
-                // Handle kedua tipe komisi dengan benar
-                $requestedCommission = $this->request->getPost('requested_commission');
-                $requestedCommissionNominal = $this->request->getPost('requested_commission_nominal');
-                
-                // Validasi persentase jika tipe persentase
-                if ($commissionType === 'percent' && $requestedCommission !== '' && ($requestedCommission < 0 || $requestedCommission > 100)) {
-                    return $this->response->setJSON([
-                        'status' => 'error',
-                        'message' => 'Persentase komisi harus antara 0-100%'
-                    ]);
-                }
-
-                $exists = $this->vendorModel->where('user_id', $id)->first();
-                $data = [
-                    'business_name'              => $businessName,
-                    'owner_name'                 => $ownerName,
-                    'phone'                      => $phone,
-                    'whatsapp_number'            => $whatsapp,
-                    'status'                     => $vendorStatus,
-                    'commission_type'            => $commissionType,
-                    'requested_commission'       => $commissionType === 'percent' && $requestedCommission !== '' ? (float) $requestedCommission : null,
-                    'requested_commission_nominal' => $commissionType === 'nominal' && $requestedCommissionNominal !== '' ? (float) $requestedCommissionNominal : null,
-                    'updated_at'                 => date('Y-m-d H:i:s'),
-                ];
-
-                if ($exists) {
-                    $this->vendorModel->where('user_id', $id)->set($data)->update();
-                } else {
-                    $data['user_id']    = $id;
-                    $data['created_at'] = date('Y-m-d H:i:s');
-                    $this->vendorModel->insert($data);
-                }
-
-                // Log activity update user vendor
-                $this->logActivity(
-                    'update_user_vendor',
-                    'Memperbarui user vendor: ' . $username,
-                    [
-                        'user_id' => $id,
-                        'username' => $username,
-                        'email' => $email,
-                        'business_name' => $businessName
-                    ]
-                );
-
-                log_message('info', "User vendor berhasil diupdate: {$username}");
-
-                return $this->response->setJSON([
-                    'status' => 'success',
-                    'message' => 'User Vendor berhasil diupdate'
-                ]);
-
-            } catch (\Exception $e) {
-                // Tangani SEMUA jenis exception, termasuk DatabaseException
-                log_message('error', 'Update Error: ' . $e->getMessage());
-                log_message('error', $e->getTraceAsString()); // Tambahkan trace untuk debugging lebih lanjut
-                
-                // Cek apakah ini error duplikasi dari database
-                if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
-                    if (strpos($e->getMessage(), 'users.username') !== false) {
-                        return $this->response->setJSON([
-                            'status' => 'error',
-                            'message' => 'Username sudah digunakan',
-                            'field' => 'username'
-                        ]);
-                    } elseif (strpos($e->getMessage(), 'auth_identities.secret') !== false) {
-                        return $this->response->setJSON([
-                            'status' => 'error',
-                            'message' => 'Email sudah digunakan',
-                            'field' => 'email'
-                        ]);
-                    }
-                }
-                
+            // Cek user exists
+            $user = $this->users->find($id);
+            if (!$user) {
                 return $this->response->setJSON([
                     'status' => 'error',
-                    'message' => 'Terjadi kesalahan server. Silakan coba lagi.'
+                    'message' => 'User tidak ditemukan'
                 ]);
             }
-        }
 
-        // Fallback untuk non-AJAX
-        return $this->response->setStatusCode(400)->setJSON([
-            'status' => 'error',
-            'message' => 'Request harus AJAX'
-        ]);
+            // Cek duplikasi username jika berubah
+            if ($username !== $user->username) {
+                $existingUser = $this->users->where('username', $username)->first();
+                if ($existingUser) {
+                    return $this->response->setJSON([
+                        'status' => 'error',
+                        'message' => 'Username sudah digunakan',
+                        'field' => 'username'
+                    ]);
+                }
+            }
+
+            // Ambil email lama dengan lebih aman
+            $identity = $this->identityModel->where(['user_id' => $id, 'type' => 'email_password'])->first();
+            $oldEmail = ($identity && isset($identity['secret'])) ? $identity['secret'] : '';
+
+            // Cek duplikasi email jika berubah
+            if (!empty($email) && $email !== $oldEmail) {
+                $existingEmail = $this->identityModel->where('secret', $email)->first();
+                if ($existingEmail) {
+                    return $this->response->setJSON([
+                        'status' => 'error',
+                        'message' => 'Email sudah digunakan',
+                        'field' => 'email'
+                    ]);
+                }
+            }
+
+            // Update username
+            $this->users->update($id, ['username' => $username]);
+
+            // Set group
+            $this->setSingleGroup((int) $id, 'vendor');
+
+            // Update email jika diisi
+            if ($email !== '') {
+                $this->updateEmailIdentity((int) $id, $email);
+            }
+
+            // Update password jika diisi
+            if ($newPass !== '') {
+                if (strlen($newPass) < 8) {
+                    return $this->response->setJSON([
+                        'status' => 'error',
+                        'message' => 'Password minimal 8 karakter'
+                    ]);
+                }
+                $this->resetPasswordByEmailIdentity((int) $id, $newPass);
+            }
+
+            // Handle Vendor profile
+            $businessName = trim((string) $this->request->getPost('business_name'));
+            $ownerName    = trim((string) $this->request->getPost('owner_name'));
+            $phone        = trim((string) $this->request->getPost('phone'));
+            $whatsapp     = trim((string) $this->request->getPost('whatsapp_number'));
+            $vendorStatus = (string) $this->request->getPost('vendor_status');
+            $commissionType = $this->request->getPost('commission_type');
+            
+            // Ambil user yang melakukan aksi
+            $currentUser = service('auth')->user();
+            
+            // Handle kedua tipe komisi dengan benar
+            $requestedCommission = $this->request->getPost('requested_commission');
+            $requestedCommissionNominal = $this->request->getPost('requested_commission_nominal');
+            
+            // Validasi persentase jika tipe persentase
+            if ($commissionType === 'percent' && $requestedCommission !== '' && ($requestedCommission < 0 || $requestedCommission > 100)) {
+                return $this->response->setJSON([
+                    'status' => 'error',
+                    'message' => 'Persentase komisi harus antara 0-100%'
+                ]);
+            }
+
+            $exists = $this->vendorModel->where('user_id', $id)->first();
+            $currentStatus = $exists['status'] ?? 'pending';
+            
+            $data = [
+                'business_name'              => $businessName,
+                'owner_name'                 => $ownerName,
+                'phone'                      => $phone,
+                'whatsapp_number'            => $whatsapp,
+                'status'                     => $vendorStatus,
+                'commission_type'            => $commissionType,
+                'requested_commission'       => $commissionType === 'percent' && $requestedCommission !== '' ? (float) $requestedCommission : null,
+                'requested_commission_nominal' => $commissionType === 'nominal' && $requestedCommissionNominal !== '' ? (float) $requestedCommissionNominal : null,
+                'updated_at'                 => date('Y-m-d H:i:s'),
+                'action_by'                  => $currentUser->id // ✅ Tambahkan action_by untuk status changes
+            ];
+
+            // ✅ PERBAIKAN: HAPUS REJECTION_REASON JIKA STATUS BERUBAH DARI REJECTED KE STATUS LAIN
+            if ($currentStatus === 'rejected' && $vendorStatus !== 'rejected') {
+                $data['rejection_reason'] = null;
+                log_message('debug', 'Clearing rejection_reason because status changed from rejected to ' . $vendorStatus);
+            }
+
+            // ✅ PERBAIKAN: HAPUS REJECTED_AT JIKA STATUS BERUBAH DARI REJECTED KE STATUS LAIN
+            if ($currentStatus === 'rejected' && $vendorStatus !== 'rejected') {
+                $data['rejected_at'] = null;
+                log_message('debug', 'Clearing rejected_at because status changed from rejected to ' . $vendorStatus);
+            }
+
+            // Jika status berubah menjadi verified, set approved_at
+            if ($vendorStatus === 'verified') {
+                $data['approved_at'] = date('Y-m-d H:i:s');
+                
+                // ✅ PERBAIKAN: HAPUS REJECTION_REASON DAN REJECTED_AT JIKA BERUBAH KE VERIFIED
+                if ($currentStatus === 'rejected') {
+                    $data['rejection_reason'] = null;
+                    $data['rejected_at'] = null;
+                    log_message('debug', 'Clearing rejection data because status changed from rejected to verified');
+                }
+            }
+            // Jika status berubah menjadi rejected, set rejected_at
+            elseif ($vendorStatus === 'rejected') {
+                $data['rejected_at'] = date('Y-m-d H:i:s');
+                
+                // ✅ PERBAIKAN: HAPUS APPROVED_AT JIKA BERUBAH DARI VERIFIED KE REJECTED
+                if ($currentStatus === 'verified') {
+                    $data['approved_at'] = null;
+                    log_message('debug', 'Clearing approved_at because status changed from verified to rejected');
+                }
+            }
+            // Jika status berubah menjadi pending, hapus semua timestamp approval/rejection
+            elseif ($vendorStatus === 'pending') {
+                // ✅ PERBAIKAN: HAPUS SEMUA TIMESTAMP DAN REASON JIKA BERUBAH KE PENDING
+                $data['approved_at'] = null;
+                $data['rejected_at'] = null;
+                $data['rejection_reason'] = null;
+                log_message('debug', 'Clearing all approval/rejection data because status changed to pending');
+            }
+            // Jika status berubah menjadi inactive, simpan status sebelumnya di inactive_reason
+            elseif ($vendorStatus === 'inactive') {
+                $data['inactive_reason'] = $currentStatus;
+                log_message('debug', 'Saving previous status to inactive_reason: ' . $currentStatus);
+            }
+            // Jika status berubah dari inactive ke status lain, hapus inactive_reason
+            elseif ($currentStatus === 'inactive' && $vendorStatus !== 'inactive') {
+                $data['inactive_reason'] = null;
+                log_message('debug', 'Clearing inactive_reason because status changed from inactive to ' . $vendorStatus);
+            }
+
+            if ($exists) {
+                $this->vendorModel->where('user_id', $id)->set($data)->update();
+            } else {
+                $data['user_id']    = $id;
+                $data['created_at'] = date('Y-m-d H:i:s');
+                $this->vendorModel->insert($data);
+            }
+
+            // 🔔 KIRIM NOTIFIKASI JIKA STATUS BERUBAH
+            if ($exists && $currentStatus !== $vendorStatus) {
+                $this->sendVendorStatusNotification($exists, $vendorStatus);
+            }
+
+            // Log activity update user vendor
+            $this->logActivity(
+                'update_user_vendor',
+                'Memperbarui user vendor: ' . $username . ' dengan status: ' . $vendorStatus . ' (dari: ' . $currentStatus . ')',
+                [
+                    'user_id' => $id,
+                    'username' => $username,
+                    'email' => $email,
+                    'business_name' => $businessName,
+                    'old_status' => $currentStatus,
+                    'new_status' => $vendorStatus,
+                    'action_by' => $currentUser->id
+                ]
+            );
+
+            log_message('info', "User vendor berhasil diupdate: {$username} dengan status: {$vendorStatus} (dari: {$currentStatus})");
+
+            return $this->response->setJSON([
+                'status' => 'success',
+                'message' => 'User Vendor berhasil diupdate',
+                'new_status' => $vendorStatus,
+                'old_status' => $currentStatus
+            ]);
+
+        } catch (\Exception $e) {
+            // Tangani SEMUA jenis exception, termasuk DatabaseException
+            log_message('error', 'Update Error: ' . $e->getMessage());
+            log_message('error', $e->getTraceAsString()); // Tambahkan trace untuk debugging lebih lanjut
+            
+            // Cek apakah ini error duplikasi dari database
+            if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                if (strpos($e->getMessage(), 'users.username') !== false) {
+                    return $this->response->setJSON([
+                        'status' => 'error',
+                        'message' => 'Username sudah digunakan',
+                        'field' => 'username'
+                    ]);
+                } elseif (strpos($e->getMessage(), 'auth_identities.secret') !== false) {
+                    return $this->response->setJSON([
+                        'status' => 'error',
+                        'message' => 'Email sudah digunakan',
+                        'field' => 'email'
+                    ]);
+                }
+            }
+            
+            return $this->response->setJSON([
+                'status' => 'error',
+                'message' => 'Terjadi kesalahan server. Silakan coba lagi.'
+            ]);
+        }
     }
+
+    // Fallback untuk non-AJAX
+    return $this->response->setStatusCode(400)->setJSON([
+        'status' => 'error',
+        'message' => 'Request harus AJAX'
+    ]);
+}
 
     // ========== DELETE ==========
     public function delete($id)
@@ -705,252 +792,390 @@ class UserVendor extends BaseAdminController // Perbaikan: Extend BaseAdminContr
     }
 
     // ========== TOGGLE SUSPEND VENDOR ==========
-    public function toggleSuspend($id)
-    {
-        // Handle AJAX request
-        if ($this->request->isAJAX()) {
-            try {
-                log_message('debug', '=== TOGGLE SUSPEND VENDOR START ===');
-                log_message('debug', 'Vendor ID: ' . $id);
-                
-                $groups = $this->getUserGroups((int) $id);
-                log_message('debug', 'User groups: ' . json_encode($groups));
-                
-                if (!in_array('vendor', $groups, true)) {
-                    return $this->response->setJSON([
-                        'success' => false,
-                        'message' => 'Hanya vendor yang bisa di-nonaktifkan.'
-                    ]);
-                }
+public function toggleSuspend($id)
+{
+    // Handle AJAX request
+    if ($this->request->isAJAX()) {
+        try {
+            log_message('debug', '=== TOGGLE SUSPEND VENDOR START ===');
+            log_message('debug', 'Vendor ID: ' . $id);
+            
+            $groups = $this->getUserGroups((int) $id);
+            log_message('debug', 'User groups: ' . json_encode($groups));
+            
+            if (!in_array('vendor', $groups, true)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Hanya vendor yang bisa di-nonaktifkan.'
+                ]);
+            }
 
-                $vp = $this->db->table('vendor_profiles')
+            $vp = $this->db->table('vendor_profiles')
+                ->where('user_id', $id)
+                ->get()
+                ->getRowArray();
+                
+            if (!$vp) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Profil vendor tidak ditemukan.'
+                ]);
+            }
+
+            $currentStatus = $vp['status'] ?? 'pending';
+            $vendorName = $vp['business_name'] ?? 'Unknown';
+            log_message('debug', 'Current vendor status: ' . $currentStatus);
+            
+            // LOGIC: Pisahkan status verification dan active/inactive
+            $isCurrentlyActive = !in_array($currentStatus, ['inactive']);
+            
+            if (!$isCurrentlyActive) {
+                // Aktifkan vendor - kembalikan ke status verification sebelumnya
+                $previousVerificationStatus = $vp['inactive_reason'] ?? 'pending';
+                $newStatus = $previousVerificationStatus;
+                $message = 'Vendor ' . $vendorName . ' diaktifkan kembali.';
+                $isActive = true;
+                $notificationStatus = 'active';
+            } else {
+                // Nonaktifkan vendor - simpan status verification saat ini
+                $newStatus = 'inactive';
+                $message = 'Vendor ' . $vendorName . ' dinonaktifkan.';
+                $isActive = false;
+                $notificationStatus = 'inactive';
+            }
+            
+            log_message('debug', 'New vendor status: ' . $newStatus);
+            
+            // Ambil user yang melakukan aksi
+            $currentUser = service('auth')->user();
+            
+            // Update database
+            $updateData = [
+                'status' => $newStatus, 
+                'updated_at' => date('Y-m-d H:i:s'),
+                'action_by' => $currentUser->id
+            ];
+            
+            // ✅ HAPUS REJECTION_REASON JIKA STATUS SEBELUMNYA REJECTED DAN BERUBAH KE STATUS LAIN
+            if ($currentStatus === 'rejected' && $newStatus !== 'rejected') {
+                $updateData['rejection_reason'] = null;
+                log_message('debug', 'Clearing rejection_reason because status changed from rejected to ' . $newStatus);
+            }
+            
+            // SIMPAN STATUS VERIFICATION SEBELUMNYA JIKA DINONAKTIFKAN
+            if (!$isCurrentlyActive) {
+                // Jika diaktifkan kembali, hapus inactive_reason
+                $updateData['inactive_reason'] = null;
+            } else {
+                // Jika dinonaktifkan, simpan status verification sebelumnya
+                $updateData['inactive_reason'] = $currentStatus;
+            }
+            
+            $updateResult = $this->db->table('vendor_profiles')
+                ->where('user_id', $id)
+                ->set($updateData)
+                ->update();
+            
+            log_message('debug', 'Update result: ' . ($updateResult ? 'true' : 'false'));
+            
+            // Cek affected rows
+            $affectedRows = $this->db->affectedRows();
+            log_message('debug', 'Affected rows: ' . $affectedRows);
+            
+            // Jika updateResult false, cek apakah karena tidak ada perubahan data
+            if (!$updateResult && $affectedRows === 0) {
+                // Cek apakah data sudah sama dengan yang ingin diupdate
+                $currentData = $this->db->table('vendor_profiles')
                     ->where('user_id', $id)
                     ->get()
                     ->getRowArray();
-                    
-                if (!$vp) {
-                    return $this->response->setJSON([
-                        'success' => false,
-                        'message' => 'Profil vendor tidak ditemukan.'
-                    ]);
+                if ($currentData && $currentData['status'] === $newStatus) {
+                    log_message('debug', 'No data changes detected, considering as success');
+                    $updateResult = true; // Anggap sukses jika tidak ada perubahan
                 }
-
-                log_message('debug', 'Current vendor status: ' . ($vp['status'] ?? 'pending'));
-                
-                $currentStatus = $vp['status'] ?? 'pending';
-                $vendorName = $vp['business_name'] ?? 'Unknown';
-                
-                // LOGIC: Pisahkan status verification dan active/inactive
-                $isCurrentlyActive = !in_array($currentStatus, ['inactive']);
-                
-                if (!$isCurrentlyActive) {
-                    // Aktifkan vendor - kembalikan ke status verification sebelumnya
-                    $previousVerificationStatus = $vp['inactive_reason'] ?? 'pending';
-                    $newStatus = $previousVerificationStatus;
-                    $message = 'Vendor ' . $vendorName . ' diaktifkan kembali.';
-                    $isActive = true;
-                    $notificationStatus = 'active';
-                } else {
-                    // Nonaktifkan vendor - simpan status verification saat ini
-                    $newStatus = 'inactive';
-                    $message = 'Vendor ' . $vendorName . ' dinonaktifkan.';
-                    $isActive = false;
-                    $notificationStatus = 'inactive';
-                }
-                
-                log_message('debug', 'New vendor status: ' . $newStatus);
-                
-                // Update database
-                $updateData = [
-                    'status' => $newStatus, 
-                    'updated_at' => date('Y-m-d H:i:s')
-                ];
-                
-                // SIMPAN STATUS VERIFICATION SEBELUMNYA JIKA DINONAKTIFKAN
-                if (!$isCurrentlyActive) {
-                    // Jika diaktifkan kembali, hapus inactive_reason
-                    $updateData['inactive_reason'] = null;
-                } else {
-                    // Jika dinonaktifkan, simpan status verification sebelumnya
-                    $updateData['inactive_reason'] = $currentStatus;
-                }
-                
-                $updateResult = $this->db->table('vendor_profiles')
-                    ->where('user_id', $id)
-                    ->set($updateData)
-                    ->update();
-                
-                log_message('debug', 'Update result: ' . ($updateResult ? 'true' : 'false'));
-                
-                // Cek affected rows
-                $affectedRows = $this->db->affectedRows();
-                log_message('debug', 'Affected rows: ' . $affectedRows);
-                
-                // Jika updateResult false, cek apakah karena tidak ada perubahan data
-                if (!$updateResult && $affectedRows === 0) {
-                    // Cek apakah data sudah sama dengan yang ingin diupdate
-                    $currentData = $this->db->table('vendor_profiles')
-                        ->where('user_id', $id)
-                        ->get()
-                        ->getRowArray();
-                    if ($currentData && $currentData['status'] === $newStatus) {
-                        log_message('debug', 'No data changes detected, considering as success');
-                        $updateResult = true; // Anggap sukses jika tidak ada perubahan
-                    }
-                }
-                
-                // 🔔 KIRIM NOTIFIKASI JIKA UPDATE BERHASIL
-                if ($updateResult) {
-                    $this->sendVendorStatusNotification($vp, $notificationStatus);
-                }
-                
-                // Log activity toggle suspend vendor
-                $this->logActivity(
-                    'toggle_suspend_vendor',
-                    $message,
-                    [
-                        'user_id' => $id,
-                        'vendor_profile_id' => $vp['id'] ?? null,
-                        'old_status' => $currentStatus,
-                        'new_status' => $newStatus,
-                        'vendor_name' => $vendorName
-                    ]
-                );
-                
-                log_message('debug', 'Toggle suspend vendor success: ' . $message);
-                
-                return $this->response->setJSON([
-                    'success' => true,
-                    'message' => $message,
+            }
+            
+            // 🔔 KIRIM NOTIFIKASI JIKA UPDATE BERHASIL
+            if ($updateResult) {
+                $this->sendVendorStatusNotification($vp, $notificationStatus);
+            }
+            
+            // Log activity toggle suspend vendor
+            $this->logActivity(
+                'toggle_suspend_vendor',
+                $message,
+                [
+                    'user_id' => $id,
+                    'vendor_profile_id' => $vp['id'] ?? null,
+                    'old_status' => $currentStatus,
                     'new_status' => $newStatus,
-                    'new_label' => ucfirst($newStatus),
-                    'is_active' => $isActive
-                ]);
+                    'vendor_name' => $vendorName,
+                    'action_by' => $currentUser->id
+                ]
+            );
+            
+            log_message('debug', 'Toggle suspend vendor success: ' . $message);
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => $message,
+                'new_status' => $newStatus,
+                'new_label' => ucfirst($newStatus),
+                'is_active' => $isActive
+            ]);
 
-            } catch (\Exception $e) {
-                log_message('error', 'Toggle suspend vendor error: ' . $e->getMessage());
-                
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Terjadi kesalahan: ' . $e->getMessage()
-                ]);
-            }
+        } catch (\Exception $e) {
+            log_message('error', 'Toggle suspend vendor error: ' . $e->getMessage());
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ]);
         }
-
-        return $this->response->setJSON([
-            'success' => false,
-            'message' => 'Request harus AJAX'
-        ]);
     }
 
+    return $this->response->setJSON([
+        'success' => false,
+        'message' => 'Request harus AJAX'
+    ]);
+}
     // ========== VERIFY VENDOR ==========
-    public function verifyVendor($id)
-    {
-        // Handle AJAX request
-        if ($this->request->isAJAX()) {
-            try {
-                log_message('debug', '=== VERIFY VENDOR START ===');
-                log_message('debug', 'Vendor ID: ' . $id);
-                
-                $groups = $this->getUserGroups((int) $id);
-                log_message('debug', 'User groups: ' . json_encode($groups));
-                
-                if (!in_array('vendor', $groups, true)) {
-                    return $this->response->setJSON([
-                        'success' => false,
-                        'message' => 'Hanya vendor yang bisa diverifikasi.'
-                    ]);
-                }
+public function verifyVendor($id)
+{
+    // Handle AJAX request
+    if ($this->request->isAJAX()) {
+        try {
+            log_message('debug', '=== VERIFY VENDOR START ===');
+            log_message('debug', 'Vendor ID: ' . $id);
+            
+            $groups = $this->getUserGroups((int) $id);
+            log_message('debug', 'User groups: ' . json_encode($groups));
+            
+            if (!in_array('vendor', $groups, true)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Hanya vendor yang bisa diverifikasi.'
+                ]);
+            }
 
-                $vp = $this->db->table('vendor_profiles')
+            $vp = $this->db->table('vendor_profiles')
+                ->where('user_id', $id)
+                ->get()
+                ->getRowArray();
+                
+            if (!$vp) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Profil vendor tidak ditemukan.'
+                ]);
+            }
+
+            $vendorName = $vp['business_name'] ?? 'Unknown';
+            $currentStatus = $vp['status'] ?? 'pending';
+            log_message('debug', 'Current vendor status: ' . $currentStatus);
+            
+            // Ambil user yang melakukan aksi
+            $currentUser = service('auth')->user();
+            
+            // Update status menjadi verified
+            $updateData = [
+                'status' => 'verified',
+                'updated_at' => date('Y-m-d H:i:s'),
+                'approved_at' => date('Y-m-d H:i:s'),
+                'action_by' => $currentUser->id
+            ];
+            
+            // ✅ HAPUS REJECTION_REASON JIKA STATUS SEBELUMNYA REJECTED
+            if ($currentStatus === 'rejected') {
+                $updateData['rejection_reason'] = null;
+                log_message('debug', 'Clearing rejection_reason because status changed from rejected to verified');
+            }
+            
+            $updateResult = $this->db->table('vendor_profiles')
+                ->where('user_id', $id)
+                ->set($updateData)
+                ->update();
+            
+            log_message('debug', 'Update result: ' . ($updateResult ? 'true' : 'false'));
+            
+            // Cek affected rows
+            $affectedRows = $this->db->affectedRows();
+            log_message('debug', 'Affected rows: ' . $affectedRows);
+            
+            // Jika updateResult false, cek apakah karena tidak ada perubahan data
+            if (!$updateResult && $affectedRows === 0) {
+                // Cek apakah data sudah sama dengan yang ingin diupdate
+                $currentData = $this->db->table('vendor_profiles')
                     ->where('user_id', $id)
                     ->get()
                     ->getRowArray();
-                    
-                if (!$vp) {
-                    return $this->response->setJSON([
-                        'success' => false,
-                        'message' => 'Profil vendor tidak ditemukan.'
-                    ]);
+                if ($currentData && $currentData['status'] === 'verified') {
+                    log_message('debug', 'No data changes detected, considering as success');
+                    $updateResult = true; // Anggap sukses jika tidak ada perubahan
                 }
-
-                $vendorName = $vp['business_name'] ?? 'Unknown';
-                log_message('debug', 'Current vendor status: ' . ($vp['status'] ?? 'pending'));
-                
-                // Update status menjadi verified
-                $updateData = [
-                    'status' => 'verified',
-                    'updated_at' => date('Y-m-d H:i:s'),
-                    'approved_at' => date('Y-m-d H:i:s'),
-                    'action_by' => session()->get('user')['id'] ?? null
-                ];
-                
-                $updateResult = $this->db->table('vendor_profiles')
-                    ->where('user_id', $id)
-                    ->set($updateData)
-                    ->update();
-                
-                log_message('debug', 'Update result: ' . ($updateResult ? 'true' : 'false'));
-                
-                // Cek affected rows
-                $affectedRows = $this->db->affectedRows();
-                log_message('debug', 'Affected rows: ' . $affectedRows);
-                
-                // Jika updateResult false, cek apakah karena tidak ada perubahan data
-                if (!$updateResult && $affectedRows === 0) {
-                    // Cek apakah data sudah sama dengan yang ingin diupdate
-                    $currentData = $this->db->table('vendor_profiles')
-                        ->where('user_id', $id)
-                        ->get()
-                        ->getRowArray();
-                    if ($currentData && $currentData['status'] === 'verified') {
-                        log_message('debug', 'No data changes detected, considering as success');
-                        $updateResult = true; // Anggap sukses jika tidak ada perubahan
-                    }
-                }
-                
-                // 🔔 KIRIM NOTIFIKASI JIKA UPDATE BERHASIL
-                if ($updateResult) {
-                    $this->sendVendorStatusNotification($vp, 'verified');
-                }
-                
-                // Log activity verify vendor
-                $this->logActivity(
-                    'verify_vendor',
-                    'Memverifikasi vendor: ' . $vendorName,
-                    [
-                        'user_id' => $id,
-                        'vendor_profile_id' => $vp['id'] ?? null,
-                        'old_status' => $vp['status'] ?? 'pending',
-                        'new_status' => 'verified',
-                        'vendor_name' => $vendorName
-                    ]
-                );
-                
-                log_message('debug', 'Verify vendor success');
-                
-                return $this->response->setJSON([
-                    'success' => true,
-                    'message' => 'Vendor ' . $vendorName . ' berhasil diverifikasi.',
+            }
+            
+            // 🔔 KIRIM NOTIFIKASI JIKA UPDATE BERHASIL
+            if ($updateResult) {
+                $this->sendVendorStatusNotification($vp, 'verified');
+            }
+            
+            // Log activity verify vendor
+            $this->logActivity(
+                'verify_vendor',
+                'Memverifikasi vendor: ' . $vendorName,
+                [
+                    'user_id' => $id,
+                    'vendor_profile_id' => $vp['id'] ?? null,
+                    'old_status' => $currentStatus,
                     'new_status' => 'verified',
-                    'new_label' => 'Verified'
-                ]);
+                    'vendor_name' => $vendorName,
+                    'action_by' => $currentUser->id
+                ]
+            );
+            
+            log_message('debug', 'Verify vendor success');
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Vendor ' . $vendorName . ' berhasil diverifikasi.',
+                'new_status' => 'verified',
+                'new_label' => 'Verified'
+            ]);
 
-            } catch (\Exception $e) {
-                log_message('error', 'Verify vendor error: ' . $e->getMessage());
-                
+        } catch (\Exception $e) {
+            log_message('error', 'Verify vendor error: ' . $e->getMessage());
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    return $this->response->setJSON([
+        'success' => false,
+        'message' => 'Request harus AJAX'
+    ]);
+}
+    // ========== PENDING VENDOR ==========
+public function pendingVendor($id)
+{
+    // Handle AJAX request
+    if ($this->request->isAJAX()) {
+        try {
+            log_message('debug', '=== PENDING VENDOR START ===');
+            log_message('debug', 'Vendor ID: ' . $id);
+            
+            $groups = $this->getUserGroups((int) $id);
+            log_message('debug', 'User groups: ' . json_encode($groups));
+            
+            if (!in_array('vendor', $groups, true)) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                    'message' => 'Hanya vendor yang bisa di-set pending.'
                 ]);
             }
-        }
 
-        return $this->response->setJSON([
-            'success' => false,
-            'message' => 'Request harus AJAX'
-        ]);
+            $vp = $this->db->table('vendor_profiles')
+                ->where('user_id', $id)
+                ->get()
+                ->getRowArray();
+                
+            if (!$vp) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Profil vendor tidak ditemukan.'
+                ]);
+            }
+
+            $vendorName = $vp['business_name'] ?? 'Unknown';
+            $currentStatus = $vp['status'] ?? 'pending';
+            log_message('debug', 'Current vendor status: ' . $currentStatus);
+            
+            // Ambil user yang melakukan aksi
+            $currentUser = service('auth')->user();
+            
+            // Update status menjadi pending
+            $updateData = [
+                'status' => 'pending',
+                'updated_at' => date('Y-m-d H:i:s'),
+                'action_by' => $currentUser->id
+            ];
+            
+            // ✅ HAPUS REJECTION_REASON JIKA STATUS SEBELUMNYA REJECTED
+            if ($currentStatus === 'rejected') {
+                $updateData['rejection_reason'] = null;
+                log_message('debug', 'Clearing rejection_reason because status changed from rejected to pending');
+            }
+            
+            $updateResult = $this->db->table('vendor_profiles')
+                ->where('user_id', $id)
+                ->set($updateData)
+                ->update();
+            
+            log_message('debug', 'Update result: ' . ($updateResult ? 'true' : 'false'));
+            
+            // Cek affected rows
+            $affectedRows = $this->db->affectedRows();
+            log_message('debug', 'Affected rows: ' . $affectedRows);
+            
+            // Jika updateResult false, cek apakah karena tidak ada perubahan data
+            if (!$updateResult && $affectedRows === 0) {
+                // Cek apakah data sudah sama dengan yang ingin diupdate
+                $currentData = $this->db->table('vendor_profiles')
+                    ->where('user_id', $id)
+                    ->get()
+                    ->getRowArray();
+                if ($currentData && $currentData['status'] === 'pending') {
+                    log_message('debug', 'No data changes detected, considering as success');
+                    $updateResult = true; // Anggap sukses jika tidak ada perubahan
+                }
+            }
+            
+            // 🔔 KIRIM NOTIFIKASI JIKA UPDATE BERHASIL
+            if ($updateResult) {
+                $this->sendVendorStatusNotification($vp, 'pending');
+            }
+            
+            // Log activity pending vendor
+            $this->logActivity(
+                'pending_vendor',
+                'Mengembalikan vendor ke status pending: ' . $vendorName,
+                [
+                    'user_id' => $id,
+                    'vendor_profile_id' => $vp['id'] ?? null,
+                    'old_status' => $currentStatus,
+                    'new_status' => 'pending',
+                    'vendor_name' => $vendorName,
+                    'action_by' => $currentUser->id
+                ]
+            );
+            
+            log_message('debug', 'Pending vendor success');
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Vendor ' . $vendorName . ' berhasil dikembalikan ke status pending.',
+                'new_status' => 'pending',
+                'new_label' => 'Pending'
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Pending vendor error: ' . $e->getMessage());
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ]);
+        }
     }
+
+    return $this->response->setJSON([
+        'success' => false,
+        'message' => 'Request harus AJAX'
+    ]);
+}
 
     // ========== REJECT VENDOR ==========
     public function rejectVendor($id)
@@ -995,12 +1220,15 @@ class UserVendor extends BaseAdminController // Perbaikan: Extend BaseAdminContr
                 $vendorName = $vp['business_name'] ?? 'Unknown';
                 log_message('debug', 'Current vendor status: ' . ($vp['status'] ?? 'pending'));
                 
+                // Ambil user yang melakukan aksi
+                $currentUser = service('auth')->user();
+                
                 // Update status menjadi rejected dan simpan alasan
                 $updateData = [
                     'status' => 'rejected',
                     'rejection_reason' => $rejectReason,
                     'updated_at' => date('Y-m-d H:i:s'),
-                    'action_by' => session()->get('user')['id'] ?? null
+                    'action_by' => $currentUser->id
                 ];
                 
                 $updateResult = $this->db->table('vendor_profiles')
@@ -1042,7 +1270,8 @@ class UserVendor extends BaseAdminController // Perbaikan: Extend BaseAdminContr
                         'old_status' => $vp['status'] ?? 'pending',
                         'new_status' => 'rejected',
                         'rejection_reason' => $rejectReason,
-                        'vendor_name' => $vendorName
+                        'vendor_name' => $vendorName,
+                        'action_by' => $currentUser->id
                     ]
                 );
                 
@@ -1069,6 +1298,67 @@ class UserVendor extends BaseAdminController // Perbaikan: Extend BaseAdminContr
             'success' => false,
             'message' => 'Request harus AJAX'
         ]);
+    }
+
+    /**
+     * Helper method untuk mendapatkan nama user berdasarkan ID dari berbagai profile tables
+     */
+    private function getUserNameById($userId)
+    {
+        try {
+            $db = \Config\Database::connect();
+            
+            // 1. Cek di admin_profiles terlebih dahulu (untuk admin)
+            $adminProfile = $db->table('admin_profiles')
+                             ->select('name')
+                             ->where('user_id', $userId)
+                             ->get()
+                             ->getRowArray();
+            if ($adminProfile && !empty($adminProfile['name'])) {
+                return $adminProfile['name'] . ' (Admin)';
+            }
+            
+            // 2. Cek di seo_profiles (untuk SEO team)
+            $seoProfile = $db->table('seo_profiles')
+                           ->select('name')
+                           ->where('user_id', $userId)
+                           ->get()
+                           ->getRowArray();
+            if ($seoProfile && !empty($seoProfile['name'])) {
+                return $seoProfile['name'] . ' (SEO)';
+            }
+            
+            // 3. Cek di vendor_profiles (untuk vendor)
+            $vendorProfile = $db->table('vendor_profiles')
+                              ->select('business_name, owner_name')
+                              ->where('user_id', $userId)
+                              ->get()
+                              ->getRowArray();
+            if ($vendorProfile) {
+                if (!empty($vendorProfile['business_name'])) {
+                    return $vendorProfile['business_name'] . ' (Vendor)';
+                } elseif (!empty($vendorProfile['owner_name'])) {
+                    return $vendorProfile['owner_name'] . ' (Vendor)';
+                }
+            }
+            
+            // 4. Fallback: ambil username dari users table
+            $user = $db->table('users')
+                      ->select('username')
+                      ->where('id', $userId)
+                      ->get()
+                      ->getRowArray();
+            if ($user && !empty($user['username'])) {
+                return $user['username'] . ' (User)';
+            }
+            
+            // 5. Jika semua gagal, return ID dengan label
+            return 'User ID: ' . $userId;
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Error getting user name by ID: ' . $e->getMessage());
+            return 'User ID: ' . $userId;
+        }
     }
 
     // ========== HELPER METHODS ==========
@@ -1140,16 +1430,21 @@ class UserVendor extends BaseAdminController // Perbaikan: Extend BaseAdminContr
             
             switch ($status) {
                 case 'verified':
-                    $title = 'Verifikasi Vendor Diterima';
+                    $title = '🎉 Akun Vendor Diverifikasi';
                     $message = "Selamat! Vendor {$vendorName} telah diverifikasi dan aktif.";
                     break;
                     
                 case 'rejected':
-                    $title = 'Verifikasi Vendor Ditolak';
+                    $title = '❌ Verifikasi Vendor Ditolak';
                     $message = "Maaf, vendor {$vendorName} ditolak.";
                     if ($reason) {
                         $message .= " Alasan: {$reason}";
                     }
+                    break;
+                    
+                case 'pending':
+                    $title = '⏳ Status Vendor Pending';
+                    $message = "Status vendor {$vendorName} telah dikembalikan ke pending oleh Admin.";
                     break;
                     
                 case 'inactive':

@@ -94,6 +94,35 @@ try {
 }
 
 // Inisialisasi variabel
+$users = $users ?? [];
+$usersVendor = [];
+
+// Filter users Vendor - SEDERHANAKAN
+if (!empty($users)) {
+    foreach ($users as $user) {
+        $groups = normalize_groups($user);
+        
+        if (in_array('vendor', $groups, true)) {
+            $id = (int)($user['id'] ?? 0);
+            
+            // Data action_by sudah langsung dari controller
+            if (isset($vendorProfilesById[$id])) {
+                $profile = $vendorProfilesById[$id];
+                $user['business_name'] = $profile['business_name'] ?? '-';
+                $user['owner_name'] = $profile['owner_name'] ?? '-';
+                $user['phone'] = $user['phone'] ?? '-';
+                $user['whatsapp_number'] = $profile['whatsapp_number'] ?? '-';
+                $user['vendor_status'] = $profile['status'] ?? 'pending';
+                $user['commission_type'] = $profile['commission_type'] ?? 'nominal';
+                $user['requested_commission'] = $profile['requested_commission'] ?? null;
+                $user['requested_commission_nominal'] = $profile['requested_commission_nominal'] ?? null;
+            }
+            $usersVendor[] = $user;
+        }
+    }
+}
+
+// Inisialisasi variabel
  $users = $users ?? [];
  $usersVendor = [];
 
@@ -225,155 +254,178 @@ if (!empty($users)) {
       </div>
       <div class="overflow-x-auto">
         <table class="min-w-full text-xs md:text-sm" data-table-role="vendor">
-          <thead class="bg-gradient-to-r from-blue-600 to-indigo-700">
-            <tr>
-              <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">ID</th>
-              <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">NAMA VENDOR</th>
-              <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">PEMILIK</th>
-              <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">USERNAME</th>
-              <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">NO. TLP</th>
-              <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">WHATSAPP</th>
-              <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">EMAIL</th>
-              <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">KOMISI DIAJUKAN</th>
-              <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">STATUS</th>
-              <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">AKSI</th>
-            </tr>
-          </thead>
-          <tbody id="tbody-vendor" class="divide-y divide-gray-100">
-            <?php if (!empty($usersVendor)): ?>
-              <?php foreach ($usersVendor as $i => $u): 
-                $id = (int)($u['id'] ?? 0); 
-                $verificationStatus = $u['vendor_status'] ?? 'pending';
-                $isActive = !in_array($verificationStatus, ['inactive', 'rejected']);
-                $isVerified = $verificationStatus === 'verified';
-                $isPending = $verificationStatus === 'pending';
-                $isRejected = $verificationStatus === 'rejected';
-                $isInactive = $verificationStatus === 'inactive';
-                
-                $suspendLabel = $isActive ? 'Suspend' : 'Unsuspend';
-                $suspendIcon = $isActive ? 'fa-pause' : 'fa-play';
-                
-                // Format komisi
-                $commission = '-';
-                if (isset($u['commission_type'])) {
-                    if ($u['commission_type'] === 'nominal' && !empty($u['requested_commission_nominal']) && $u['requested_commission_nominal'] > 0) {
-                        $commission = 'Rp ' . number_format($u['requested_commission_nominal'], 0, ',', '.');
-                    } elseif ($u['commission_type'] === 'percent' && !empty($u['requested_commission']) && $u['requested_commission'] > 0) {
-                        $commission = number_format($u['requested_commission'], 1) . '%';
-                    }
-                }
-              ?>
-                <tr class="hover:bg-gray-50 fade-up-soft" style="--delay: <?= number_format(0.22 + 0.03*$i, 2, '.', '') ?>s" data-rowkey="vendor_<?= $id ?>">
-                  <td class="px-2 md:px-4 py-2 md:py-3 font-semibold text-gray-900 text-center"><?= esc($id ?: '-') ?></td>
-                  <td class="px-2 md:px-4 py-2 md:py-3 text-gray-900 text-center"><?= esc($u['business_name'] ?? '-') ?></td>
-                  <td class="px-2 md:px-4 py-2 md:py-3 text-gray-900 text-center"><?= esc($u['owner_name'] ?? '-') ?></td>
-                  <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800 text-center"><?= esc($u['username'] ?? '-') ?></td>
-                  <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800 text-center"><?= esc($u['phone'] ?? '-') ?></td>
-                  <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800 text-center"><?= esc($u['whatsapp_number'] ?? '-') ?></td>
-                  <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800 text-center"><?= esc($emailById[$id] ?? ($u['email'] ?? '-')) ?></td>
-                  <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800 font-medium text-center">
-                    <?= $commission ?>
-                  </td>
-                  
-                  <!-- Status Badge -->
-                  <td class="px-2 md:px-4 py-2 md:py-3 text-center">
-                    <div class="flex items-center gap-2 flex-wrap justify-center">
-                      <!-- Badge Status Verification -->
-                      <?php if ($isVerified): ?>
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          <i class="fa-solid fa-check-circle mr-1"></i> Verified
-                        </span>
-                      <?php elseif ($isPending): ?>
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                          <i class="fa-solid fa-clock mr-1"></i> Pending
-                        </span>
-                      <?php elseif ($isRejected): ?>
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                          <i class="fa-solid fa-times-circle mr-1"></i> Rejected
-                        </span>
-                      <?php endif; ?>
-
-                      <!-- Badge Status Active/Inactive (jika bukan rejected) -->
-                      <?php if (!$isRejected): ?>
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= $isActive ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800' ?>">
-                          <i class="fa-solid <?= $isActive ? 'fa-play-circle' : 'fa-pause-circle' ?> mr-1"></i>
-                          <?= $isActive ? 'Active' : 'Inactive' ?>
-                        </span>
-                      <?php endif; ?>
-                    </div>
-                  </td>
-
-                  <!-- Action Buttons -->
-                  <td class="px-2 md:px-4 py-2 md:py-3 text-center">
-                    <div class="action-buttons">
-                      <!-- Tombol Edit -->
-                      <button type="button" 
-                        class="action-btn bg-blue-600 hover:bg-blue-700 text-white edit-user-btn"
-                        onclick="openEditModal(<?= $id ?>)"
-                        title="Edit Vendor">
-                        <i class="fa-regular fa-pen-to-square text-[10px]"></i>
-                        <span>Edit</span>
-                      </button>
-
-                      <!-- Tombol Verify - Hanya tampil untuk vendor pending -->
-                      <?php if ($isPending): ?>
-                        <button type="button" 
-                          onclick="verifyVendor(<?= $id ?>, this)"
-                          class="action-btn bg-green-600 hover:bg-green-700 text-white"
-                          title="Verify Vendor">
-                          <i class="fa-solid fa-check-circle text-[10px]"></i>
-                          <span>Verify</span>
-                        </button>
-                      <?php endif; ?>
-
-                      <!-- Tombol Reject - Hanya tampil untuk vendor pending -->
-                      <?php if ($isPending): ?>
-                        <button type="button" 
-                          onclick="showRejectModal(<?= $id ?>)"
-                          class="action-btn bg-orange-600 hover:bg-orange-700 text-white"
-                          title="Reject Vendor">
-                          <i class="fa-solid fa-times-circle text-[10px]"></i>
-                          <span>Reject</span>
-                        </button>
-                      <?php endif; ?>
-
-                      <!-- Tombol Suspend - Untuk semua vendor kecuali yang rejected -->
-                      <?php if (!$isRejected): ?>
-                        <button type="button" 
-                          onclick="toggleSuspendVendor(<?= $id ?>, this)"
-                          class="action-btn bg-slate-700 hover:bg-slate-800 text-white"
-                          title="<?= $suspendLabel ?> Vendor">
-                          <i class="fa-solid <?= $suspendIcon ?> text-[10px]"></i>
-                          <span><?= $suspendLabel ?></span>
-                        </button>
-                      <?php endif; ?>
-
-                      <!-- Tombol Delete -->
-                      <button type="button" 
-                        class="action-btn bg-rose-600 hover:bg-rose-700 text-white"
-                        data-user-name="<?= esc($u['business_name'] ?? 'Vendor') ?>" 
-                        data-role="Vendor" 
-                        onclick="UMDel.open(this)"
-                        title="Delete Vendor">
-                        <i class="fa-regular fa-trash-can text-[10px]"></i>
-                        <span>Hapus</span>
-                      </button>
-                    </div>
-                  </td>
+            <thead class="bg-gradient-to-r from-blue-600 to-indigo-700">
+                <tr>
+                    <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">ID</th>
+                    <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">NAMA VENDOR</th>
+                    <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">PEMILIK</th>
+                    <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">USERNAME</th>
+                    <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">NO. TLP</th>
+                    <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">WHATSAPP</th>
+                    <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">EMAIL</th>
+                    <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">KOMISI DIAJUKAN</th>
+                    <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">STATUS</th>
+                    <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">ACTION BY</th>
+                    <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">AKSI</th>
                 </tr>
-              <?php endforeach; ?>
-            <?php else: ?>
-              <tr data-empty-state="true" class="fade-up-soft" style="--delay:.22s">
-                <td colspan="10" class="px-4 md:px-6 py-16">
-                  <div class="flex flex-col items-center justify-center text-center">
-                    <div class="w-14 h-14 rounded-2xl bg-gray-100 grid place-items-center"><i class="fa-solid fa-store text-xl text-gray-400"></i></div>
-                    <p class="mt-3 text-base md:text-lg font-semibold text-gray-400">Tidak ada data Vendor</p>
-                    <p class="text-sm text-gray-400">Tambahkan user vendor untuk memulai</p>
-                  </div>
-                </td>
-              </tr>
-            <?php endif; ?>
-          </tbody>
+            </thead>
+            <tbody id="tbody-vendor" class="divide-y divide-gray-100">
+                <?php if (!empty($usersVendor)): ?>
+                    <?php foreach ($usersVendor as $i => $u): 
+                        $id = (int)($u['id'] ?? 0); 
+                        $verificationStatus = $u['vendor_status'] ?? 'pending';
+                        $isActive = !in_array($verificationStatus, ['inactive', 'rejected']);
+                        $isVerified = $verificationStatus === 'verified';
+                        $isPending = $verificationStatus === 'pending';
+                        $isRejected = $verificationStatus === 'rejected';
+                        $isInactive = $verificationStatus === 'inactive';
+                        
+                        $suspendLabel = $isActive ? 'Suspend' : 'Unsuspend';
+                        $suspendIcon = $isActive ? 'fa-pause' : 'fa-play';
+                        
+                        // Format komisi
+                        $commission = '-';
+                        if (isset($u['commission_type'])) {
+                            if ($u['commission_type'] === 'nominal' && !empty($u['requested_commission_nominal']) && $u['requested_commission_nominal'] > 0) {
+                                $commission = 'Rp ' . number_format($u['requested_commission_nominal'], 0, ',', '.');
+                            } elseif ($u['commission_type'] === 'percent' && !empty($u['requested_commission']) && $u['requested_commission'] > 0) {
+                                $commission = number_format($u['requested_commission'], 1) . '%';
+                            }
+                        }
+                        
+                        // Format Action By - langsung dari vendor_profiles.action_by
+                        $actionByDisplay = $u['action_by_display'] ?? '-';
+                        $actionDate = $u['action_date'] ?? null;
+                    ?>
+                        <tr class="hover:bg-gray-50 fade-up-soft" style="--delay: <?= number_format(0.22 + 0.03*$i, 2, '.', '') ?>s" data-rowkey="vendor_<?= $id ?>">
+                            <td class="px-2 md:px-4 py-2 md:py-3 font-semibold text-gray-900 text-center"><?= esc($id ?: '-') ?></td>
+                            <td class="px-2 md:px-4 py-2 md:py-3 text-gray-900 text-center"><?= esc($u['business_name'] ?? '-') ?></td>
+                            <td class="px-2 md:px-4 py-2 md:py-3 text-gray-900 text-center"><?= esc($u['owner_name'] ?? '-') ?></td>
+                            <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800 text-center"><?= esc($u['username'] ?? '-') ?></td>
+                            <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800 text-center"><?= esc($u['phone'] ?? '-') ?></td>
+                            <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800 text-center"><?= esc($u['whatsapp_number'] ?? '-') ?></td>
+                            <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800 text-center"><?= esc($emailById[$id] ?? ($u['email'] ?? '-')) ?></td>
+                            <td class="px-2 md:px-4 py-2 md:py-3 text-gray-800 font-medium text-center">
+                                <?= $commission ?>
+                            </td>
+                            
+                            <!-- Status Badge -->
+                            <td class="px-2 md:px-4 py-2 md:py-3 text-center">
+                                <div class="flex items-center gap-2 flex-wrap justify-center">
+                                    <!-- Badge Status Verification -->
+                                    <?php if ($isVerified): ?>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            <i class="fa-solid fa-check-circle mr-1"></i> Verified
+                                        </span>
+                                    <?php elseif ($isPending): ?>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                            <i class="fa-solid fa-clock mr-1"></i> Pending
+                                        </span>
+                                    <?php elseif ($isRejected): ?>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                            <i class="fa-solid fa-times-circle mr-1"></i> Rejected
+                                        </span>
+                                    <?php endif; ?>
+
+                                    <!-- Badge Status Active/Inactive (jika bukan rejected) -->
+                                    <?php if (!$isRejected): ?>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= $isActive ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800' ?>">
+                                            <i class="fa-solid <?= $isActive ? 'fa-play-circle' : 'fa-pause-circle' ?> mr-1"></i>
+                                            <?= $isActive ? 'Active' : 'Inactive' ?>
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
+                            </td>
+
+                            <!-- Kolom Action By - SEDERHANA -->
+                            <td class="px-2 md:px-4 py-2 md:py-3 text-center text-gray-600 text-xs">
+                                <?php if (!empty($actionByDisplay) && $actionByDisplay !== '-'): ?>
+                                    <div class="flex flex-col items-center">
+                                        <div class="font-medium text-gray-900 text-xs">
+                                            <?= esc($actionByDisplay) ?>
+                                        </div>
+                                        <?php if (!empty($actionDate)): ?>
+                                            <div class="text-gray-500 text-[10px] mt-1">
+                                                <?= date('d M Y', strtotime($actionDate)) ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php else: ?>
+                                    <span class="text-gray-400">-</span>
+                                <?php endif; ?>
+                            </td>
+
+                            <!-- Action Buttons -->
+                            <td class="px-2 md:px-4 py-2 md:py-3 text-center">
+                                <div class="action-buttons">
+                                    <!-- Tombol Edit -->
+                                    <button type="button" 
+                                        class="action-btn bg-blue-600 hover:bg-blue-700 text-white edit-user-btn"
+                                        onclick="openEditModal(<?= $id ?>)"
+                                        title="Edit Vendor">
+                                        <i class="fa-regular fa-pen-to-square text-[10px]"></i>
+                                        <span>Edit</span>
+                                    </button>
+
+                                    <!-- Tombol Verify - Hanya tampil untuk vendor pending -->
+                                    <?php if ($isPending): ?>
+                                        <button type="button" 
+                                            onclick="verifyVendor(<?= $id ?>, this)"
+                                            class="action-btn bg-green-600 hover:bg-green-700 text-white"
+                                            title="Verify Vendor">
+                                            <i class="fa-solid fa-check-circle text-[10px]"></i>
+                                            <span>Verify</span>
+                                        </button>
+                                    <?php endif; ?>
+
+                                    <!-- Tombol Reject - Hanya tampil untuk vendor pending -->
+                                    <?php if ($isPending): ?>
+                                        <button type="button" 
+                                            onclick="showRejectModal(<?= $id ?>)"
+                                            class="action-btn bg-orange-600 hover:bg-orange-700 text-white"
+                                            title="Reject Vendor">
+                                            <i class="fa-solid fa-times-circle text-[10px]"></i>
+                                            <span>Reject</span>
+                                        </button>
+                                    <?php endif; ?>
+
+                                    <!-- Tombol Suspend - Untuk semua vendor kecuali yang rejected -->
+                                    <?php if (!$isRejected): ?>
+                                        <button type="button" 
+                                            onclick="toggleSuspendVendor(<?= $id ?>, this)"
+                                            class="action-btn bg-slate-700 hover:bg-slate-800 text-white"
+                                            title="<?= $suspendLabel ?> Vendor">
+                                            <i class="fa-solid <?= $suspendIcon ?> text-[10px]"></i>
+                                            <span><?= $suspendLabel ?></span>
+                                        </button>
+                                    <?php endif; ?>
+
+                                    <!-- Tombol Delete -->
+                                    <button type="button" 
+                                        class="action-btn bg-rose-600 hover:bg-rose-700 text-white"
+                                        data-user-name="<?= esc($u['business_name'] ?? 'Vendor') ?>" 
+                                        data-role="Vendor" 
+                                        onclick="UMDel.open(this)"
+                                        title="Delete Vendor">
+                                        <i class="fa-regular fa-trash-can text-[10px]"></i>
+                                        <span>Hapus</span>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <tr data-empty-state="true" class="fade-up-soft" style="--delay:.22s">
+                        <td colspan="11" class="px-4 md:px-6 py-16">
+                            <div class="flex flex-col items-center justify-center text-center">
+                                <div class="w-14 h-14 rounded-2xl bg-gray-100 grid place-items-center"><i class="fa-solid fa-store text-xl text-gray-400"></i></div>
+                                <p class="mt-3 text-base md:text-lg font-semibold text-gray-400">Tidak ada data Vendor</p>
+                                <p class="text-sm text-gray-400">Tambahkan user vendor untuk memulai</p>
+                            </div>
+                        </td>
+                    </tr>
+                <?php endif; ?>
+            </tbody>
         </table>
       </div>
     </section>

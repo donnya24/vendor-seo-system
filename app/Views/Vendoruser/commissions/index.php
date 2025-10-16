@@ -231,7 +231,11 @@ function openModal(url) {
       }
       return res.text();
     })
-    .then(html => document.getElementById('modalContent').innerHTML = html)
+    .then(html => {
+      document.getElementById('modalContent').innerHTML = html;
+      // Initialize formatNumber function for new content
+      initializeFormatNumber();
+    })
     .catch(() => {
       document.getElementById('modalContent').innerHTML = 
         '<div class="text-center p-4">' +
@@ -244,6 +248,34 @@ function openModal(url) {
 function closeModal() {
   const modal = document.getElementById('commissionModal');
   modal.classList.add('hidden'); modal.classList.remove('flex');
+}
+
+// Format number function
+function formatNumber(input) {
+  // Remove all non-digit characters
+  let value = input.value.replace(/\D/g, '');
+  
+  // Format with thousand separators
+  let formattedValue = value.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  
+  // Update the input value
+  input.value = formattedValue;
+  
+  // Update the hidden field value
+  let hiddenFieldId = input.id.replace('_display', '');
+  const hiddenField = document.getElementById(hiddenFieldId);
+  if (hiddenField) {
+    hiddenField.value = value;
+  }
+}
+
+// Initialize formatNumber for inputs with onkeyup attribute
+function initializeFormatNumber() {
+  document.querySelectorAll('input[onkeyup*="formatNumber"]').forEach(input => {
+    input.addEventListener('keyup', function() {
+      formatNumber(this);
+    });
+  });
 }
 
 document.addEventListener('DOMContentLoaded', () => {

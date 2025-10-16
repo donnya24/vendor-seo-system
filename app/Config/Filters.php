@@ -30,32 +30,42 @@ class Filters extends BaseFilters
 
         // Shield
         'session'       => \CodeIgniter\Shield\Filters\SessionAuth::class,
-        'group'         => \CodeIgniter\Shield\Filters\GroupFilter::class,       // <— DITAMBAH
-        'permission'    => \CodeIgniter\Shield\Filters\PermissionFilter::class,  // <— opsional, biarin ada
-        'vendorVerify' => \App\Filters\VendorVerificationFilter::class,
+        'group'         => \CodeIgniter\Shield\Filters\GroupFilter::class,
+        'permission'    => \CodeIgniter\Shield\Filters\PermissionFilter::class,
+        'vendorVerify'  => \App\Filters\VendorVerificationFilter::class,
     ];
 
-    // kosongkan required agar tidak dobel
     public array $required = [
         'before' => [],
         'after'  => [],
     ];
-public array $globals = [
-    'before' => [
-        'csrf' => [
-            'except' => [
-                'admin/vendorrequests/approve',
-                'admin/vendorrequests/reject',
+
+    public array $globals = [
+        'before' => [
+            'secureheaders',      // Security headers
+            'forcehttps',         // HTTPS redirect
+            'session' => [        // Auth global dengan pengecualian
+                'except' => [
+                    'login',
+                    'register',
+                    'forgot-password',
+                    'reset-password',
+                    'auth/*',
+                ],
+            ],
+            'csrf' => [
+                'except' => [
+                    'admin/vendorrequests/approve',
+                    'admin/vendorrequests/reject',
+                ],
             ],
         ],
-    ],
-    'after'  => [
-        'noCache',
-        'toolbar',
-    ],
-];
+        'after'  => [
+            'noCache',
+            'toolbar',
+        ],
+    ];
 
-    // Atur CSRF hanya untuk method tulis (opsional; aman juga biarkan di $globals)
     public array $methods = [
         // 'post'   => ['csrf'],
         // 'put'    => ['csrf'],
@@ -63,5 +73,15 @@ public array $globals = [
         // 'delete' => ['csrf'],
     ];
 
-    public array $filters = [];
+    public array $filters = [
+        // Permission-based access
+        'admin/vendorrequests/approve' => ['permission:verify_vendor'],
+        'admin/vendorrequests/reject'  => ['permission:verify_vendor'],
+        'admin/users/*'                => ['permission:manage_users'],
+        'seo/commissions/*'            => ['permission:commission_verify'],
+        'vendor/leads/*'               => ['permission:leads_crud'],
+        
+        // Additional protection for sensitive operations
+        'admin/settings' => ['group:admin', 'permission:manage_settings'],
+    ];
 }

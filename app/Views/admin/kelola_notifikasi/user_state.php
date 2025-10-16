@@ -131,6 +131,7 @@
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notifikasi</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal Dibaca</th>
@@ -141,7 +142,7 @@
                     <tbody class="bg-white divide-y divide-gray-200">
                         <?php if (empty($userStates)): ?>
                             <tr>
-                                <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                                <td colspan="7" class="px-6 py-8 text-center text-gray-500">
                                     <i class="fas fa-users-slash text-3xl mb-2 text-gray-300"></i>
                                     <p class="text-lg">Tidak ada data user state</p>
                                 </td>
@@ -152,7 +153,9 @@
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-sm font-medium text-gray-900">
                                             <?php
-                                            if (!empty($state['seo_name'])) {
+                                            if (!empty($state['admin_name'])) {
+                                                echo esc($state['admin_name']) . ' <span class="text-purple-600 text-xs">(Admin)</span>';
+                                            } elseif (!empty($state['seo_name'])) {
                                                 echo esc($state['seo_name']) . ' <span class="text-blue-600 text-xs">(SEO)</span>';
                                             } elseif (!empty($state['vendor_name'])) {
                                                 echo esc($state['vendor_name']) . ' <span class="text-green-600 text-xs">(Vendor)</span>';
@@ -162,15 +165,17 @@
                                             ?>
                                         </div>
                                     </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            <?= esc($state['type'] ?? 'general') ?>
+                                        </span>
+                                    </td>
                                     <td class="px-6 py-4">
                                         <div class="text-sm font-medium text-gray-900">
                                             <?= esc($state['title']) ?>
                                         </div>
                                         <div class="text-sm text-gray-500 truncate max-w-xs">
                                             <?= esc($state['message']) ?>
-                                        </div>
-                                        <div class="text-xs text-gray-400 mt-1">
-                                            Type: <?= esc($state['type'] ?? 'general') ?>
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">

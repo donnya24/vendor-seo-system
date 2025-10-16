@@ -5,6 +5,9 @@ use App\Controllers\BaseController;
 use App\Models\LeadsModel;
 use App\Models\VendorProfilesModel;
 use App\Models\ActivityLogsModel;
+use App\Models\NotificationsModel;
+use App\Models\UserModel;
+use App\Models\SeoProfilesModel;
 
 class Leads extends BaseController
 {
@@ -12,10 +15,16 @@ class Leads extends BaseController
     private $isVerified;
     private $vendorId;
     private $activityLogsModel;
+    private $notificationsModel;
+    private $userModel;
+    private $seoProfilesModel;
 
     public function __construct()
     {
         $this->activityLogsModel = new ActivityLogsModel();
+        $this->notificationsModel = new NotificationsModel();
+        $this->userModel = new UserModel();
+        $this->seoProfilesModel = new SeoProfilesModel();
     }
 
     private function initVendor(): bool
@@ -236,7 +245,7 @@ class Leads extends BaseController
 
         if ($result) {
             // 🔔 KIRIM NOTIFIKASI KE ADMIN & SEO
-            $this->sendLeadsReportNotification($data, 'create');
+            $this->sendLeadsReportNotification($data, 'create', $insertId);
 
             $this->logActivity('create', "Menambahkan laporan leads periode {$tanggalMulai} - {$tanggalSelesai}", [
                 'lead_id' => $insertId,
@@ -295,7 +304,7 @@ class Leads extends BaseController
 
         if ($result) {
             // 🔔 KIRIM NOTIFIKASI KE ADMIN & SEO
-            $this->sendLeadsReportNotification(array_merge($lead, $updateData), 'update');
+            $this->sendLeadsReportNotification(array_merge($lead, $updateData), 'update', $id);
 
             $this->logActivity('update', "Memperbarui laporan leads ID {$id}", [
                 'lead_id' => $id,
@@ -327,7 +336,7 @@ class Leads extends BaseController
 
         if ($result) {
             // 🔔 KIRIM NOTIFIKASI KE ADMIN & SEO
-            $this->sendLeadsReportNotification($lead, 'delete');
+            $this->sendLeadsReportNotification($lead, 'delete', $id);
 
             $this->logActivity('delete', "Menghapus laporan leads ID {$id}", [
                 'lead_id' => $id,
@@ -377,7 +386,7 @@ class Leads extends BaseController
         if ($deleted) {
             // 🔔 KIRIM NOTIFIKASI UNTUK SETIAP LEADS YANG DIHAPUS
             foreach ($leadsToDelete as $lead) {
-                $this->sendLeadsReportNotification($lead, 'delete');
+                $this->sendLeadsReportNotification($lead, 'delete', $lead['id']);
             }
 
             $this->logActivity('delete_multiple', "Menghapus multiple laporan leads", [
@@ -393,7 +402,7 @@ class Leads extends BaseController
     /**
      * Kirim notifikasi laporan leads ke Admin & SEO
      */
-    private function sendLeadsReportNotification($leadsData, $action = 'create')
+    private function sendLeadsReportNotification($leadsData, $action = 'create', $leadId = null)
     {
         try {
             $db = \Config\Database::connect();
@@ -406,71 +415,144 @@ class Leads extends BaseController
             
             // Tentukan action text
             $actionText = '';
+            $emoji = '';
             switch ($action) {
                 case 'create':
                     $actionText = 'mengirim laporan leads baru';
+                    $emoji = '📝';
                     break;
                 case 'update':
                     $actionText = 'memperbarui laporan leads';
+                    $emoji = '✏️';
                     break;
                 case 'delete':
                     $actionText = 'menghapus laporan leads';
+                    $emoji = '🗑️';
                     break;
                 default:
                     $actionText = 'melakukan aksi pada laporan leads';
+                    $emoji = '📋';
             }
 
             $title = 'Laporan Leads Vendor';
-            $message = "Vendor {$vendorName} (Pemilik: {$ownerName}) {$actionText} untuk periode {$period} dengan {$leadsData['jumlah_leads_masuk']} leads masuk dan {$leadsData['jumlah_leads_closing']} leads closing.";
+            $message = "{$emoji} Vendor {$vendorName} (Pemilik: {$ownerName}) {$actionText} untuk periode {$period} dengan {$leadsData['jumlah_leads_masuk']} leads masuk dan {$leadsData['jumlah_leads_closing']} leads closing.";
 
-            // 1. Kirim ke Admin
-            $adminUsers = $db->table('auth_groups_users')
-                ->select('user_id')
-                ->where('group', 'admin')
+            // Tambahkan detail laporan
+            $message .= "\n\nDetail Laporan:";
+            $message .= "\n• Vendor: {$vendorName}";
+            $message .= "\n• Periode: {$period}";
+            $message .= "\n• Leads Masuk: {$leadsData['jumlah_leads_masuk']}";
+            $message .= "\n• Leads Closing: {$leadsData['jumlah_leads_closing']}";
+            $message .= "\n• Status: " . ucfirst($action);
+
+            // Siapkan data notifikasi
+            $notifications = [];
+            $now = date('Y-m-d H:i:s');
+
+            // 1. Dapatkan semua admin users yang aktif
+            $adminUsers = $db->table('auth_groups_users agu')
+                ->select('agu.user_id')
+                ->join('users u', 'u.id = agu.user_id')
+                ->where('agu.group', 'admin')
+                ->where('u.active', 1) // Pastikan user aktif
                 ->get()
                 ->getResultArray();
+            
+            log_message('info', "Found " . count($adminUsers) . " active admin users for leads notification");
 
+            // 2. Dapatkan semua SEO users yang aktif
+            // Metode 1: Melalui auth_groups_users (jika SEO users memiliki grup 'seo')
+            $seoUsers = $db->table('auth_groups_users agu')
+                ->select('agu.user_id')
+                ->join('users u', 'u.id = agu.user_id')
+                ->where('agu.group', 'seo')
+                ->where('u.active', 1)
+                ->get()
+                ->getResultArray();
+            
+            // Jika tidak ada SEO users melalui auth_groups, coba metode 2
+            if (empty($seoUsers)) {
+                log_message('info', "No SEO users found through auth_groups, trying seo_profiles table");
+                
+                // Metode 2: Melalui seo_profiles table
+                $seoProfiles = $this->seoProfilesModel
+                    ->select('user_id')
+                    ->where('status', 'active') // Asumsi status aktif
+                    ->findAll();
+                
+                // Konversi ke format yang sama dengan metode 1
+                $seoUsers = array_map(function($profile) {
+                    return ['user_id' => $profile['user_id']];
+                }, $seoProfiles);
+                
+                // Filter hanya user yang aktif di tabel users
+                $activeSeoUserIds = $db->table('users')
+                    ->select('id')
+                    ->whereIn('id', array_column($seoUsers, 'user_id'))
+                    ->where('active', 1)
+                    ->get()
+                    ->getResultArray();
+                
+                // Filter seoUsers untuk hanya menyertakan user yang aktif
+                $activeSeoUserIds = array_column($activeSeoUserIds, 'id');
+                $seoUsers = array_filter($seoUsers, function($user) use ($activeSeoUserIds) {
+                    return in_array($user['user_id'], $activeSeoUserIds);
+                });
+                
+                // Re-index array
+                $seoUsers = array_values($seoUsers);
+            }
+            
+            log_message('info', "Found " . count($seoUsers) . " active SEO users for leads notification");
+            if (empty($seoUsers)) {
+                log_message('warning', "No active SEO users found. Check if group name 'seo' is correct and users are active.");
+            }
+
+            // Notifikasi untuk semua ADMIN
             foreach ($adminUsers as $admin) {
-                $db->table('notifications')->insert([
+                $notifications[] = [
                     'user_id' => $admin['user_id'],
                     'vendor_id' => $this->vendorId,
-                    'seo_id' => null,
-                    'type' => 'system',
+                    'type' => 'leads_' . $action,
                     'title' => $title,
                     'message' => $message,
                     'is_read' => 0,
-                    'read_at' => null,
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'updated_at' => date('Y-m-d H:i:s')
-                ]);
+                    'created_at' => $now,
+                    'updated_at' => $now
+                ];
             }
 
-            // 2. Kirim ke SEO
-            $seoUsers = $db->table('auth_groups_users')
-                ->select('user_id')
-                ->where('group', 'seoteam')
-                ->get()
-                ->getResultArray();
-
+            // Notifikasi untuk semua SEO
             foreach ($seoUsers as $seo) {
-                $db->table('notifications')->insert([
+                $notifications[] = [
                     'user_id' => $seo['user_id'],
                     'vendor_id' => $this->vendorId,
-                    'seo_id' => $seo['user_id'],
-                    'type' => 'system',
+                    'type' => 'leads_' . $action,
                     'title' => $title,
                     'message' => $message,
                     'is_read' => 0,
-                    'read_at' => null,
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'updated_at' => date('Y-m-d H:i:s')
-                ]);
+                    'created_at' => $now,
+                    'updated_at' => $now
+                ];
             }
 
-            log_message('info', "Notifikasi laporan leads berhasil dikirim: {$vendorName} - {$action}");
+            // Insert semua notifikasi
+            if (!empty($notifications)) {
+                $this->notificationsModel->insertBatch($notifications);
+                
+                // Log untuk debugging
+                log_message('info', "Created leads {$action} notifications: " . count($notifications) . " notifications sent");
+                
+                return true;
+            }
+
+            log_message('warning', "No notifications were created for leads report");
+            return false;
 
         } catch (\Throwable $e) {
             log_message('error', 'Gagal mengirim notifikasi laporan leads: ' . $e->getMessage());
+            log_message('error', $e->getTraceAsString());
+            return false;
         }
     }
 }

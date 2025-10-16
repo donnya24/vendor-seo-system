@@ -20,16 +20,18 @@
 
     <div>
       <label class="text-sm font-semibold mb-1 block">Penghasilan (Rp) *</label>
-      <input type="number" name="earning" min="0" 
-             value="<?= old('earning', esc($item['earning'])) ?>" required
-             class="w-full border rounded-lg px-3 py-2">
+      <input type="text" name="earning_display" id="earning_display" min="0" 
+             value="<?= old('earning', esc($item['earning'])) ? number_format(old('earning', esc($item['earning'])), 0, ',', '.') : '' ?>" required
+             class="w-full border rounded-lg px-3 py-2" onkeyup="formatNumber(this)">
+      <input type="hidden" name="earning" id="earning" value="<?= old('earning', esc($item['earning'])) ?>">
     </div>
 
     <div>
       <label class="text-sm font-semibold mb-1 block">Nominal Total (Rp) *</label>
-      <input type="number" name="amount" min="0" 
-             value="<?= old('amount', esc($item['amount'])) ?>" required
-             class="w-full border rounded-lg px-3 py-2">
+      <input type="text" name="amount_display" id="amount_display" min="0" 
+             value="<?= old('amount', esc($item['amount'])) ? number_format(old('amount', esc($item['amount'])), 0, ',', '.') : '' ?>" required
+             class="w-full border rounded-lg px-3 py-2" onkeyup="formatNumber(this)">
+      <input type="hidden" name="amount" id="amount" value="<?= old('amount', esc($item['amount'])) ?>">
     </div>
 
     <div>
@@ -61,11 +63,26 @@
 </div>
 
 <script>
+function formatNumber(input) {
+  // Remove all non-digit characters
+  let value = input.value.replace(/\D/g, '');
+  
+  // Format with thousand separators
+  let formattedValue = value.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  
+  // Update the input value
+  input.value = formattedValue;
+  
+  // Update the hidden field value
+  let hiddenFieldId = input.id.replace('_display', '');
+  document.getElementById(hiddenFieldId).value = value;
+}
+
 function validateForm(form) {
   let start = form.querySelector('[name="period_start"]').value;
   let end = form.querySelector('[name="period_end"]').value;
-  let earning = form.querySelector('[name="earning"]').value;
-  let amount = form.querySelector('[name="amount"]').value;
+  let earning = document.getElementById('earning').value;
+  let amount = document.getElementById('amount').value;
 
   if (!start || !end || earning < 0 || amount < 0) {
     Swal.fire({

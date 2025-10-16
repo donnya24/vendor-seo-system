@@ -26,6 +26,7 @@
             <select x-model="bulkAction" class="rounded-lg border-gray-300 text-sm py-2 px-3 w-full sm:w-40">
                 <option value="">Aksi Massal</option>
                 <option value="verify">Verifikasi Pembayaran</option>
+                <option value="unpaid">Tandai Belum Dibayar</option>
                 <option value="delete">Hapus</option>
             </select>
             <button @click="executeBulkAction()" 
@@ -264,6 +265,13 @@
                         <i class="fas fa-check mr-1"></i> Verifikasi Pembayaran
                       </button>
                     <?php endif; ?>
+
+                    <?php if ($currentStatus === 'paid'): ?>
+                      <button @click="confirmAction('unpaid', <?= $c['id'] ?>)"
+                              class="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1">
+                        <i class="fas fa-clock mr-1"></i> Tandai Belum Dibayar
+                      </button>
+                    <?php endif; ?>
                     
                     <!-- Delete button for all status -->
                     <button @click="confirmAction('delete', <?= $c['id'] ?>)"
@@ -320,12 +328,14 @@
         <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full"
              :class="{
                'bg-red-100': actionType === 'delete',
-               'bg-blue-100': actionType === 'verify'
+               'bg-blue-100': actionType === 'verify',
+               'bg-yellow-100': actionType === 'unpaid'
              }">
           <i class="text-2xl"
              :class="{
                'fas fa-trash text-red-600': actionType === 'delete',
-               'fas fa-check-circle text-blue-600': actionType === 'verify'
+               'fas fa-check-circle text-blue-600': actionType === 'verify',
+               'fas fa-clock text-yellow-600': actionType === 'unpaid'
              }"></i>
         </div>
         <h3 class="text-lg font-semibold text-center text-gray-900 mb-2" x-text="modalTitle"></h3>
@@ -340,7 +350,8 @@
                   class="px-4 py-2.5 rounded-lg text-white font-medium transition-colors"
                   :class="{
                     'bg-red-600 hover:bg-red-700': actionType === 'delete',
-                    'bg-blue-600 hover:bg-blue-700': actionType === 'verify'
+                    'bg-blue-600 hover:bg-blue-700': actionType === 'verify',
+                    'bg-yellow-600 hover:bg-yellow-700': actionType === 'unpaid'
                   }">
             <span x-text="actionLabels[actionType]"></span>
           </button>
@@ -484,6 +495,7 @@ function commissionManager() {
         loading: false,
         actionLabels: {
             'verify': 'Verifikasi Pembayaran',
+            'unpaid': 'Tandai Belum Dibayar',
             'delete': 'Hapus'
         },
         notification: {
@@ -497,6 +509,7 @@ function commissionManager() {
         get modalTitle() {
             const titles = {
                 'verify': 'Konfirmasi Verifikasi Pembayaran',
+                'unpaid': 'Konfirmasi Tandai Belum Dibayar',
                 'delete': 'Konfirmasi Penghapusan'
             };
             return titles[this.actionType] || 'Konfirmasi';
@@ -505,6 +518,7 @@ function commissionManager() {
         get modalMessage() {
             const messages = {
                 'verify': 'Apakah Anda yakin ingin memverifikasi dan menandai komisi ini sebagai sudah dibayar?',
+                'unpaid': 'Apakah Anda yakin ingin menandai komisi ini sebagai belum dibayar?',
                 'delete': 'Apakah Anda yakin ingin menghapus komisi ini? Tindakan ini tidak dapat dibatalkan.'
             };
             return messages[this.actionType] || 'Apakah Anda yakin?';
@@ -531,6 +545,9 @@ function commissionManager() {
             switch(this.actionType) {
                 case 'verify':
                     url = `<?= site_url('admin/commissions/verify') ?>/${this.commissionId}`;
+                    break;
+                case 'unpaid':
+                    url = `<?= site_url('admin/commissions/unpaid') ?>/${this.commissionId}`;
                     break;
                 case 'delete':
                     url = `<?= site_url('admin/commissions/delete') ?>/${this.commissionId}`;
@@ -652,7 +669,7 @@ function commissionManager() {
 
             const confirmMessage = this.bulkAction === 'delete' 
                 ? `Anda akan menghapus ${this.selectedCommissions.length} komisi. Tindakan ini tidak dapat dibatalkan. Lanjutkan?`
-                : `Anda akan memverifikasi ${this.selectedCommissions.length} komisi. Lanjutkan?`;
+                : `Anda akan memproses ${this.selectedCommissions.length} komisi dengan aksi "${this.actionLabels[this.bulkAction]}". Lanjutkan?`;
 
             if (!confirm(confirmMessage)) {
                 return;
@@ -677,7 +694,6 @@ function commissionManager() {
                     body: new URLSearchParams(formData)
                 });
 
-                // PERBAIKAN: Handle error response dengan lebih baik
                 if (!response.ok) {
                     if (response.status === 500) {
                         throw new Error('Server error 500. Silakan coba lagi atau hubungi administrator.');
@@ -686,8 +702,6 @@ function commissionManager() {
                 }
 
                 const data = await response.json();
-
-                // PERBAIKAN: Debug response untuk troubleshooting
                 console.log('Bulk action response:', data);
 
                 if (data.success || (data.success_count && data.success_count > 0)) {
@@ -884,6 +898,5 @@ document.addEventListener('keydown', (e) => {
     }
 });
 </script>
-
 
 <?= $this->include('admin/layouts/footer'); ?>

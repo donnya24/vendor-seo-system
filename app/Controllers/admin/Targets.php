@@ -6,12 +6,18 @@ use App\Controllers\Admin\BaseAdminController;
 use App\Models\SeoKeywordTargetsModel;
 use App\Models\VendorProfilesModel;
 use App\Models\ActivityLogsModel;
+use App\Models\NotificationsModel;
+use App\Models\UserModel;
+use App\Models\SeoProfilesModel;
 
 class Targets extends BaseAdminController
 {
     protected $model;
     protected $vendorModel;
     protected $activityLogsModel;
+    protected $notificationsModel;
+    protected $userModel;
+    protected $seoProfilesModel;
 
     public function __construct()
     {
@@ -19,6 +25,9 @@ class Targets extends BaseAdminController
         $this->model = new SeoKeywordTargetsModel();
         $this->vendorModel = new VendorProfilesModel();
         $this->activityLogsModel = new ActivityLogsModel();
+        $this->notificationsModel = new NotificationsModel();
+        $this->userModel = new UserModel();
+        $this->seoProfilesModel = new SeoProfilesModel();
     }
 
     public function index()
@@ -151,6 +160,10 @@ class Targets extends BaseAdminController
                     'status' => $data['status'] ?? 'pending'
                 ]
             );
+
+            // ===== BUAT NOTIFIKASI UNTUK VENDOR DAN TIM SEO =====
+            $this->createTargetNotification($id, $vendorId, 'create', $insertData);
+
         } catch (\Exception $e) {
             // Log activity error
             $this->logActivity(
@@ -225,6 +238,14 @@ class Targets extends BaseAdminController
                     'status' => $data['status'] ?? 'pending'
                 ]
             );
+
+            // ===== BUAT NOTIFIKASI UNTUK VENDOR DAN TIM SEO =====
+            $actionType = ($updateData['status'] === 'completed' && $existingTarget['status'] !== 'completed') 
+                ? 'complete' 
+                : 'update';
+            
+            $this->createTargetNotification($id, $vendorId, $actionType, $updateData, $existingTarget);
+
         } catch (\Exception $e) {
             // Log activity error
             $this->logActivity(
@@ -300,6 +321,10 @@ class Targets extends BaseAdminController
                     'keyword' => $target['keyword']
                 ]
             );
+
+            // ===== BUAT NOTIFIKASI UNTUK VENDOR DAN TIM SEO =====
+            $this->createTargetNotification($id, $target['vendor_id'], 'delete', $target);
+
         } catch (\Exception $e) {
             // Log activity error
             $this->logActivity(
@@ -352,6 +377,139 @@ class Targets extends BaseAdminController
             
         } catch (\Exception $e) {
             log_message('error', 'Failed to log activity in Targets: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Buat notifikasi untuk vendor dan tim SEO terkait target SEO
+     */
+    private function createTargetNotification($targetId, $vendorId, $actionType, $targetData, $oldData = null)
+    {
+        try {
+            $db = \Config\Database::connect();
+            
+            // Dapatkan informasi vendor
+            $vendor = $this->vendorModel->find($vendorId);
+            if (!$vendor) {
+                return false;
+            }
+
+            // Dapatkan user_id dari vendor
+            $vendorUserId = $vendor['user_id'] ?? null;
+            if (!$vendorUserId) {
+                return false;
+            }
+
+            // Dapatkan semua tim SEO users
+            $seoUsers = $db->table('auth_groups_users agu')
+                ->select('agu.user_id')
+                ->join('users u', 'u.id = agu.user_id')
+                ->where('agu.group', 'seoteam')
+                ->get()
+                ->getResultArray();
+
+            // Dapatkan admin yang sedang login
+            $adminUser = service('auth')->user();
+            $adminName = $adminUser->username ?? 'Admin';
+
+            // Siapkan data notifikasi berdasarkan action type
+            $notifications = [];
+            $now = date('Y-m-d H:i:s');
+
+            switch ($actionType) {
+                case 'create':
+                    $title = 'Target SEO Baru Dibuat oleh Admin';
+                    $message = "Admin {$adminName} telah membuat target SEO baru: '{$targetData['keyword']}' untuk vendor {$vendor['business_name']}";
+                    break;
+
+                case 'update':
+                    $title = 'Target SEO Diperbarui oleh Admin';
+                    $message = "Admin {$adminName} telah memperbarui target SEO: '{$targetData['keyword']}' untuk vendor {$vendor['business_name']}";
+                    break;
+
+                case 'complete':
+                    $title = 'Target SEO Selesai';
+                    $message = "🎉 Target SEO '{$targetData['keyword']}' untuk vendor {$vendor['business_name']} telah diselesaikan oleh {$adminName}";
+                    break;
+
+                case 'delete':
+                    $title = 'Target SEO Dihapus oleh Admin';
+                    $message = "{$adminName} telah menghapus target SEO: '{$targetData['keyword']}' untuk vendor {$vendor['business_name']}";
+                    break;
+
+                default:
+                    return false;
+            }
+
+            // Tambahkan detail untuk update
+            if ($actionType === 'update' && $oldData) {
+                $changes = [];
+                
+                if ($targetData['status'] !== $oldData['status']) {
+                    $changes[] = "Status: {$oldData['status']} → {$targetData['status']}";
+                }
+                if ($targetData['priority'] !== $oldData['priority']) {
+                    $changes[] = "Priority: {$oldData['priority']} → {$targetData['priority']}";
+                }
+                if ($targetData['current_position'] != $oldData['current_position']) {
+                    $oldPos = $oldData['current_position'] ?? 'Belum ada';
+                    $newPos = $targetData['current_position'] ?? 'Belum ada';
+                    $changes[] = "Posisi saat ini: {$oldPos} → {$newPos}";
+                }
+                if ($targetData['target_position'] != $oldData['target_position']) {
+                    $oldTarget = $oldData['target_position'] ?? 'Belum ada';
+                    $newTarget = $targetData['target_position'] ?? 'Belum ada';
+                    $changes[] = "Target posisi: {$oldTarget} → {$newTarget}";
+                }
+
+                if (!empty($changes)) {
+                    $message .= "\n\nPerubahan:\n• " . implode("\n• ", $changes);
+                }
+            }
+
+            // Notifikasi untuk VENDOR
+            if ($vendorUserId) {
+                $notifications[] = [
+                    'user_id' => $vendorUserId,
+                    'vendor_id' => $vendorId,
+                    'type' => 'admin_target_' . $actionType,
+                    'title' => $title,
+                    'message' => $message,
+                    'is_read' => 0,
+                    'created_at' => $now,
+                    'updated_at' => $now
+                ];
+            }
+
+            // Notifikasi untuk semua TIM SEO
+            foreach ($seoUsers as $seo) {
+                $notifications[] = [
+                    'user_id' => $seo['user_id'],
+                    'vendor_id' => $vendorId,
+                    'type' => 'admin_target_' . $actionType,
+                    'title' => $title,
+                    'message' => $message,
+                    'is_read' => 0,
+                    'created_at' => $now,
+                    'updated_at' => $now
+                ];
+            }
+
+            // Insert semua notifikasi
+            if (!empty($notifications)) {
+                $this->notificationsModel->insertBatch($notifications);
+                
+                // Log untuk debugging
+                log_message('info', "Created admin {$actionType} notifications for target {$targetId}: " . count($notifications) . " notifications sent");
+                
+                return true;
+            }
+
+            return false;
+
+        } catch (\Exception $e) {
+            log_message('error', "Error creating admin target notification: " . $e->getMessage());
+            return false;
         }
     }
 

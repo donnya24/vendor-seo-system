@@ -6,6 +6,9 @@ use App\Controllers\BaseController;
 use App\Models\CommissionsModel;
 use App\Models\VendorProfilesModel;
 use App\Models\ActivityLogsModel;
+use App\Models\NotificationsModel;
+use App\Models\UserModel;
+use App\Models\SeoProfilesModel;
 
 class Commissions extends BaseController
 {
@@ -13,10 +16,16 @@ class Commissions extends BaseController
     private $vendorId;
     private $isVerified;
     private $commissionModel;
+    private $notificationsModel;
+    private $userModel;
+    private $seoProfilesModel;
 
     public function __construct()
     {
         $this->commissionModel = new CommissionsModel();
+        $this->notificationsModel = new NotificationsModel();
+        $this->userModel = new UserModel();
+        $this->seoProfilesModel = new SeoProfilesModel();
     }
 
     private function initVendor(): bool
@@ -66,6 +75,157 @@ class Commissions extends BaseController
             'user_agent' => $this->request->getUserAgent(),
             'created_at' => date('Y-m-d H:i:s'),
         ]);
+    }
+
+    /**
+     * Buat notifikasi untuk admin dan SEO terkait komisi
+     */
+    private function createCommissionNotification($commissionId, $actionType, $commissionData)
+    {
+        try {
+            $db = \Config\Database::connect();
+            
+            // Dapatkan semua admin users yang aktif
+            $adminUsers = $db->table('auth_groups_users agu')
+                ->select('agu.user_id')
+                ->join('users u', 'u.id = agu.user_id')
+                ->where('agu.group', 'admin')
+                ->where('u.active', 1) // Pastikan user aktif
+                ->get()
+                ->getResultArray();
+            
+            log_message('info', "Found " . count($adminUsers) . " active admin users for notification");
+
+            // Dapatkan semua SEO users yang aktif
+            // Metode 1: Melalui auth_groups_users (jika SEO users memiliki grup 'seo')
+            $seoUsers = $db->table('auth_groups_users agu')
+                ->select('agu.user_id')
+                ->join('users u', 'u.id = agu.user_id')
+                ->where('agu.group', 'seo')
+                ->where('u.active', 1)
+                ->get()
+                ->getResultArray();
+            
+            // Jika tidak ada SEO users melalui auth_groups, coba metode 2
+            if (empty($seoUsers)) {
+                log_message('info', "No SEO users found through auth_groups, trying seo_profiles table");
+                
+                // Metode 2: Melalui seo_profiles table
+                $seoProfiles = $this->seoProfilesModel
+                    ->select('user_id')
+                    ->where('status', 'active') // Asumsi status aktif
+                    ->findAll();
+                
+                // Konversi ke format yang sama dengan metode 1
+                $seoUsers = array_map(function($profile) {
+                    return ['user_id' => $profile['user_id']];
+                }, $seoProfiles);
+                
+                // Filter hanya user yang aktif di tabel users
+                $activeSeoUserIds = $db->table('users')
+                    ->select('id')
+                    ->whereIn('id', array_column($seoUsers, 'user_id'))
+                    ->where('active', 1)
+                    ->get()
+                    ->getResultArray();
+                
+                // Filter seoUsers untuk hanya menyertakan user yang aktif
+                $activeSeoUserIds = array_column($activeSeoUserIds, 'id');
+                $seoUsers = array_filter($seoUsers, function($user) use ($activeSeoUserIds) {
+                    return in_array($user['user_id'], $activeSeoUserIds);
+                });
+                
+                // Re-index array
+                $seoUsers = array_values($seoUsers);
+            }
+            
+            log_message('info', "Found " . count($seoUsers) . " active SEO users for notification");
+            if (empty($seoUsers)) {
+                log_message('warning', "No active SEO users found. Check if group name 'seo' is correct and users are active.");
+            }
+
+            // Format jumlah komisi
+            $amount = number_format($commissionData['amount'] ?? 0, 0, ',', '.');
+            
+            // Format periode
+            $periodStart = $commissionData['period_start'] ? date('d M Y', strtotime($commissionData['period_start'])) : '-';
+            $periodEnd = $commissionData['period_end'] ? date('d M Y', strtotime($commissionData['period_end'])) : '-';
+            $period = "{$periodStart} - {$periodEnd}";
+
+            // Siapkan data notifikasi berdasarkan action type
+            $notifications = [];
+            $now = date('Y-m-d H:i:s');
+
+            switch ($actionType) {
+                case 'create':
+                    $title = 'Komisi Baru Ditambahkan';
+                    $message = "📝 Vendor {$this->vendorProfile['business_name']} menambahkan komisi baru periode {$period} sebesar Rp {$amount}";
+                    break;
+
+                case 'update':
+                    $title = 'Komisi Diperbarui';
+                    $message = "✏️ Vendor {$this->vendorProfile['business_name']} memperbarui komisi periode {$period} sebesar Rp {$amount}";
+                    break;
+
+                default:
+                    return false;
+            }
+
+            // Tambahkan detail komisi
+            $message .= "\n\nDetail Komisi:";
+            $message .= "\n• Vendor: {$this->vendorProfile['business_name']}";
+            $message .= "\n• Periode: {$period}";
+            $message .= "\n• Jumlah: Rp {$amount}";
+            $message .= "\n• Status: " . ucfirst($commissionData['status'] ?? 'unpaid');
+
+            // Notifikasi untuk semua ADMIN
+            foreach ($adminUsers as $admin) {
+                $notifications[] = [
+                    'user_id' => $admin['user_id'],
+                    'vendor_id' => $this->vendorId,
+                    'type' => 'commission_' . $actionType,
+                    'title' => $title,
+                    'message' => $message,
+                    'is_read' => 0,
+                    'created_at' => $now,
+                    'updated_at' => $now
+                ];
+            }
+            log_message('info', "Added notifications for " . count($adminUsers) . " admin users");
+
+            // Notifikasi untuk semua SEO
+            foreach ($seoUsers as $seo) {
+                $notifications[] = [
+                    'user_id' => $seo['user_id'],
+                    'vendor_id' => $this->vendorId,
+                    'type' => 'commission_' . $actionType,
+                    'title' => $title,
+                    'message' => $message,
+                    'is_read' => 0,
+                    'created_at' => $now,
+                    'updated_at' => $now
+                ];
+            }
+            log_message('info', "Added notifications for " . count($seoUsers) . " SEO users");
+
+            // Insert semua notifikasi
+            if (!empty($notifications)) {
+                $this->notificationsModel->insertBatch($notifications);
+                
+                // Log untuk debugging
+                log_message('info', "Created commission {$actionType} notifications for commission {$commissionId}: " . count($notifications) . " notifications sent");
+                
+                return true;
+            }
+
+            log_message('warning', "No notifications were created for commission {$commissionId}");
+            return false;
+
+        } catch (\Exception $e) {
+            log_message('error', "Error creating commission notification: " . $e->getMessage());
+            log_message('error', $e->getTraceAsString());
+            return false;
+        }
     }
 
     public function index()
@@ -145,6 +305,11 @@ class Commissions extends BaseController
         }
 
         $this->commissionModel->insert($data);
+        $commissionId = $this->commissionModel->insertID();
+        
+        // Kirim notifikasi ke admin dan SEO
+        $this->createCommissionNotification($commissionId, 'create', $data);
+        
         $this->logActivity('create', "Menambahkan komisi periode {$data['period_start']} - {$data['period_end']}");
 
         return redirect()->to(site_url('vendoruser/commissions'))
@@ -234,6 +399,13 @@ class Commissions extends BaseController
         }
 
         $this->commissionModel->update($id, $updateData);
+        
+        // Ambil data terbaru untuk notifikasi
+        $updatedItem = $this->commissionModel->find($id);
+        
+        // Kirim notifikasi ke admin dan SEO
+        $this->createCommissionNotification($id, 'update', $updatedItem);
+        
         $this->logActivity('update', "Memperbarui komisi ID {$id}");
 
         return redirect()->to(site_url('vendoruser/commissions'))
