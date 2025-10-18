@@ -2,23 +2,28 @@
 
 namespace App\Controllers\Admin;
 
-use App\Controllers\Admin\BaseAdminController; // Perbaikan: Extend BaseAdminController
+use App\Controllers\Admin\BaseAdminController;
 use App\Models\LeadsModel;
 use App\Models\VendorProfilesModel;
-use App\Models\ActivityLogsModel; // Tambahkan model ActivityLogs
+use App\Models\ActivityLogsModel;
+use App\Models\NotificationsModel;
+use App\Models\UserModel;
 
-class Leads extends BaseAdminController // Perbaikan: Extend BaseAdminController
+class Leads extends BaseAdminController
 {
     protected $leadsModel;
     protected $vendorModel;
-    protected $activityLogsModel; // Tambahkan property
+    protected $activityLogsModel;
+    protected $notificationsModel;
+    protected $userModel;
 
     public function __construct()
     {
-        // Hapus parent::__construct() karena BaseController tidak memiliki constructor
         $this->leadsModel = new LeadsModel();
         $this->vendorModel = new VendorProfilesModel();
-        $this->activityLogsModel = new ActivityLogsModel(); // Inisialisasi model
+        $this->activityLogsModel = new ActivityLogsModel();
+        $this->notificationsModel = new NotificationsModel();
+        $this->userModel = new UserModel();
     }
 
     public function index()
@@ -130,6 +135,10 @@ class Leads extends BaseAdminController // Perbaikan: Extend BaseAdminController
                 'message' => 'Tanggal selesai tidak boleh lebih awal dari tanggal mulai'
             ]);
         }
+
+        // Dapatkan informasi vendor
+        $vendor = $this->vendorModel->find($vendorId);
+        $vendorName = is_object($vendor) ? $vendor->business_name : ($vendor['business_name'] ?? 'Unknown Vendor');
         
         $leadId = $this->leadsModel->insert([
             'vendor_id'            => $vendorId,
@@ -142,10 +151,19 @@ class Leads extends BaseAdminController // Perbaikan: Extend BaseAdminController
             'updated_at'           => date('Y-m-d H:i:s'),
         ]);
 
+        // 🔔 KIRIM NOTIFIKASI KE VENDOR DAN TIM SEO
+        $this->sendLeadNotification($leadId, $vendorId, 'create', [
+            'vendor_name' => $vendorName,
+            'tanggal_mulai' => $tanggalMulai,
+            'tanggal_selesai' => $tanggalSelesai,
+            'jumlah_leads_masuk' => $jumlahLeadsMasuk,
+            'jumlah_leads_closing' => $jumlahLeadsClosing
+        ]);
+
         // Log activity create lead
         $this->logActivity(
             'create_lead',
-            'Menambahkan lead baru untuk vendor ID: ' . $vendorId,
+            'Menambahkan lead baru untuk vendor: ' . $vendorName,
             [
                 'lead_id' => $leadId,
                 'vendor_id' => $vendorId,
@@ -179,6 +197,10 @@ class Leads extends BaseAdminController // Perbaikan: Extend BaseAdminController
         $jumlahLeadsMasuk = $this->request->getPost('jumlah_leads_masuk');
         $jumlahLeadsClosing = $this->request->getPost('jumlah_leads_closing');
         
+        // Dapatkan informasi vendor
+        $vendor = $this->vendorModel->find($vendorId);
+        $vendorName = is_object($vendor) ? $vendor->business_name : ($vendor['business_name'] ?? 'Unknown Vendor');
+        
         $this->leadsModel->update($id, [
             'vendor_id'            => $vendorId,
             'tanggal_mulai'        => $tanggalMulai,
@@ -189,10 +211,19 @@ class Leads extends BaseAdminController // Perbaikan: Extend BaseAdminController
             'updated_at'           => date('Y-m-d H:i:s'),
         ]);
 
+        // 🔔 KIRIM NOTIFIKASI KE VENDOR DAN TIM SEO
+        $this->sendLeadNotification($id, $vendorId, 'update', [
+            'vendor_name' => $vendorName,
+            'tanggal_mulai' => $tanggalMulai,
+            'tanggal_selesai' => $tanggalSelesai,
+            'jumlah_leads_masuk' => $jumlahLeadsMasuk,
+            'jumlah_leads_closing' => $jumlahLeadsClosing
+        ]);
+
         // Log activity update lead
         $this->logActivity(
             'update_lead',
-            'Memperbarui lead ID: ' . $id,
+            'Memperbarui lead ID: ' . $id . ' untuk vendor: ' . $vendorName,
             [
                 'lead_id' => $id,
                 'vendor_id' => $vendorId,
@@ -211,6 +242,14 @@ class Leads extends BaseAdminController // Perbaikan: Extend BaseAdminController
 
     public function delete($id)
     {
+        // PERBAIKAN: Periksa metode POST bukan DELETE
+        if (!$this->request->is('post')) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Metode request tidak diizinkan'
+            ])->setStatusCode(405);
+        }
+        
         $lead = $this->leadsModel->find($id);
         
         if (!$lead) {
@@ -220,15 +259,29 @@ class Leads extends BaseAdminController // Perbaikan: Extend BaseAdminController
             ]);
         }
 
+        $vendorId = $lead['vendor_id'];
+        // Dapatkan informasi vendor
+        $vendor = $this->vendorModel->find($vendorId);
+        $vendorName = is_object($vendor) ? $vendor->business_name : ($vendor['business_name'] ?? 'Unknown Vendor');
+
+        // 🔔 KIRIM NOTIFIKASI KE VENDOR DAN TIM SEO SEBELUM DIHAPUS
+        $this->sendLeadNotification($id, $vendorId, 'delete', [
+            'vendor_name' => $vendorName,
+            'tanggal_mulai' => $lead['tanggal_mulai'],
+            'tanggal_selesai' => $lead['tanggal_selesai'],
+            'jumlah_leads_masuk' => $lead['jumlah_leads_masuk'],
+            'jumlah_leads_closing' => $lead['jumlah_leads_closing']
+        ]);
+
         $this->leadsModel->delete($id);
         
         // Log activity delete lead
         $this->logActivity(
             'delete_lead',
-            'Menghapus lead ID: ' . $id,
+            'Menghapus lead ID: ' . $id . ' untuk vendor: ' . $vendorName,
             [
                 'lead_id' => $id,
-                'vendor_id' => $lead['vendor_id'] ?? null,
+                'vendor_id' => $vendorId,
                 'tanggal_mulai' => $lead['tanggal_mulai'] ?? null,
                 'tanggal_selesai' => $lead['tanggal_selesai'] ?? null,
                 'jumlah_leads_masuk' => $lead['jumlah_leads_masuk'] ?? null,
@@ -241,8 +294,14 @@ class Leads extends BaseAdminController // Perbaikan: Extend BaseAdminController
             'message' => 'Lead berhasil dihapus'
         ]);
     }
+
     public function deleteAll()
     {
+        // PERBAIKAN: Periksa metode POST bukan DELETE
+        if (!$this->request->is('post')) {
+            return redirect()->back()->with('error', 'Metode request tidak diizinkan');
+        }
+        
         $request = service('request');
         $vendorId = $request->getGet('vendor_id');
 
@@ -257,6 +316,21 @@ class Leads extends BaseAdminController // Perbaikan: Extend BaseAdminController
         $deletedCount = count($leadsToDelete);
 
         if ($deletedCount > 0) {
+            // 🔔 KIRIM NOTIFIKASI UNTUK SETIAP LEAD YANG DIHAPUS
+            foreach ($leadsToDelete as $lead) {
+                // Dapatkan informasi vendor
+                $vendor = $this->vendorModel->find($lead['vendor_id']);
+                $vendorName = is_object($vendor) ? $vendor->business_name : ($vendor['business_name'] ?? 'Unknown Vendor');
+                
+                $this->sendLeadNotification($lead['id'], $lead['vendor_id'], 'delete', [
+                    'vendor_name' => $vendorName,
+                    'tanggal_mulai' => $lead['tanggal_mulai'],
+                    'tanggal_selesai' => $lead['tanggal_selesai'],
+                    'jumlah_leads_masuk' => $lead['jumlah_leads_masuk'],
+                    'jumlah_leads_closing' => $lead['jumlah_leads_closing']
+                ]);
+            }
+
             // Hapus data
             if (!empty($vendorId)) {
                 $builder->where('vendor_id', $vendorId)->delete();
@@ -308,7 +382,7 @@ class Leads extends BaseAdminController // Perbaikan: Extend BaseAdminController
         ], $commonData));
     }
 
-   public function export()
+    public function export()
     {
         $request = service('request');
         $vendorId = $request->getGet('vendor_id');
@@ -382,6 +456,153 @@ class Leads extends BaseAdminController // Perbaikan: Extend BaseAdminController
         fclose($output);
         exit;
     }
+
+    /**
+     * Kirim notifikasi untuk lead
+     */
+    private function sendLeadNotification($leadId, $vendorId, $actionType, $data = [])
+    {
+        try {
+            $db = \Config\Database::connect();
+            
+            // Dapatkan informasi vendor
+            $vendor = $this->vendorModel->find($vendorId);
+            if (!$vendor) {
+                return false;
+            }
+
+            // Dapatkan user_id dari vendor
+            $vendorUserId = is_object($vendor) ? $vendor->user_id : ($vendor['user_id'] ?? null);
+            if (!$vendorUserId) {
+                return false;
+            }
+
+            // Dapatkan semua admin users
+            $adminUsers = $db->table('auth_groups_users agu')
+                ->select('agu.user_id')
+                ->join('users u', 'u.id = agu.user_id')
+                ->where('agu.group', 'admin')
+                ->where('u.active', 1)
+                ->get()
+                ->getResultArray();
+
+            // Dapatkan admin yang sedang login
+            $currentUser = service('auth')->user();
+            $adminUserId = $currentUser ? $currentUser->id : session()->get('user_id');
+            $adminProfile = $db->table('admin_profiles')
+                ->where('user_id', $adminUserId)
+                ->get()
+                ->getRowArray();
+            $adminName = $adminProfile['name'] ?? 'Admin';
+
+            // Dapatkan semua SEO users
+            $seoUsers = $db->table('seo_profiles sp')
+                ->select('sp.user_id')
+                ->join('users u', 'u.id = sp.user_id')
+                ->where('sp.status', 'active')
+                ->where('u.active', 1)
+                ->get()
+                ->getResultArray();
+
+            // Format data
+            $vendorName = $data['vendor_name'] ?? 'Unknown Vendor';
+            $tanggalMulai = $data['tanggal_mulai'] ? date('d M Y', strtotime($data['tanggal_mulai'])) : '-';
+            $tanggalSelesai = $data['tanggal_selesai'] ? date('d M Y', strtotime($data['tanggal_selesai'])) : '-';
+            $jumlahMasuk = $data['jumlah_leads_masuk'] ?? 0;
+            $jumlahClosing = $data['jumlah_leads_closing'] ?? 0;
+
+            // Siapkan data notifikasi berdasarkan action type
+            $notifications = [];
+            $now = date('Y-m-d H:i:s');
+
+            switch ($actionType) {
+                case 'create':
+                    $title = '📊 Lead Baru Ditambahkan';
+                    $message = "Lead baru telah ditambahkan oleh {$adminName} untuk vendor {$vendorName}";
+                    break;
+
+                case 'update':
+                    $title = '✏️ Lead Diperbarui';
+                    $message = "Lead untuk vendor {$vendorName} telah diperbarui oleh {$adminName}";
+                    break;
+
+                case 'delete':
+                    $title = '🗑️ Lead Dihapus';
+                    $message = "Lead untuk vendor {$vendorName} telah dihapus oleh {$adminName}";
+                    break;
+
+                default:
+                    return false;
+            }
+
+            // Tambahkan detail lead
+            $message .= "\n\nDetail Lead:";
+            $message .= "\n• Vendor: {$vendorName}";
+            $message .= "\n• Periode: {$tanggalMulai} - {$tanggalSelesai}";
+            $message .= "\n• Leads Masuk: {$jumlahMasuk}";
+            $message .= "\n• Leads Closing: {$jumlahClosing}";
+            $message .= "\n• Diproses oleh: {$adminName}";
+
+            // Notifikasi untuk VENDOR dengan type 'system'
+            if ($vendorUserId) {
+                $notifications[] = [
+                    'user_id' => $vendorUserId,
+                    'vendor_id' => $vendorId,
+                    'type' => 'system',
+                    'title' => $title,
+                    'message' => $message,
+                    'is_read' => 0,
+                    'created_at' => $now,
+                    'updated_at' => $now
+                ];
+            }
+
+            // Notifikasi untuk semua ADMIN KECUALI admin yang sedang login dengan type 'system'
+            foreach ($adminUsers as $admin) {
+                if ($admin['user_id'] == $adminUserId) {
+                    continue;
+                }
+                
+                $notifications[] = [
+                    'user_id' => $admin['user_id'],
+                    'vendor_id' => $vendorId,
+                    'type' => 'system',
+                    'title' => $title,
+                    'message' => $message,
+                    'is_read' => 0,
+                    'created_at' => $now,
+                    'updated_at' => $now
+                ];
+            }
+
+            // Notifikasi untuk semua SEO users dengan type 'system'
+            foreach ($seoUsers as $seo) {
+                $notifications[] = [
+                    'user_id' => $seo['user_id'],
+                    'vendor_id' => $vendorId,
+                    'type' => 'system',
+                    'title' => $title,
+                    'message' => $message,
+                    'is_read' => 0,
+                    'created_at' => $now,
+                    'updated_at' => $now
+                ];
+            }
+
+            // Insert semua notifikasi
+            if (!empty($notifications)) {
+                $this->notificationsModel->insertBatch($notifications);
+                return true;
+            }
+
+            return false;
+
+        } catch (\Exception $e) {
+            log_message('error', "Error creating lead notification: " . $e->getMessage());
+            return false;
+        }
+    }
+
     /**
      * Log activity untuk admin
      */
@@ -397,6 +618,7 @@ class Leads extends BaseAdminController // Perbaikan: Extend BaseAdminController
                 'description' => $description,
                 'ip_address'  => $this->request->getIPAddress(),
                 'user_agent'  => (string) $this->request->getUserAgent(),
+                'created_at'  => date('Y-m-d H:i:s'),
             ];
 
             if (!empty($additionalData)) {

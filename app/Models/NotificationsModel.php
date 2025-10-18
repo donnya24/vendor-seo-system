@@ -19,22 +19,18 @@ class NotificationsModel extends Model
     protected $createdField  = 'created_at';
     protected $updatedField  = 'updated_at';
 
-    // Validation rules
+    // Validation rules yang lebih fleksibel
     protected $validationRules = [
-        'user_id' => 'required|numeric',
+        'user_id' => 'permit_empty|numeric',
         'admin_id' => 'permit_empty|numeric',
         'vendor_id' => 'permit_empty|numeric',
         'seo_id' => 'permit_empty|numeric',
-        'title'   => 'required|max_length[255]',
-        'message' => 'required',
-        'type'    => 'permit_empty|max_length[50]'
+        'type' => 'permit_empty|max_length[50]',
+        'title' => 'required|max_length[255]',
+        'message' => 'required'
     ];
 
     protected $validationMessages = [
-        'user_id' => [
-            'required' => 'User ID harus diisi',
-            'numeric'  => 'User ID harus berupa angka'
-        ],
         'title' => [
             'required' => 'Judul notifikasi harus diisi',
             'max_length' => 'Judul notifikasi maksimal 255 karakter'
@@ -45,26 +41,72 @@ class NotificationsModel extends Model
     ];
 
     /**
-     * Get notifications with related data (LENGKAP)
+     * Get notifications with related data
      */
     public function getWithRelations($limit = 50)
     {
-        return $this->select('notifications.*, 
-                             u.username as user_username,
-                             a.name as admin_name, a.id as admin_profile_id,
-                             v.business_name as vendor_name, v.owner_name as vendor_owner,
-                             s.name as seo_name, s.id as seo_profile_id')
-                   ->join('users u', 'u.id = notifications.user_id', 'left')
-                   ->join('admin_profiles a', 'a.id = notifications.admin_id', 'left')
-                   ->join('vendor_profiles v', 'v.id = notifications.vendor_id', 'left')
-                   ->join('seo_profiles s', 's.id = notifications.seo_id', 'left')
-                   ->orderBy('notifications.created_at', 'DESC')
+        $db = \Config\Database::connect();
+        
+        return $db->table('notifications n')
+                ->select('n.*, 
+                        u.username,
+                        CASE 
+                            WHEN n.admin_id IS NOT NULL THEN ap.name
+                            WHEN n.seo_id IS NOT NULL THEN sp.name
+                            WHEN n.vendor_id IS NOT NULL THEN vp.business_name
+                            ELSE u.username
+                        END as display_name,
+                        CASE 
+                            WHEN n.admin_id IS NOT NULL THEN "admin"
+                            WHEN n.seo_id IS NOT NULL THEN "seo"
+                            WHEN n.vendor_id IS NOT NULL THEN "vendor"
+                            ELSE "user"
+                        END as user_type')
+                ->join('users u', 'u.id = n.user_id', 'left')
+                ->join('admin_profiles ap', 'ap.user_id = u.id AND n.admin_id IS NOT NULL', 'left')
+                ->join('vendor_profiles vp', 'vp.user_id = u.id AND n.vendor_id IS NOT NULL', 'left')
+                ->join('seo_profiles sp', 'sp.user_id = u.id AND n.seo_id IS NOT NULL', 'left')
+                ->orderBy('n.created_at', 'DESC')
+                ->limit($limit)
+                ->get()
+                ->getResultArray();
+    }
+
+    /**
+     * Get notifications by type (system atau announcement)
+     */
+    public function getByType($type, $limit = 50)
+    {
+        return $this->where('type', $type)
+                   ->orderBy('created_at', 'DESC')
                    ->limit($limit)
                    ->findAll();
     }
 
     /**
-     * Get notifications by admin_id (dari admin_profiles)
+     * Get system notifications
+     */
+    public function getSystemNotifications($limit = 50)
+    {
+        return $this->where('type', 'system')
+                   ->orderBy('created_at', 'DESC')
+                   ->limit($limit)
+                   ->findAll();
+    }
+
+    /**
+     * Get announcement notifications
+     */
+    public function getAnnouncementNotifications($limit = 50)
+    {
+        return $this->where('type', 'announcement')
+                   ->orderBy('created_at', 'DESC')
+                   ->limit($limit)
+                   ->findAll();
+    }
+
+    /**
+     * Get notifications by admin_id
      */
     public function getByAdminId($adminId, $limit = 20)
     {
@@ -75,7 +117,7 @@ class NotificationsModel extends Model
     }
 
     /**
-     * Get notifications by seo_id (dari seo_profiles)
+     * Get notifications by seo_id
      */
     public function getBySeoId($seoId, $limit = 20)
     {
@@ -91,17 +133,6 @@ class NotificationsModel extends Model
     public function getByVendorId($vendorId, $limit = 20)
     {
         return $this->where('vendor_id', $vendorId)
-                   ->orderBy('created_at', 'DESC')
-                   ->limit($limit)
-                   ->findAll();
-    }
-
-    /**
-     * Get commission change notifications
-     */
-    public function getCommissionChangeNotifications($limit = 50)
-    {
-        return $this->where('type', 'commission_change')
                    ->orderBy('created_at', 'DESC')
                    ->limit($limit)
                    ->findAll();
@@ -229,7 +260,7 @@ class NotificationsModel extends Model
     /**
      * Create notification for multiple users dengan relasi profil
      */
-    public function createForUsersWithProfiles(array $usersData, string $title, string $message, string $type = 'general'): bool
+    public function createForUsersWithProfiles(array $usersData, string $title, string $message, string $type = 'system'): bool
     {
         try {
             $notifications = [];
@@ -239,7 +270,7 @@ class NotificationsModel extends Model
 
             foreach ($usersData as $user) {
                 $notificationData = [
-                    'user_id' => $user['user_id'],
+                    'user_id' => $user['user_id'] ?? null,
                     'admin_id' => $user['admin_id'] ?? null,
                     'seo_id' => $user['seo_id'] ?? null,
                     'vendor_id' => $user['vendor_id'] ?? null,
@@ -270,51 +301,74 @@ class NotificationsModel extends Model
     }
 
     /**
-     * Create commission change notification for all Admin and Seoteam users dengan relasi profil
+     * Create commission system notification
      */
-    public function createCommissionChangeNotificationWithProfiles($vendorId, $vendorName, $oldCommission, $newCommission)
+    public function createCommissionSystemNotification($vendorId, $vendorName, $period, $amount, $action = 'create')
     {
         try {
             $db = \Config\Database::connect();
             
-            // Get all Admin users dengan admin_profiles
+            // Get admin users
             $adminUsers = $db->table('auth_groups_users agu')
-                ->select('agu.user_id, agu.group, u.username, ap.id as admin_id, NULL as seo_id')
+                ->select('agu.user_id')
                 ->join('users u', 'u.id = agu.user_id')
-                ->join('admin_profiles ap', 'ap.user_id = u.id', 'left')
                 ->where('agu.group', 'admin')
+                ->where('u.active', 1)
                 ->get()
                 ->getResultArray();
 
-            // Get all Seoteam users dengan seo_profiles
-            $seoteamUsers = $db->table('auth_groups_users agu')
-                ->select('agu.user_id, agu.group, u.username, NULL as admin_id, sp.id as seo_id')
+            // Get SEO users
+            $seoUsers = $db->table('auth_groups_users agu')
+                ->select('agu.user_id')
                 ->join('users u', 'u.id = agu.user_id')
-                ->join('seo_profiles sp', 'sp.user_id = u.id', 'left')
-                ->where('agu.group', 'seoteam')
+                ->where('agu.group', 'seo')
+                ->where('u.active', 1)
                 ->get()
                 ->getResultArray();
-
-            $targetUsers = array_merge($adminUsers, $seoteamUsers);
-
-            if (empty($targetUsers)) {
-                log_message('error', 'No Admin or Seoteam users found for commission change notification');
-                return false;
-            }
 
             $notifications = [];
             $now = date('Y-m-d H:i:s');
 
-            foreach ($targetUsers as $user) {
+            $title = $action === 'create' ? 'Komisi Baru Diterima' : 'Komisi Diperbarui';
+            $message = $action === 'create' 
+                ? "📝 Vendor {$vendorName} mengirim komisi baru periode {$period} sebesar Rp {$amount}"
+                : "✏️ Vendor {$vendorName} memperbarui komisi periode {$period} sebesar Rp {$amount}";
+
+            $message .= "\n\nDetail Komisi:";
+            $message .= "\n• Vendor: {$vendorName}";
+            $message .= "\n• Periode: {$period}";
+            $message .= "\n• Jumlah: Rp {$amount}";
+            $message .= "\n• Status: Unpaid";
+
+            // Untuk admin
+            foreach ($adminUsers as $admin) {
                 $notifications[] = [
-                    'user_id' => $user['user_id'],
-                    'admin_id' => $user['admin_id'],
-                    'seo_id' => $user['seo_id'],
+                    'user_id' => null,
                     'vendor_id' => $vendorId,
-                    'type' => 'commission_change',
-                    'title' => 'Pengajuan Komisi Baru',
-                    'message' => "Vendor <strong>{$vendorName}</strong> mengajukan perubahan komisi dari {$oldCommission} menjadi {$newCommission}. Silakan review pengajuan ini.",
+                    'admin_id' => $admin['user_id'],
+                    'seo_id' => null,
+                    'type' => 'system',
+                    'title' => $title,
+                    'message' => $message,
                     'is_read' => 0,
+                    'read_at' => null,
+                    'created_at' => $now,
+                    'updated_at' => $now
+                ];
+            }
+
+            // Untuk SEO
+            foreach ($seoUsers as $seo) {
+                $notifications[] = [
+                    'user_id' => null,
+                    'vendor_id' => $vendorId,
+                    'admin_id' => null,
+                    'seo_id' => $seo['user_id'],
+                    'type' => 'system',
+                    'title' => $title,
+                    'message' => $message,
+                    'is_read' => 0,
+                    'read_at' => null,
                     'created_at' => $now,
                     'updated_at' => $now
                 ];
@@ -323,15 +377,15 @@ class NotificationsModel extends Model
             $result = $this->insertBatch($notifications);
             
             if ($result) {
-                log_message('info', "Successfully created commission change notifications for " . count($targetUsers) . " users with profile relations");
+                log_message('info', "Successfully created commission system notifications for vendor {$vendorId}");
             } else {
-                log_message('error', "Failed to create commission change notifications with profile relations");
+                log_message('error', "Failed to create commission system notifications");
             }
 
             return $result;
 
-        } catch (\Throwable $e) {
-            log_message('error', 'Error creating commission change notifications with profiles: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            log_message('error', "Error creating commission system notification: " . $e->getMessage());
             return false;
         }
     }

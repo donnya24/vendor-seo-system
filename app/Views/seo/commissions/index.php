@@ -158,6 +158,7 @@
             <th scope="col" class="px-5 py-3 text-right text-xs font-medium uppercase tracking-wider">Jumlah Komisi</th>
             <th scope="col" class="px-5 py-3 text-center text-xs font-medium uppercase tracking-wider">Bukti Transfer</th>
             <th scope="col" class="px-5 py-3 text-center text-xs font-medium uppercase tracking-wider">Status</th>
+            <th scope="col" class="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider">Diproses Oleh</th>
             <th scope="col" class="px-5 py-3 text-center text-xs font-medium uppercase tracking-wider">Aksi</th>
           </tr>
         </thead>
@@ -167,13 +168,14 @@
               <tr class="hover:bg-gray-50 transition">
                 <td class="px-5 py-4 text-center text-gray-600"><?= $no++ ?></td>
 
-                <!-- PERBAIKAN: Tampilan periode menjadi sejajar horizontal -->
+                <!-- Periode -->
                 <td class="px-5 py-4">
                   <div class="text-sm font-medium text-gray-900 whitespace-nowrap">
                     <?= esc($c['period_start']) ?> s/d <?= esc($c['period_end']) ?>
                   </div>
                 </td>
 
+                <!-- Nama Vendor -->
                 <td class="px-5 py-4">
                   <div class="flex items-center">
                     <div class="flex-shrink-0 h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
@@ -186,10 +188,12 @@
                   </div>
                 </td>
 
+                <!-- Jumlah Komisi -->
                 <td class="px-5 py-4 text-right font-semibold text-gray-900">
                   Rp <?= number_format($c['amount'] ?? 0, 0, ',', '.') ?>
                 </td>
 
+                <!-- Bukti Transfer -->
                 <td class="px-5 py-4 text-center">
                   <?php if (!empty($c['proof'])): ?>
                     <?php 
@@ -213,6 +217,7 @@
                   <?php endif; ?>
                 </td>
 
+                <!-- Status -->
                 <td class="px-5 py-4 text-center">
                   <?php 
                     $status = strtolower($c['status'] ?? '-');
@@ -234,6 +239,59 @@
                   </span>
                 </td>
 
+                <!-- Diproses Oleh -->
+                <td class="px-5 py-4">
+                    <?php if (!empty($c['action_by_name']) && $c['action_by_name'] != 'ID1'): ?>
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-user text-blue-600 text-xs"></i>
+                            </div>
+                            <div class="ml-2">
+                                <div class="text-sm font-medium text-gray-900"><?= esc($c['action_by_name']) ?></div>
+                                <div class="text-xs text-gray-500">
+                                    SEO
+                                    <?php if ($status === 'paid' && !empty($c['paid_at'])): ?>
+                                        • <?= date('d/m/Y H:i', strtotime($c['paid_at'])) ?>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                    <?php elseif (!empty($c['action_by_user_id']) && $c['action_by_user_id'] != 1): ?>
+                        <!-- Fallback jika action_by_name tidak ada tapi action_by_user_id ada -->
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-user text-blue-600 text-xs"></i>
+                            </div>
+                            <div class="ml-2">
+                                <div class="text-sm font-medium text-gray-900">SEO User #<?= $c['action_by_user_id'] ?></div>
+                                <div class="text-xs text-gray-500">
+                                    <?php if ($status === 'paid' && !empty($c['paid_at'])): ?>
+                                        <?= date('d/m/Y H:i', strtotime($c['paid_at'])) ?>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                    <?php elseif (!empty($c['action_by']) && $c['action_by'] != 1): ?>
+                        <!-- Fallback jika hanya action_by yang ada -->
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-user text-blue-600 text-xs"></i>
+                            </div>
+                            <div class="ml-2">
+                                <div class="text-sm font-medium text-gray-900">ID: <?= $c['action_by'] ?></div>
+                                <div class="text-xs text-gray-500">
+                                    <?php if ($status === 'paid' && !empty($c['paid_at'])): ?>
+                                        <?= date('d/m/Y H:i', strtotime($c['paid_at'])) ?>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                    <?php else: ?>
+                        <span class="text-gray-400 text-sm">-</span>
+                    <?php endif; ?>
+                </td>
+                
+                <!-- Aksi -->
                 <td class="px-5 py-4 text-center">
                   <div class="flex flex-col sm:flex-row gap-2 justify-center">
                     <?php if ($status === 'unpaid'): ?>
@@ -254,7 +312,7 @@
             <?php endforeach ?>
           <?php else: ?>
             <tr>
-              <td colspan="7" class="px-5 py-10 text-center text-gray-500">
+              <td colspan="8" class="px-5 py-10 text-center text-gray-500">
                 <div class="flex flex-col items-center justify-center">
                   <i class="fas fa-inbox text-gray-300 text-4xl mb-3"></i>
                   <p class="text-lg font-medium text-gray-900">Tidak ada data komisi</p>
@@ -274,7 +332,7 @@
     </div>
 
     <!-- Pagination -->
-    <?php if($pager->getPageCount() > 1): ?>
+    <?php if($pager && $pager->getPageCount() > 1): ?> <!-- PERBAIKAN: Cek jika pager ada -->
     <div class="px-5 py-4 border-t border-gray-200 bg-gray-50">
       <div class="flex items-center justify-between">
         <div class="text-sm text-gray-600">
@@ -496,7 +554,7 @@ function commissionManager() {
     },
 
     resetFilter() {
-      window.location.href = '<?= site_url('seo/commissions') ?>';
+      window.location.href = `<?= site_url('seo/commissions') ?>`;
     },
 
     confirmAction(id) {

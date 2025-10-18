@@ -265,7 +265,7 @@ if (!empty($users)) {
                     <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">EMAIL</th>
                     <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">KOMISI DIAJUKAN</th>
                     <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">STATUS</th>
-                    <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">ACTION BY</th>
+                    <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">DIPROSES OLEH</th>
                     <th class="px-2 md:px-4 py-2 md:py-3 text-center font-semibold text-white uppercase tracking-wider">AKSI</th>
                 </tr>
             </thead>

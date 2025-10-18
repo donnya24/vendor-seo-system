@@ -508,12 +508,12 @@ class Leads extends BaseController
                 log_message('warning', "No active SEO users found. Check if group name 'seo' is correct and users are active.");
             }
 
-            // Notifikasi untuk semua ADMIN
+            // PERBAIKAN: Notifikasi untuk semua ADMIN dengan type system
             foreach ($adminUsers as $admin) {
                 $notifications[] = [
                     'user_id' => $admin['user_id'],
                     'vendor_id' => $this->vendorId,
-                    'type' => 'leads_' . $action,
+                    'type' => 'system', // PERUBAHAN: type menjadi 'system'
                     'title' => $title,
                     'message' => $message,
                     'is_read' => 0,
@@ -522,12 +522,12 @@ class Leads extends BaseController
                 ];
             }
 
-            // Notifikasi untuk semua SEO
+            // PERBAIKAN: Notifikasi untuk semua SEO dengan type system
             foreach ($seoUsers as $seo) {
                 $notifications[] = [
                     'user_id' => $seo['user_id'],
                     'vendor_id' => $this->vendorId,
-                    'type' => 'leads_' . $action,
+                    'type' => 'system', // PERUBAHAN: type menjadi 'system'
                     'title' => $title,
                     'message' => $message,
                     'is_read' => 0,

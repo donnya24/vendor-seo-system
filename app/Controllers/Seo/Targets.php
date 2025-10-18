@@ -376,12 +376,12 @@ class Targets extends BaseController
                 }
             }
 
-            // Notifikasi untuk VENDOR
+            // PERBAIKAN: Notifikasi untuk VENDOR dengan type system
             if ($vendorUserId) {
                 $notifications[] = [
                     'user_id' => $vendorUserId,
                     'vendor_id' => $vendorId,
-                    'type' => 'seo_target_' . $actionType,
+                    'type' => 'system', // PERUBAHAN: type menjadi 'system'
                     'title' => $title,
                     'message' => $message,
                     'is_read' => 0,
@@ -390,12 +390,12 @@ class Targets extends BaseController
                 ];
             }
 
-            // Notifikasi untuk semua ADMIN
+            // PERBAIKAN: Notifikasi untuk semua ADMIN dengan type system
             foreach ($adminUsers as $admin) {
                 $notifications[] = [
                     'user_id' => $admin['user_id'],
                     'vendor_id' => $vendorId,
-                    'type' => 'seo_target_' . $actionType,
+                    'type' => 'system', // PERUBAHAN: type menjadi 'system'
                     'title' => $title,
                     'message' => $message,
                     'is_read' => 0,

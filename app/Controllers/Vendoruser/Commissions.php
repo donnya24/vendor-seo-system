@@ -78,6 +78,23 @@ class Commissions extends BaseController
     }
 
     /**
+     * Validasi apakah periode sudah ada
+     */
+    private function isPeriodExists(string $periodStart, string $periodEnd, ?int $excludeId = null): bool
+    {
+        $query = $this->commissionModel
+            ->where('vendor_id', $this->vendorId)
+            ->where('period_start', $periodStart)
+            ->where('period_end', $periodEnd);
+
+        if ($excludeId) {
+            $query->where('id !=', $excludeId);
+        }
+
+        return $query->countAllResults() > 0;
+    }
+
+    /**
      * Buat notifikasi untuk admin dan SEO terkait komisi
      */
     private function createCommissionNotification($commissionId, $actionType, $commissionData)
@@ -158,8 +175,8 @@ class Commissions extends BaseController
 
             switch ($actionType) {
                 case 'create':
-                    $title = 'Komisi Baru Ditambahkan';
-                    $message = "📝 Vendor {$this->vendorProfile['business_name']} menambahkan komisi baru periode {$period} sebesar Rp {$amount}";
+                    $title = 'Komisi Baru Diterima';
+                    $message = "📝 Vendor {$this->vendorProfile['business_name']} mengirim komisi baru periode {$period} sebesar Rp {$amount}";
                     break;
 
                 case 'update':
@@ -178,12 +195,12 @@ class Commissions extends BaseController
             $message .= "\n• Jumlah: Rp {$amount}";
             $message .= "\n• Status: " . ucfirst($commissionData['status'] ?? 'unpaid');
 
-            // Notifikasi untuk semua ADMIN
+            // PERBAIKAN: Notifikasi untuk semua ADMIN dengan type system
             foreach ($adminUsers as $admin) {
                 $notifications[] = [
                     'user_id' => $admin['user_id'],
                     'vendor_id' => $this->vendorId,
-                    'type' => 'commission_' . $actionType,
+                    'type' => 'system', // PERUBAHAN: type menjadi 'system'
                     'title' => $title,
                     'message' => $message,
                     'is_read' => 0,
@@ -193,12 +210,12 @@ class Commissions extends BaseController
             }
             log_message('info', "Added notifications for " . count($adminUsers) . " admin users");
 
-            // Notifikasi untuk semua SEO
+            // PERBAIKAN: Notifikasi untuk semua SEO dengan type system
             foreach ($seoUsers as $seo) {
                 $notifications[] = [
                     'user_id' => $seo['user_id'],
                     'vendor_id' => $this->vendorId,
-                    'type' => 'commission_' . $actionType,
+                    'type' => 'system', // PERUBAHAN: type menjadi 'system'
                     'title' => $title,
                     'message' => $message,
                     'is_read' => 0,
@@ -285,10 +302,18 @@ class Commissions extends BaseController
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
 
+        $periodStart = $this->request->getPost('period_start');
+        $periodEnd = $this->request->getPost('period_end');
+
+        // VALIDASI PERIODE SUDAH ADA
+        if ($this->isPeriodExists($periodStart, $periodEnd)) {
+            return redirect()->back()->withInput()->with('error', 'Komisi untuk periode ' . date('d M Y', strtotime($periodStart)) . ' - ' . date('d M Y', strtotime($periodEnd)) . ' sudah ada. Silakan gunakan periode yang berbeda.');
+        }
+
         $data = [
             'vendor_id'    => $this->vendorId,
-            'period_start' => $this->request->getPost('period_start'),
-            'period_end'   => $this->request->getPost('period_end'),
+            'period_start' => $periodStart,
+            'period_end'   => $periodEnd,
             'earning'      => $this->request->getPost('earning'),
             'amount'       => $this->request->getPost('amount'),
             'status'       => 'unpaid',
@@ -310,10 +335,10 @@ class Commissions extends BaseController
         // Kirim notifikasi ke admin dan SEO
         $this->createCommissionNotification($commissionId, 'create', $data);
         
-        $this->logActivity('create', "Menambahkan komisi periode {$data['period_start']} - {$data['period_end']}");
+        $this->logActivity('create', "Mengirim komisi periode {$data['period_start']} - {$data['period_end']}");
 
         return redirect()->to(site_url('vendoruser/commissions'))
-            ->with('success', 'Komisi berhasil ditambahkan.');
+            ->with('success', 'Komisi berhasil dikirim.');
     }
 
     public function edit($id)
@@ -379,9 +404,17 @@ class Commissions extends BaseController
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
 
+        $periodStart = $this->request->getPost('period_start');
+        $periodEnd = $this->request->getPost('period_end');
+
+        // VALIDASI PERIODE SUDAH ADA (kecuali untuk data yang sedang diedit)
+        if ($this->isPeriodExists($periodStart, $periodEnd, $id)) {
+            return redirect()->back()->withInput()->with('error', 'Komisi untuk periode ' . date('d M Y', strtotime($periodStart)) . ' - ' . date('d M Y', strtotime($periodEnd)) . ' sudah ada. Silakan gunakan periode yang berbeda.');
+        }
+
         $updateData = [
-            'period_start' => $this->request->getPost('period_start'),
-            'period_end'   => $this->request->getPost('period_end'),
+            'period_start' => $periodStart,
+            'period_end'   => $periodEnd,
             'earning'      => $this->request->getPost('earning'),
             'amount'       => $this->request->getPost('amount'),
             'updated_at'   => date('Y-m-d H:i:s'),
@@ -389,6 +422,7 @@ class Commissions extends BaseController
 
         if ($file = $this->request->getFile('proof')) {
             if ($file->isValid() && !$file->hasMoved()) {
+                // Hapus file proof lama jika ada
                 if (!empty($item['proof']) && file_exists(FCPATH.'uploads/commissions/'.$item['proof'])) {
                     unlink(FCPATH.'uploads/commissions/'.$item['proof']);
                 }
@@ -455,6 +489,7 @@ class Commissions extends BaseController
                 ->with('error', 'Komisi yang sudah dibayar tidak dapat dihapus.');
         }
 
+        // Hapus file proof jika ada
         if (!empty($item['proof']) && file_exists(FCPATH.'uploads/commissions/'.$item['proof'])) {
             @unlink(FCPATH.'uploads/commissions/'.$item['proof']);
         }
@@ -539,6 +574,7 @@ class Commissions extends BaseController
 
         $deleted = 0;
         foreach ($editableItems as $item) {
+            // Hapus file proof jika ada
             if (!empty($item['proof']) && file_exists(FCPATH.'uploads/commissions/'.$item['proof'])) {
                 @unlink(FCPATH.'uploads/commissions/'.$item['proof']);
             }

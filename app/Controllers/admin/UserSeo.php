@@ -7,6 +7,7 @@ use App\Models\SeoProfilesModel;
 use App\Models\IdentityModel;
 use App\Models\UserModel;
 use App\Models\ActivityLogsModel; // Tambahkan model ActivityLogs
+use App\Models\NotificationsModel; // Tambahkan model Notifications
 use CodeIgniter\Shield\Entities\User as ShieldUser;
 use CodeIgniter\Database\Exceptions\DatabaseException;
 
@@ -18,6 +19,7 @@ class UserSeo extends BaseAdminController // Perbaikan: Extend BaseAdminControll
     protected $identityModel;
     protected $userModel;
     protected $activityLogsModel; // Tambahkan property
+    protected $notificationsModel; // Tambahkan property
 
     public function __construct()
     {
@@ -28,6 +30,7 @@ class UserSeo extends BaseAdminController // Perbaikan: Extend BaseAdminControll
         $this->identityModel = new IdentityModel();
         $this->userModel = new UserModel();
         $this->activityLogsModel = new ActivityLogsModel(); // Inisialisasi model
+        $this->notificationsModel = new NotificationsModel(); // Inisialisasi model notifications
     }
 
     // ========== LIST ==========
@@ -193,6 +196,13 @@ class UserSeo extends BaseAdminController // Perbaikan: Extend BaseAdminControll
                     'status'      => 'active',
                     'created_at'  => date('Y-m-d H:i:s'),
                     'updated_at'  => date('Y-m-d H:i:s'),
+                ]);
+
+                // 🔔 KIRIM NOTIFIKASI KE USER YANG BARU DIBUAT
+                $this->sendSeoUserNotification($userId, 'create', [
+                    'username' => $username,
+                    'email' => $email,
+                    'fullname' => $fullname
                 ]);
 
                 // Log activity create user SEO
@@ -421,6 +431,14 @@ class UserSeo extends BaseAdminController // Perbaikan: Extend BaseAdminControll
                     $this->seoModel->insert($data);
                 }
 
+                // 🔔 KIRIM NOTIFIKASI KE USER YANG DIUPDATE
+                $this->sendSeoUserNotification($id, 'update', [
+                    'username' => $username,
+                    'email' => $email,
+                    'fullname' => $fullname,
+                    'password_changed' => !empty($newPass)
+                ]);
+
                 // Log activity update user SEO
                 $this->logActivity(
                     'update_user_seo',
@@ -496,6 +514,11 @@ class UserSeo extends BaseAdminController // Perbaikan: Extend BaseAdminControll
                 $user = $this->users->find($id);
                 $username = $user ? $user->username : 'Unknown';
 
+                // 🔔 KIRIM NOTIFIKASI KE USER SEBELUM DIHAPUS
+                $this->sendSeoUserNotification($id, 'delete', [
+                    'username' => $username
+                ]);
+
                 // Hapus dari tabel terkait terlebih dahulu untuk menjaga integritas
                 if ($this->db->tableExists('auth_groups_users')) {
                     $this->db->table('auth_groups_users')->where('user_id', $id)->delete();
@@ -548,6 +571,11 @@ class UserSeo extends BaseAdminController // Perbaikan: Extend BaseAdminControll
         // Get user data for logging
         $user = $this->users->find($id);
         $username = $user ? $user->username : 'Unknown';
+
+        // 🔔 KIRIM NOTIFIKASI KE USER SEBELUM DIHAPUS
+        $this->sendSeoUserNotification($id, 'delete', [
+            'username' => $username
+        ]);
 
         if ($this->db->tableExists('auth_groups_users')) {
             $this->db->table('auth_groups_users')->where('user_id', $id)->delete();
@@ -754,13 +782,11 @@ class UserSeo extends BaseAdminController // Perbaikan: Extend BaseAdminControll
     }
 
     /**
-     * Kirim notifikasi status SEO ke user yang bersangkutan
+     * PERBAIKAN: Kirim notifikasi status SEO ke user yang bersangkutan dengan type 'system'
      */
     private function sendSeoStatusNotification($seoData, $status)
     {
         try {
-            $db = \Config\Database::connect();
-            
             $seoName = $seoData['name'] ?? 'SEO Tidak Dikenal';
             $seoProfileId = $seoData['id'] ?? null; // ID dari seo_profiles
             $userId = $seoData['user_id'] ?? null; // ID user yang bersangkutan
@@ -776,12 +802,12 @@ class UserSeo extends BaseAdminController // Perbaikan: Extend BaseAdminControll
             $currentUser = service('auth')->user();
             $adminName = $currentUser->username ?? 'Administrator';
             
-            // Kirim notifikasi hanya ke user yang bersangkutan
-            $db->table('notifications')->insert([
+            // Kirim notifikasi hanya ke user yang bersangkutan dengan type 'system'
+            $this->notificationsModel->insert([
                 'user_id' => $userId, // Hanya user ini yang menerima notifikasi
                 'vendor_id' => null,
                 'seo_id' => $seoProfileId, 
-                'type' => 'system',
+                'type' => 'system', // PERUBAHAN: type menjadi 'system'
                 'title' => 'Status Akun Anda',
                 'message' => "Akun Anda telah {$statusText} oleh {$adminName}",
                 'is_read' => 0,
@@ -794,6 +820,83 @@ class UserSeo extends BaseAdminController // Perbaikan: Extend BaseAdminControll
 
         } catch (\Throwable $e) {
             log_message('error', 'Gagal mengirim notifikasi status SEO: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * PERBAIKAN: Method baru untuk mengirim notifikasi ke user SEO dengan type 'system'
+     */
+    private function sendSeoUserNotification($userId, $actionType, $data = [])
+    {
+        try {
+            // Ambil admin name
+            $currentUser = service('auth')->user();
+            $adminName = $currentUser->username ?? 'Administrator';
+            
+            // Siapkan data notifikasi berdasarkan action type
+            $notifications = [];
+            $now = date('Y-m-d H:i:s');
+
+            switch ($actionType) {
+                case 'create':
+                    $title = 'Akun SEO Baru Dibuat';
+                    $message = "Akun SEO Anda telah dibuat oleh {$adminName}";
+                    $message .= "\n\nDetail Akun:";
+                    $message .= "\n• Username: {$data['username']}";
+                    $message .= "\n• Email: {$data['email']}";
+                    $message .= "\n• Nama Lengkap: {$data['fullname']}";
+                    $message .= "\n• Role: Tim SEO";
+                    break;
+
+                case 'update':
+                    $title = 'Akun SEO Diperbarui';
+                    $message = "Akun SEO Anda telah diperbarui oleh {$adminName}";
+                    $message .= "\n\nPerubahan:";
+                    $message .= "\n• Username: {$data['username']}";
+                    $message .= "\n• Email: {$data['email']}";
+                    $message .= "\n• Nama Lengkap: {$data['fullname']}";
+                    if ($data['password_changed'] ?? false) {
+                        $message .= "\n• Password: Telah direset";
+                    }
+                    break;
+
+                case 'delete':
+                    $title = 'Akun SEO Dihapus';
+                    $message = "Akun SEO Anda ({$data['username']}) telah dihapus secara permanen oleh {$adminName}";
+                    break;
+
+                default:
+                    return false;
+            }
+
+            // Kirim notifikasi ke user yang bersangkutan dengan type 'system'
+            $notifications[] = [
+                'user_id' => $userId,
+                'vendor_id' => null,
+                'seo_id' => null,
+                'type' => 'system', // PERUBAHAN: type menjadi 'system'
+                'title' => $title,
+                'message' => $message,
+                'is_read' => 0,
+                'read_at' => null,
+                'created_at' => $now,
+                'updated_at' => $now
+            ];
+
+            // Insert notifikasi
+            if (!empty($notifications)) {
+                $this->notificationsModel->insertBatch($notifications);
+                
+                log_message('info', "Created SEO user {$actionType} notification for user {$userId}: " . count($notifications) . " notifications sent");
+                
+                return true;
+            }
+
+            return false;
+
+        } catch (\Exception $e) {
+            log_message('error', "Error creating SEO user notification: " . $e->getMessage());
+            return false;
         }
     }
 

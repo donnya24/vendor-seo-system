@@ -400,12 +400,12 @@ class Profile extends BaseController
             $message .= "\n• Komisi Baru: {$newCommissionFormatted}";
             $message .= "\n• Status: Menunggu Verifikasi";
 
-            // Notifikasi untuk semua ADMIN
+            // PERBAIKAN: Notifikasi untuk semua ADMIN dengan type system
             foreach ($adminUsers as $admin) {
                 $notifications[] = [
                     'user_id' => $admin['user_id'],
                     'vendor_id' => $this->vendorId,
-                    'type' => 'commission_change',
+                    'type' => 'system', // PERUBAHAN: type menjadi 'system'
                     'title' => $title,
                     'message' => $message,
                     'is_read' => 0,
@@ -414,12 +414,12 @@ class Profile extends BaseController
                 ];
             }
 
-            // Notifikasi untuk semua SEO
+            // PERBAIKAN: Notifikasi untuk semua SEO dengan type system
             foreach ($seoUsers as $seo) {
                 $notifications[] = [
                     'user_id' => $seo['user_id'],
                     'vendor_id' => $this->vendorId,
-                    'type' => 'commission_change',
+                    'type' => 'system', // PERUBAHAN: type menjadi 'system'
                     'title' => $title,
                     'message' => $message,
                     'is_read' => 0,

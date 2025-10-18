@@ -7,6 +7,7 @@ use App\Models\CommissionsModel;
 use App\Models\VendorProfilesModel;
 use App\Models\NotificationsModel;
 use App\Models\UserModel;
+use App\Models\SeoProfilesModel;
 
 class Commissions extends BaseController
 {
@@ -14,6 +15,7 @@ class Commissions extends BaseController
     protected $vendorModel;
     protected $notificationsModel;
     protected $userModel;
+    protected $seoProfilesModel;
 
     public function __construct()
     {
@@ -21,6 +23,7 @@ class Commissions extends BaseController
         $this->vendorModel = new VendorProfilesModel();
         $this->notificationsModel = new NotificationsModel();
         $this->userModel = new UserModel();
+        $this->seoProfilesModel = new SeoProfilesModel();
     }
 
     public function index()
@@ -34,10 +37,19 @@ class Commissions extends BaseController
         // Ambil daftar vendor untuk dropdown filter
         $vendors = $this->vendorModel->findAll();
 
+        // PERBAIKAN: Gunakan model untuk pagination dengan join yang benar
         $query = $this->commissionModel
-            ->select('commissions.*, vendor_profiles.business_name as vendor_name')
+            ->select('
+                commissions.*,
+                vendor_profiles.business_name as vendor_name,
+                vendor_profiles.owner_name,
+                COALESCE(seo_profiles.name, admin_profiles.name) as action_by_name,
+                COALESCE(seo_profiles.user_id, admin_profiles.user_id) as action_by_user_id
+            ')
             ->join('vendor_profiles', 'vendor_profiles.id = commissions.vendor_id', 'left')
-            ->orderBy('commissions.period_start', 'DESC');
+            // PERBAIKAN: Gunakan LEFT JOIN untuk seo_profiles dan admin_profiles
+            ->join('seo_profiles', 'seo_profiles.user_id = commissions.action_by', 'left')
+            ->join('admin_profiles', 'admin_profiles.user_id = commissions.action_by', 'left');
 
         // Filter berdasarkan vendor_id jika dipilih
         if (!empty($vendorId)) {
@@ -49,7 +61,16 @@ class Commissions extends BaseController
             $query->where('commissions.status', $status);
         }
 
-        $commissions = $query->paginate(20);
+        $query->orderBy('commissions.period_start', 'DESC');
+
+        // Gunakan pagination bawaan CodeIgniter
+        $commissions = $query->paginate(20, 'group1');
+        $pager = $this->commissionModel->pager;
+
+        // Debug: Tampilkan hasil query untuk memeriksa data
+        // echo '<pre>';
+        // print_r($commissions);
+        // echo '</pre>';
 
         // Log aktivitas view commissions
         if (!empty($vendorId)) {
@@ -77,13 +98,13 @@ class Commissions extends BaseController
             'title'       => 'Komisi Vendor',
             'activeMenu'  => 'commissions',
             'commissions' => $commissions,
-            'pager'       => $this->commissionModel->pager,
+            'pager'       => $pager,
             'vendorId'    => $vendorId,
             'status'      => $status,
             'vendors'     => $vendors,
         ]);
     }
-
+    
     public function approve($id)
     {
         $commission = $this->commissionModel->find($id);
@@ -95,19 +116,43 @@ class Commissions extends BaseController
             return redirect()->back()->with('error', 'Komisi tidak ditemukan.');
         }
 
-        $this->commissionModel->update($id, [
+        // Dapatkan user yang sedang login
+        $currentUser = service('auth')->user();
+        if (!$currentUser) {
+            return $this->response->setJSON(['success' => false, 'message' => 'User tidak ditemukan atau session expired.']);
+        }
+
+        // Debug: Tampilkan data user yang sedang login
+        log_message('debug', 'Current User Data: ' . json_encode([
+            'id' => $currentUser->id,
+            'username' => $currentUser->username
+        ]));
+
+        // Update dengan action_by
+        $updateData = [
             'status'      => 'paid',
             'approved_at' => date('Y-m-d H:i:s'),
             'paid_at'     => date('Y-m-d H:i:s'),
-        ]);
+            'action_by'   => $currentUser->id
+        ];
+
+        // Debug: Tampilkan data yang akan diupdate
+        log_message('debug', 'Update Data: ' . json_encode($updateData));
+
+        $this->commissionModel->update($id, $updateData);
+
+        // Debug: Verifikasi data setelah update
+        $updatedCommission = $this->commissionModel->find($id);
+        log_message('debug', 'Updated Commission: ' . json_encode($updatedCommission));
 
         // Gunakan helper log_activity_auto untuk action khusus
         log_activity_auto('approve', "Komisi #{$id} untuk vendor {$commission['vendor_id']} telah diverifikasi", [
             'module' => 'commissions',
-            'vendor_id' => $commission['vendor_id']
+            'vendor_id' => $commission['vendor_id'],
+            'action_by' => $currentUser->id
         ]);
 
-        // ===== BUAT NOTIFIKASI UNTUK VENDOR DAN ADMIN =====
+        // Buat notifikasi untuk vendor dan admin
         $this->createCommissionNotification($id, $commission['vendor_id'], 'approve', $commission);
 
         if ($this->request->isAJAX()) {
@@ -127,18 +172,29 @@ class Commissions extends BaseController
             return redirect()->back()->with('error', 'Komisi tidak ditemukan.');
         }
 
-        $this->commissionModel->update($id, [
+        // Dapatkan user yang sedang login
+        $currentUser = service('auth')->user();
+        if (!$currentUser) {
+            return $this->response->setJSON(['success' => false, 'message' => 'User tidak ditemukan atau session expired.']);
+        }
+
+        // Update dengan action_by
+        $updateData = [
             'status'      => 'rejected',
             'rejected_at' => date('Y-m-d H:i:s'),
-        ]);
+            'action_by'   => $currentUser->id
+        ];
+
+        $this->commissionModel->update($id, $updateData);
 
         // Gunakan helper log_activity_auto untuk action khusus
         log_activity_auto('reject', "Komisi #{$id} untuk vendor {$commission['vendor_id']} telah ditolak", [
             'module' => 'commissions',
-            'vendor_id' => $commission['vendor_id']
+            'vendor_id' => $commission['vendor_id'],
+            'action_by' => $currentUser->id
         ]);
 
-        // ===== BUAT NOTIFIKASI UNTUK VENDOR DAN ADMIN =====
+        // Buat notifikasi untuk vendor dan admin
         $this->createCommissionNotification($id, $commission['vendor_id'], 'reject', $commission);
 
         if ($this->request->isAJAX()) {
@@ -155,18 +211,29 @@ class Commissions extends BaseController
             return redirect()->back()->with('error', 'Komisi tidak ditemukan.');
         }
 
-        $this->commissionModel->update($id, [
+        // Dapatkan user yang sedang login
+        $currentUser = service('auth')->user();
+        if (!$currentUser) {
+            return $this->response->setJSON(['success' => false, 'message' => 'User tidak ditemukan atau session expired.']);
+        }
+
+        // Update dengan action_by
+        $updateData = [
             'status'  => 'paid',
             'paid_at' => date('Y-m-d H:i:s'),
-        ]);
+            'action_by' => $currentUser->id
+        ];
+
+        $this->commissionModel->update($id, $updateData);
 
         // Gunakan helper log_activity_auto untuk action khusus
         log_activity_auto('mark_as_paid', "Komisi #{$id} untuk vendor {$commission['vendor_id']} telah ditandai sebagai dibayar", [
             'module' => 'commissions',
-            'vendor_id' => $commission['vendor_id']
+            'vendor_id' => $commission['vendor_id'],
+            'action_by' => $currentUser->id
         ]);
 
-        // ===== BUAT NOTIFIKASI UNTUK VENDOR DAN ADMIN =====
+        // Buat notifikasi untuk vendor dan admin
         $this->createCommissionNotification($id, $commission['vendor_id'], 'mark_paid', $commission);
 
         return redirect()->back()->with('msg', 'Komisi telah dibayar.');
@@ -186,7 +253,7 @@ class Commissions extends BaseController
                 'vendor_id' => $vendorId
             ]);
 
-            // ===== BUAT NOTIFIKASI UNTUK VENDOR DAN ADMIN =====
+            // Buat notifikasi untuk vendor dan admin
             $this->createCommissionNotification($id, $vendorId, 'delete', $commission);
 
             if (!$this->request->isAJAX()) {
@@ -248,7 +315,7 @@ class Commissions extends BaseController
             switch ($actionType) {
                 case 'approve':
                     $title = 'Komisi Telah Diverifikasi';
-                    $message = "✅ Komisi periode {$period} sebesar Rp {$amount} untuk vendor {$vendor['business_name']} telah diverifikasi dan dibayar oleh Tim SEO {$seoName}";
+                    $message = "✅ Komisi periode {$period} sebesar Rp {$amount} untuk vendor {$vendor['business_name']} telah diverifikasi oleh Tim SEO {$seoName}";
                     break;
 
                 case 'reject':
@@ -276,13 +343,14 @@ class Commissions extends BaseController
             $message .= "\n• Periode: {$period}";
             $message .= "\n• Jumlah: Rp {$amount}";
             $message .= "\n• Status: " . ucfirst($actionType);
+            $message .= "\n• Diproses oleh: {$seoName}";
 
-            // Notifikasi untuk VENDOR
+            // PERBAIKAN: Notifikasi untuk VENDOR dengan type system
             if ($vendorUserId) {
                 $notifications[] = [
                     'user_id' => $vendorUserId,
                     'vendor_id' => $vendorId,
-                    'type' => 'commission_' . $actionType,
+                    'type' => 'system', // PERUBAHAN: type menjadi 'system'
                     'title' => $title,
                     'message' => $message,
                     'is_read' => 0,
@@ -291,12 +359,12 @@ class Commissions extends BaseController
                 ];
             }
 
-            // Notifikasi untuk semua ADMIN
+            // PERBAIKAN: Notifikasi untuk semua ADMIN dengan type system
             foreach ($adminUsers as $admin) {
                 $notifications[] = [
                     'user_id' => $admin['user_id'],
                     'vendor_id' => $vendorId,
-                    'type' => 'commission_' . $actionType,
+                    'type' => 'system', // PERUBAHAN: type menjadi 'system'
                     'title' => $title,
                     'message' => $message,
                     'is_read' => 0,

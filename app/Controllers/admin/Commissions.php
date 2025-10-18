@@ -44,10 +44,14 @@ class Commissions extends BaseAdminController
         $vendorId = $this->request->getGet('vendor_id');
         $status = $this->request->getGet('status');
 
-        // Build query
+        // Build query dengan join ke seo_profiles
         $query = $this->commissionModel
-            ->select('commissions.*, vendor_profiles.business_name as vendor_name, vendor_profiles.owner_name')
-            ->join('vendor_profiles', 'vendor_profiles.id = commissions.vendor_id', 'left');
+            ->select('commissions.*, vendor_profiles.business_name as vendor_name, vendor_profiles.owner_name, 
+                     COALESCE(admin_profiles.name, seo_profiles.name) as action_by_name,
+                     COALESCE(admin_profiles.user_id, seo_profiles.user_id) as action_by_user_id')
+            ->join('vendor_profiles', 'vendor_profiles.id = commissions.vendor_id', 'left')
+            ->join('admin_profiles', 'admin_profiles.user_id = commissions.action_by', 'left')
+            ->join('seo_profiles', 'seo_profiles.user_id = commissions.action_by', 'left');
 
         if ($vendorId && $vendorId !== 'all') {
             $query->where('commissions.vendor_id', $vendorId);
@@ -86,14 +90,12 @@ class Commissions extends BaseAdminController
             return $this->response->setJSON(['success' => false, 'message' => 'Invalid request method.']);
         }
 
-        // PERBAIKAN: Gunakan where()->first() untuk memastikan hasilnya array
         $commission = $this->commissionModel->where('id', $id)->first();
 
         if (!$commission) {
             return $this->response->setJSON(['success' => false, 'message' => 'Komisi tidak ditemukan.']);
         }
 
-        // PERBAIKAN: Akses array dengan benar
         $commissionStatus = $commission['status'] ?? '';
 
         // Validasi status sebelum verifikasi
@@ -105,21 +107,45 @@ class Commissions extends BaseAdminController
         }
 
         try {
-            // PERBAIKAN: Hanya update kolom yang ada di tabel
+            $currentUser = service('auth')->user();
+            if (!$currentUser) {
+                return $this->response->setJSON(['success' => false, 'message' => 'User tidak ditemukan atau session expired.']);
+            }
+            
+            // Update data dengan semua field yang diperlukan
             $updateData = [
-                'status' => 'paid'
+                'status' => 'paid',
+                'action_by' => $currentUser->id
             ];
 
-            // Tambahkan paid_at hanya jika kolomnya ada di allowedFields
+            // Tambahkan paid_at jika ada di allowedFields
             if (in_array('paid_at', $this->commissionModel->allowedFields)) {
                 $updateData['paid_at'] = date('Y-m-d H:i:s');
             }
 
             // Update status menjadi 'paid'
-            $this->commissionModel->update($id, $updateData);
+            $updateResult = $this->commissionModel->update($id, $updateData);
+            
+            // Debug: Log hasil update
+            log_message('debug', 'Update result: ' . json_encode([
+                'success' => $updateResult,
+                'data' => $updateData
+            ]));
 
-            // 🔔 KIRIM NOTIFIKASI KE VENDOR DAN TIM SEO
-            $this->createCommissionNotification($id, $commission['vendor_id'], 'verify', $commission);
+            // Pastikan createCommissionNotification dipanggil
+            if ($updateResult) {
+                // 🔔 KIRIM NOTIFIKASI KE VENDOR DAN TIM SEO
+                $notificationResult = $this->createCommissionNotification($id, $commission['vendor_id'], 'verify', $commission, $currentUser->id);
+                
+                // Debug: Log hasil notifikasi
+                log_message('debug', 'Notification result: ' . json_encode([
+                    'success' => $notificationResult
+                ]));
+                
+                if (!$notificationResult) {
+                    log_message('error', 'Failed to create commission notification');
+                }
+            }
 
             // Log activity
             $vendorId = $commission['vendor_id'] ?? 0;
@@ -129,7 +155,8 @@ class Commissions extends BaseAdminController
                 [
                     'commission_id' => $id,
                     'vendor_id' => $vendorId,
-                    'amount' => $commission['amount'] ?? 0
+                    'amount' => $commission['amount'] ?? 0,
+                    'action_by' => $currentUser->id
                 ]
             );
 
@@ -148,7 +175,7 @@ class Commissions extends BaseAdminController
     }
 
     /**
-     * Method baru untuk menandai komisi sebagai unpaid
+     * Method untuk menandai komisi sebagai unpaid
      */
     public function unpaid($id)
     {
@@ -157,14 +184,12 @@ class Commissions extends BaseAdminController
             return $this->response->setJSON(['success' => false, 'message' => 'Invalid request method.']);
         }
 
-        // PERBAIKAN: Gunakan where()->first() untuk memastikan hasilnya array
         $commission = $this->commissionModel->where('id', $id)->first();
 
         if (!$commission) {
             return $this->response->setJSON(['success' => false, 'message' => 'Komisi tidak ditemukan.']);
         }
 
-        // PERBAIKAN: Akses array dengan benar
         $commissionStatus = $commission['status'] ?? '';
 
         // Validasi status sebelum unpaid
@@ -176,9 +201,14 @@ class Commissions extends BaseAdminController
         }
 
         try {
-            // PERBAIKAN: Hanya update kolom yang ada di tabel
+            $currentUser = service('auth')->user();
+            if (!$currentUser) {
+                return $this->response->setJSON(['success' => false, 'message' => 'User tidak ditemukan atau session expired.']);
+            }
+            
             $updateData = [
-                'status' => 'unpaid'
+                'status' => 'unpaid',
+                'action_by' => $currentUser->id
             ];
 
             // Reset paid_at jika ada
@@ -187,10 +217,28 @@ class Commissions extends BaseAdminController
             }
 
             // Update status menjadi 'unpaid'
-            $this->commissionModel->update($id, $updateData);
+            $updateResult = $this->commissionModel->update($id, $updateData);
+            
+            // Debug: Log hasil update
+            log_message('debug', 'Update result for unpaid: ' . json_encode([
+                'success' => $updateResult,
+                'data' => $updateData
+            ]));
 
-            // 🔔 KIRIM NOTIFIKASI KE VENDOR DAN TIM SEO
-            $this->createCommissionNotification($id, $commission['vendor_id'], 'unpaid', $commission);
+            // PERBAIKAN: Pastikan createCommissionNotification dipanggil dan diperiksa hasilnya
+            if ($updateResult) {
+                // 🔔 KIRIM NOTIFIKASI KE VENDOR DAN TIM SEO
+                $notificationResult = $this->createCommissionNotification($id, $commission['vendor_id'], 'unpaid', $commission, $currentUser->id);
+                
+                // Debug: Log hasil notifikasi
+                log_message('debug', 'Notification result for unpaid: ' . json_encode([
+                    'success' => $notificationResult
+                ]));
+                
+                if (!$notificationResult) {
+                    log_message('error', 'Failed to create commission notification for unpaid status');
+                }
+            }
 
             // Log activity
             $vendorId = $commission['vendor_id'] ?? 0;
@@ -200,7 +248,8 @@ class Commissions extends BaseAdminController
                 [
                     'commission_id' => $id,
                     'vendor_id' => $vendorId,
-                    'amount' => $commission['amount'] ?? 0
+                    'amount' => $commission['amount'] ?? 0,
+                    'action_by' => $currentUser->id
                 ]
             );
 
@@ -225,7 +274,6 @@ class Commissions extends BaseAdminController
             return $this->response->setJSON(['success' => false, 'message' => 'Invalid request method.']);
         }
 
-        // PERBAIKAN: Gunakan where()->first() untuk memastikan hasilnya array
         $commission = $this->commissionModel->where('id', $id)->first();
 
         if (!$commission) {
@@ -233,14 +281,18 @@ class Commissions extends BaseAdminController
         }
 
         try {
-            // PERBAIKAN: Akses array dengan benar
+            $currentUser = service('auth')->user();
+            if (!$currentUser) {
+                return $this->response->setJSON(['success' => false, 'message' => 'User tidak ditemukan atau session expired.']);
+            }
+            
             $vendorId = $commission['vendor_id'] ?? 0;
             
             // Hapus komisi
             $this->commissionModel->delete($id);
 
             // 🔔 KIRIM NOTIFIKASI KE VENDOR DAN TIM SEO
-            $this->createCommissionNotification($id, $vendorId, 'delete', $commission);
+            $this->createCommissionNotification($id, $vendorId, 'delete', $commission, $currentUser->id);
 
             // Log activity
             $this->logActivity(
@@ -249,7 +301,8 @@ class Commissions extends BaseAdminController
                 [
                     'commission_id' => $id,
                     'vendor_id' => $vendorId,
-                    'amount' => $commission['amount'] ?? 0
+                    'amount' => $commission['amount'] ?? 0,
+                    'action_by' => $currentUser->id
                 ]
             );
 
@@ -281,8 +334,11 @@ class Commissions extends BaseAdminController
 
         // Build query sederhana tanpa join ke users
         $query = $this->commissionModel
-            ->select('commissions.*, vendor_profiles.business_name as vendor_name, vendor_profiles.owner_name, vendor_profiles.phone')
-            ->join('vendor_profiles', 'vendor_profiles.id = commissions.vendor_id', 'left');
+            ->select('commissions.*, vendor_profiles.business_name as vendor_name, vendor_profiles.owner_name, vendor_profiles.phone, 
+                     COALESCE(admin_profiles.name, seo_profiles.name) as action_by_name')
+            ->join('vendor_profiles', 'vendor_profiles.id = commissions.vendor_id', 'left')
+            ->join('admin_profiles', 'admin_profiles.user_id = commissions.action_by', 'left')
+            ->join('seo_profiles', 'seo_profiles.user_id = commissions.action_by', 'left');
 
         if ($vendorId && $vendorId !== 'all') {
             $query->where('commissions.vendor_id', $vendorId);
@@ -304,7 +360,7 @@ class Commissions extends BaseAdminController
         // Add BOM untuk UTF-8
         fputs($output, "\xEF\xBB\xBF");
 
-        // Header CSV tanpa email
+        // Header CSV dengan action_by
         $headers = [
             'No',
             'ID Komisi',
@@ -315,6 +371,7 @@ class Commissions extends BaseAdminController
             'Pendapatan Kotor',
             'Komisi',
             'Status',
+            'Diproses Oleh',
             'Tgl Dibayar',
             'Tgl Dibuat'
         ];
@@ -335,6 +392,7 @@ class Commissions extends BaseAdminController
                 $commission['earning'] ?? 0,
                 $commission['amount'] ?? 0,
                 $this->getStatusLabel($commission['status'] ?? ''),
+                $commission['action_by_name'] ?? '-',
                 $commission['paid_at'] ? date('d/m/Y', strtotime($commission['paid_at'])) : '-',
                 $commission['created_at'] ? date('d/m/Y', strtotime($commission['created_at'])) : '-'
             ];
@@ -372,16 +430,16 @@ class Commissions extends BaseAdminController
             return $this->response->setJSON(['success' => false, 'message' => 'Tidak ada komisi yang dipilih.']);
         }
 
-        // PERBAIKAN: Tambahkan 'unpaid' ke validasi action
+        // Tambahkan 'unpaid' ke validasi action
         if (!in_array($action, ['verify', 'unpaid', 'delete'])) {
             return $this->response->setJSON(['success' => false, 'message' => 'Aksi tidak valid.']);
         }
 
-        // Pastikan commission_ids adalah array
-        if (!is_array($commissionIds)) {
-            $commissionIds = [$commissionIds];
+        $currentUser = service('auth')->user();
+        if (!$currentUser) {
+            return $this->response->setJSON(['success' => false, 'message' => 'User tidak ditemukan atau session expired.']);
         }
-
+        
         $successCount = 0;
         $errorCount = 0;
         $errorMessages = [];
@@ -390,7 +448,6 @@ class Commissions extends BaseAdminController
 
         foreach ($commissionIds as $id) {
             try {
-                // PERBAIKAN: Gunakan where()->first() untuk memastikan hasilnya array
                 $commission = $this->commissionModel->where('id', $id)->first();
                 
                 if (!$commission) {
@@ -402,7 +459,6 @@ class Commissions extends BaseAdminController
 
                 switch ($action) {
                     case 'verify':
-                        // PERBAIKAN: Akses array dengan benar
                         $commissionStatus = $commission['status'] ?? '';
                         
                         // Validasi status sebelum verifikasi
@@ -413,9 +469,9 @@ class Commissions extends BaseAdminController
                             continue 2; // Skip ke komisi berikutnya
                         }
 
-                        // PERBAIKAN: Hanya update kolom yang ada di tabel
                         $updateData = [
-                            'status' => 'paid'
+                            'status' => 'paid',
+                            'action_by' => $currentUser->id
                         ];
 
                         // Tambahkan paid_at hanya jika kolomnya ada di allowedFields
@@ -427,11 +483,10 @@ class Commissions extends BaseAdminController
                         $this->commissionModel->update($id, $updateData);
 
                         // 🔔 KIRIM NOTIFIKASI KE VENDOR DAN TIM SEO
-                        $this->createCommissionNotification($id, $commission['vendor_id'], 'verify', $commission);
+                        $this->createCommissionNotification($id, $commission['vendor_id'], 'verify', $commission, $currentUser->id);
                         break;
 
                     case 'unpaid':
-                        // PERBAIKAN: Akses array dengan benar
                         $commissionStatus = $commission['status'] ?? '';
                         
                         // Validasi status sebelum unpaid
@@ -442,9 +497,9 @@ class Commissions extends BaseAdminController
                             continue 2; // Skip ke komisi berikutnya
                         }
 
-                        // PERBAIKAN: Hanya update kolom yang ada di tabel
                         $updateData = [
-                            'status' => 'unpaid'
+                            'status' => 'unpaid',
+                            'action_by' => $currentUser->id
                         ];
 
                         // Reset paid_at jika ada
@@ -456,14 +511,14 @@ class Commissions extends BaseAdminController
                         $this->commissionModel->update($id, $updateData);
 
                         // 🔔 KIRIM NOTIFIKASI KE VENDOR DAN TIM SEO
-                        $this->createCommissionNotification($id, $commission['vendor_id'], 'unpaid', $commission);
+                        $this->createCommissionNotification($id, $commission['vendor_id'], 'unpaid', $commission, $currentUser->id);
                         break;
 
                     case 'delete':
                         $this->commissionModel->delete($id);
                         
                         // 🔔 KIRIM NOTIFIKASI KE VENDOR DAN TIM SEO
-                        $this->createCommissionNotification($id, $commission['vendor_id'], 'delete', $commission);
+                        $this->createCommissionNotification($id, $commission['vendor_id'], 'delete', $commission, $currentUser->id);
                         break;
 
                     default:
@@ -473,7 +528,6 @@ class Commissions extends BaseAdminController
                         continue 2;
                 }
 
-                // PERBAIKAN: Akses array dengan benar
                 $vendorId = $commission['vendor_id'] ?? 0;
                 
                 // Log activity
@@ -484,7 +538,8 @@ class Commissions extends BaseAdminController
                         'commission_id' => $id,
                         'vendor_id' => $vendorId,
                         'amount' => $commission['amount'] ?? 0,
-                        'action' => $action
+                        'action' => $action,
+                        'action_by' => $currentUser->id
                     ]
                 );
 
@@ -509,7 +564,8 @@ class Commissions extends BaseAdminController
                 'success_count' => $successCount,
                 'error_count' => $errorCount,
                 'success_ids' => $successIds,
-                'error_ids' => $errorIds
+                'error_ids' => $errorIds,
+                'action_by' => $currentUser->id
             ]
         );
 
@@ -567,9 +623,10 @@ class Commissions extends BaseAdminController
     }
 
     /**
-     * Buat notifikasi untuk vendor dan admin terkait komisi
+     * PERBAIKAN: Memperbaiki metode createCommissionNotification untuk mengikuti pola dari SEO controller
+     * dan menggunakan type 'system' seperti yang diminta
      */
-    private function createCommissionNotification($commissionId, $vendorId, $actionType, $commissionData)
+    private function createCommissionNotification($commissionId, $vendorId, $actionType, $commissionData, $currentAdminId = null)
     {
         try {
             $db = \Config\Database::connect();
@@ -588,72 +645,31 @@ class Commissions extends BaseAdminController
                 return false;
             }
 
-            // Dapatkan semua admin users yang aktif
+            // PERBAIKAN: Dapatkan semua admin users menggunakan auth_groups_users seperti di SEO controller
             $adminUsers = $db->table('auth_groups_users agu')
                 ->select('agu.user_id')
                 ->join('users u', 'u.id = agu.user_id')
                 ->where('agu.group', 'admin')
-                ->where('u.active', 1) // Pastikan user aktif
-                ->get()
-                ->getResultArray();
-            
-            log_message('info', "Found " . count($adminUsers) . " active admin users for notification");
-
-            // PERBAIKAN: Dapatkan semua SEO users yang aktif
-            // Metode 1: Melalui auth_groups_users (jika SEO users memiliki grup 'seo')
-            $seoUsers = $db->table('auth_groups_users agu')
-                ->select('agu.user_id')
-                ->join('users u', 'u.id = agu.user_id')
-                ->where('agu.group', 'seo')
                 ->where('u.active', 1)
                 ->get()
                 ->getResultArray();
             
-            // Jika tidak ada SEO users melalui auth_groups, coba metode 2
-            if (empty($seoUsers)) {
-                log_message('info', "No SEO users found through auth_groups, trying seo_profiles table");
-                
-                // Metode 2: Melalui seo_profiles table
-                $seoProfiles = $this->seoProfilesModel
-                    ->select('user_id')
-                    ->where('status', 'active') // Asumsi status aktif
-                    ->findAll();
-                
-                // Konversi ke format yang sama dengan metode 1
-                $seoUsers = array_map(function($profile) {
-                    return ['user_id' => $profile['user_id']];
-                }, $seoProfiles);
-                
-                // Filter hanya user yang aktif di tabel users
-                $activeSeoUserIds = $db->table('users')
-                    ->select('id')
-                    ->whereIn('id', array_column($seoUsers, 'user_id'))
-                    ->where('active', 1)
-                    ->get()
-                    ->getResultArray();
-                
-                // Filter seoUsers untuk hanya menyertakan user yang aktif
-                $activeSeoUserIds = array_column($activeSeoUserIds, 'id');
-                $seoUsers = array_filter($seoUsers, function($user) use ($activeSeoUserIds) {
-                    return in_array($user['user_id'], $activeSeoUserIds);
-                });
-                
-                // Re-index array
-                $seoUsers = array_values($seoUsers);
-            }
-            
-            log_message('info', "Found " . count($seoUsers) . " active SEO users for notification");
-            if (empty($seoUsers)) {
-                log_message('warning', "No active SEO users found. Check if group name 'seo' is correct and users are active.");
-            }
-
-            // Dapatkan admin yang sedang login
-            $adminUserId = session()->get('user_id');
+            // PERBAIKAN: Dapatkan admin yang sedang login
+            $adminUserId = $currentAdminId ?: session()->get('user_id');
             $adminProfile = $db->table('admin_profiles')
                 ->where('user_id', $adminUserId)
                 ->get()
                 ->getRowArray();
             $adminName = $adminProfile['name'] ?? 'Admin';
+
+            // PERBAIKAN: Dapatkan semua SEO users
+            $seoUsers = $db->table('seo_profiles sp')
+                ->select('sp.user_id')
+                ->join('users u', 'u.id = sp.user_id')
+                ->where('sp.status', 'active')
+                ->where('u.active', 1)
+                ->get()
+                ->getResultArray();
 
             // Format jumlah komisi
             $amount = number_format($commissionData['amount'] ?? 0, 0, ',', '.');
@@ -670,7 +686,7 @@ class Commissions extends BaseAdminController
             switch ($actionType) {
                 case 'verify':
                     $title = 'Komisi Telah Diverifikasi & Dibayar';
-                    $message = "✅ Komisi periode {$period} sebesar Rp {$amount} untuk vendor {$vendor['business_name']} telah diverifikasi dan dibayar oleh {$adminName}";
+                    $message = "✅ Komisi periode {$period} sebesar Rp {$amount} untuk vendor {$vendor['business_name']} telah diverifikasi oleh {$adminName}";
                     break;
 
                 case 'unpaid':
@@ -693,13 +709,14 @@ class Commissions extends BaseAdminController
             $message .= "\n• Periode: {$period}";
             $message .= "\n• Jumlah: Rp {$amount}";
             $message .= "\n• Status: " . ucfirst($actionType);
+            $message .= "\n• Diproses oleh: {$adminName}";
 
-            // Notifikasi untuk VENDOR
+            // PERBAIKAN: Notifikasi untuk VENDOR dengan type 'system'
             if ($vendorUserId) {
                 $notifications[] = [
                     'user_id' => $vendorUserId,
                     'vendor_id' => $vendorId,
-                    'type' => 'commission_' . $actionType,
+                    'type' => 'system', // PERUBAHAN: type menjadi 'system'
                     'title' => $title,
                     'message' => $message,
                     'is_read' => 0,
@@ -709,12 +726,17 @@ class Commissions extends BaseAdminController
                 log_message('info', "Added notification for vendor user ID: {$vendorUserId}");
             }
 
-            // Notifikasi untuk semua ADMIN
+            // PERBAIKAN: Notifikasi untuk semua ADMIN KECUALI admin yang sedang login dengan type 'system'
             foreach ($adminUsers as $admin) {
+                // Skip admin yang sedang login
+                if ($admin['user_id'] == $adminUserId) {
+                    continue;
+                }
+                
                 $notifications[] = [
                     'user_id' => $admin['user_id'],
                     'vendor_id' => $vendorId,
-                    'type' => 'commission_' . $actionType,
+                    'type' => 'system', // PERUBAHAN: type menjadi 'system'
                     'title' => $title,
                     'message' => $message,
                     'is_read' => 0,
@@ -722,14 +744,14 @@ class Commissions extends BaseAdminController
                     'updated_at' => $now
                 ];
             }
-            log_message('info', "Added notifications for " . count($adminUsers) . " admin users");
+            log_message('info', "Added notifications for " . (count($adminUsers) - 1) . " admin users (excluding current admin)");
 
-            // Notifikasi untuk semua SEO
+            // PERBAIKAN: Notifikasi untuk semua SEO users dengan type 'system'
             foreach ($seoUsers as $seo) {
                 $notifications[] = [
                     'user_id' => $seo['user_id'],
                     'vendor_id' => $vendorId,
-                    'type' => 'commission_' . $actionType,
+                    'type' => 'system', // PERUBAHAN: type menjadi 'system'
                     'title' => $title,
                     'message' => $message,
                     'is_read' => 0,
@@ -739,23 +761,68 @@ class Commissions extends BaseAdminController
             }
             log_message('info', "Added notifications for " . count($seoUsers) . " SEO users");
 
-            // Insert semua notifikasi
-            if (!empty($notifications)) {
-                $this->notificationsModel->insertBatch($notifications);
-                
-                // Log untuk debugging
-                log_message('info', "Created commission {$actionType} notifications for commission {$commissionId}: " . count($notifications) . " notifications sent");
-                
-                return true;
+            // PERBAIKAN: Insert semua notifikasi dengan error handling
+            try {
+                if (!empty($notifications)) {
+                    // Debug: Log data notifikasi sebelum insert
+                    log_message('debug', 'Notifications to insert: ' . json_encode($notifications));
+                    
+                    $insertResult = $this->notificationsModel->insertBatch($notifications);
+                    
+                    if ($insertResult) {
+                        // Log untuk debugging
+                        log_message('info', "Created commission {$actionType} notifications for commission {$commissionId}: " . count($notifications) . " notifications sent");
+                        
+                        return true;
+                    } else {
+                        log_message('error', "Failed to insert batch notifications");
+                        log_message('error', "Notification Model Errors: " . json_encode($this->notificationsModel->errors()));
+                        return false;
+                    }
+                } else {
+                    log_message('warning', "No notifications to insert for commission {$commissionId}");
+                    return false;
+                }
+            } catch (\Exception $e) {
+                log_message('error', "Error inserting notifications: " . $e->getMessage());
+                log_message('error', $e->getTraceAsString());
+                return false;
             }
-
-            log_message('warning', "No notifications were created for commission {$commissionId}");
-            return false;
 
         } catch (\Exception $e) {
             log_message('error', "Error creating commission notification: " . $e->getMessage());
             log_message('error', $e->getTraceAsString());
             return false;
         }
+    }
+
+    /**
+     * Helper method untuk mendapatkan role user
+     */
+    private function getUserRole($userId)
+    {
+        // Cek di tabel auth_groups_users
+        $db = \Config\Database::connect();
+        $adminGroup = $db->table('auth_groups_users')
+            ->where('user_id', $userId)
+            ->where('group', 'admin')
+            ->get()
+            ->getRowArray();
+        
+        if ($adminGroup) {
+            return 'admin';
+        }
+        
+        // Cek di tabel seo_profiles
+        $seoProfile = $db->table('seo_profiles')
+            ->where('user_id', $userId)
+            ->get()
+            ->getRowArray();
+        
+        if ($seoProfile) {
+            return 'seo';
+        }
+        
+        return 'unknown';
     }
 }

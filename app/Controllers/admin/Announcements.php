@@ -191,44 +191,26 @@ class Announcements extends BaseAdminController
         $userRole = session()->get('role');
         $userId   = session()->get('id');
 
+        // Hapus announcement dari tabel announcements
+        $this->announcementsModel->delete($id);
+        
+        // Hapus juga notifikasi terkait jika ada
         $db = \Config\Database::connect();
-
-        if ($userRole === 'admin') {
-            // Admin hapus total
-            $db->table('notification_user_state')->where('notification_id', $id)->delete();
-            $this->notificationsModel->delete($id);
-            
-            // Log activity delete announcement
-            $this->logActivity(
-                'delete_announcement',
-                'Menghapus announcement: ' . $item['title'],
-                [
-                    'announcement_id' => $id,
-                    'title' => $item['title'],
-                    'action' => 'permanent_delete'
-                ]
-            );
-        } else {
-            // Vendor / SEO cuma sembunyikan
-            $db->table('notification_user_state')
-               ->where('notification_id', $id)
-               ->where('user_id', $userId)
-               ->update([
-                   'hidden'     => 1,
-                   'hidden_at'  => date('Y-m-d H:i:s')
-               ]);
-            
-            // Log activity hide announcement
-            $this->logActivity(
-                'hide_announcement',
-                'Menyembunyikan announcement: ' . $item['title'],
-                [
-                    'announcement_id' => $id,
-                    'title' => $item['title'],
-                    'action' => 'hide'
-                ]
-            );
-        }
+        $db->table('notifications')
+        ->where('type', 'announcement')
+        ->where('title', $item['title'])
+        ->delete();
+        
+        // Log activity delete announcement
+        $this->logActivity(
+            'delete_announcement',
+            'Menghapus announcement: ' . $item['title'],
+            [
+                'announcement_id' => $id,
+                'title' => $item['title'],
+                'action' => 'delete'
+            ]
+        );
 
         return redirect()->back()->with('success', 'Announcement berhasil dihapus.');
     }

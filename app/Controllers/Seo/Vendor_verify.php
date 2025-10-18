@@ -429,12 +429,12 @@ class Vendor_verify extends BaseController
                     return false; // Tidak kirim notifikasi untuk status lain
             }
 
-            // Data notifikasi
+            // PERBAIKAN: Data notifikasi dengan type system
             $notificationData = [
                 'user_id' => $vendorUserId,
                 'vendor_id' => $vendorData['id'] ?? null,
                 'seo_id' => $seoId,
-                'type' => 'vendor_status',
+                'type' => 'system', // PERUBAHAN: type menjadi 'system'
                 'title' => $title,
                 'message' => $message,
                 'is_read' => 0,
@@ -510,7 +510,7 @@ class Vendor_verify extends BaseController
                     'user_id' => $admin['user_id'],
                     'admin_id' => $admin['admin_id'],
                     'vendor_id' => $vendorData['id'] ?? null,
-                    'type' => 'vendor_status_update',
+                    'type' => 'system', // PERUBAHAN: type menjadi 'system'
                     'title' => $title,
                     'message' => $message,
                     'is_read' => 0,

@@ -50,7 +50,7 @@ $routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 
 
     // ===== NOTIFICATION HEADER ROUTES (BELL ICON) =====
     $routes->group('notifications', function($routes) {
-        $routes->get('modal-data', 'Notifications::modalData'); // Data untuk modal header
+        $routes->get('modal-data', 'Notifications::modalData');
         $routes->post('markRead/(:num)', 'Notifications::markRead/$1');
         $routes->post('markAllRead', 'Notifications::markAllRead');
         $routes->post('delete/(:num)', 'Notifications::delete/$1');

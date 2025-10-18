@@ -18,7 +18,7 @@
                 <a href="<?= base_url('admin/kelola-notifikasi/user-state') ?>" 
                    class="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
                     <i class="fas fa-user-check mr-2"></i>
-                    User State
+                    Notifikasi terhapus
                 </a>
             </div>
         </div>
@@ -63,6 +63,8 @@
                         <option value="">Semua Notifikasi</option>
                         <option value="read" <?= $filter == 'read' ? 'selected' : '' ?>>Notifikasi Terbaca</option>
                         <option value="unread" <?= $filter == 'unread' ? 'selected' : '' ?>>Notifikasi Belum Dibaca</option>
+                        <option value="system" <?= $filter == 'system' ? 'selected' : '' ?>>Tipe System</option>
+                        <option value="announcement" <?= $filter == 'announcement' ? 'selected' : '' ?>>Tipe Announcement</option>
                         <option value="vendor" <?= $filter == 'vendor' ? 'selected' : '' ?>>User Vendor</option>
                         <option value="seo" <?= $filter == 'seo' ? 'selected' : '' ?>>User Tim SEO</option>
                     </select>
@@ -114,7 +116,7 @@
                         <i class="fas fa-users text-purple-600 text-xl"></i>
                     </div>
                     <div>
-                        <p class="text-sm text-purple-600 font-medium">User States</p>
+                        <p class="text-sm text-purple-600 font-medium">Notifikasi terhapus</p>
                         <p class="text-2xl font-bold text-purple-900"><?= number_format($stats['user_state_count'] ?? 0) ?></p>
                     </div>
                 </div>
@@ -142,7 +144,6 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-blue-500">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">ID</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">User</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Type</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Title</th>
@@ -155,7 +156,7 @@
                     <tbody class="bg-white divide-y divide-gray-200">
                         <?php if (empty($notifications)): ?>
                             <tr>
-                                <td colspan="8" class="px-6 py-8 text-center text-gray-500">
+                                <td colspan="7" class="px-6 py-8 text-center text-gray-500">
                                     <i class="fas fa-bell-slash text-3xl mb-2 text-gray-300"></i>
                                     <p class="text-lg">Tidak ada notifikasi</p>
                                 </td>
@@ -163,25 +164,49 @@
                         <?php else: ?>
                             <?php foreach ($notifications as $notification): ?>
                                 <tr class="hover:bg-gray-50 transition-colors">
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                        #<?= $notification['id'] ?>
-                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-sm font-medium text-gray-900">
                                             <?php
-                                            if (!empty($notification['seo_name'])) {
-                                                echo esc($notification['seo_name']) . ' <span class="text-blue-600 text-xs">(SEO)</span>';
-                                            } elseif (!empty($notification['vendor_name'])) {
-                                                echo esc($notification['vendor_name']) . ' <span class="text-green-600 text-xs">(Vendor)</span>';
-                                            } else {
-                                                echo esc($notification['username'] ?? 'Unknown User');
+                                            // Menampilkan nama user
+                                            $userName = 'Unknown User';
+                                            
+                                            if (!empty($notification['user_display'])) {
+                                                $userName = $notification['user_display'];
+                                            } elseif (!empty($notification['user_name'])) {
+                                                $userName = $notification['user_name'];
+                                            }
+                                            
+                                            echo esc($userName);
+                                            
+                                            // Menambahkan label berdasarkan user_type
+                                            if (!empty($notification['user_type'])) {
+                                                if ($notification['user_type'] === 'admin') {
+                                                    echo ' <span class="text-purple-600 text-xs">(Admin)</span>';
+                                                } elseif ($notification['user_type'] === 'seo') {
+                                                    echo ' <span class="text-blue-600 text-xs">(SEO)</span>';
+                                                } elseif ($notification['user_type'] === 'vendor') {
+                                                    echo ' <span class="text-green-600 text-xs">(Vendor)</span>';
+                                                }
                                             }
                                             ?>
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                            <?= esc($notification['type'] ?? 'general') ?>
+                                        <?php 
+                                        $type = $notification['type'] ?? 'general';
+                                        $colorClass = '';
+                                        
+                                        // Menentukan warna berdasarkan tipe
+                                        if ($type === 'system') {
+                                            $colorClass = 'bg-blue-100 text-blue-800';
+                                        } elseif ($type === 'announcement') {
+                                            $colorClass = 'bg-purple-100 text-purple-800';
+                                        } else {
+                                            $colorClass = 'bg-gray-100 text-gray-800';
+                                        }
+                                        ?>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= $colorClass ?>">
+                                            <?= ucfirst(esc($type)) ?>
                                         </span>
                                     </td>
                                     <td class="px-6 py-4">

@@ -153,6 +153,8 @@ document.addEventListener('DOMContentLoaded', function() {
             showConfirmButton: false,
             timer: 3000,
             timerProgressBar: true,
+            width: '300px', // PERBAIKAN: Perkecil lebar notifikasi
+            padding: '0.75rem', // PERBAIKAN: Perkecil padding
             didOpen: (toast) => {
                 toast.addEventListener('mouseenter', Swal.stopTimer)
                 toast.addEventListener('mouseleave', Swal.resumeTimer)
@@ -176,12 +178,25 @@ document.addEventListener('DOMContentLoaded', function() {
             confirmButtonColor: '#d33',
             cancelButtonColor: '#3085d6',
             confirmButtonText: 'Ya, hapus!',
-            cancelButtonText: 'Batal'
+            cancelButtonText: 'Batal',
+            width: '320px', // PERBAIKAN: Perkecil lebar dialog
+            padding: '0.8rem', // PERBAIKAN: Perkecil padding
+            customClass: {
+                title: 'small-title',
+                content: 'small-content',
+                actions: 'small-actions',
+                confirmButton: 'small-button',
+                cancelButton: 'small-button'
+            }
         }).then((result) => {
             if (result.isConfirmed) {
+                // Tambahkan CSRF token
+                const formData = new FormData();
+                formData.append('<?= csrf_token() ?>', '<?= csrf_hash() ?>');
+                
                 fetch(`<?= site_url('admin/leads/delete') ?>/${id}`, {
                     method: 'POST',
-                    body: new FormData()
+                    body: formData
                 })
                 .then(response => response.json())
                 .then(data => {
@@ -289,8 +304,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 cancelButtonColor: '#3085d6',
                 confirmButtonText: 'Ya, Hapus Semua!',
                 cancelButtonText: 'Batal',
-                width: 420,
-                padding: '1rem',
+                width: '340px', // PERBAIKAN: Perkecil lebar dialog
+                padding: '0.8rem', // PERBAIKAN: Perkecil padding
                 customClass: {
                     popup: 'small-swal-popup',
                     title: 'small-swal-title',
@@ -311,27 +326,63 @@ document.addEventListener('DOMContentLoaded', function() {
 <style>
 /* Style untuk SweetAlert yang lebih kecil */
 .small-swal-popup {
-    font-size: 0.875rem !important;
+    font-size: 0.8rem !important;
     border-radius: 12px !important;
 }
 
 .small-swal-title {
-    font-size: 1.1rem !important;
-    margin-bottom: 0.5rem !important;
+    font-size: 1rem !important;
+    margin-bottom: 0.4rem !important;
     padding: 0 !important;
 }
 
 .small-swal-content {
-    font-size: 0.8rem !important;
-    line-height: 1.4 !important;
+    font-size: 0.75rem !important;
+    line-height: 1.3 !important;
     padding: 0 !important;
 }
 
 .small-swal-confirm,
 .small-swal-cancel {
+    font-size: 0.75rem !important;
+    padding: 0.4rem 1rem !important;
+    margin: 0 0.2rem !important;
+}
+
+/* Style untuk notifikasi toast yang lebih kecil */
+.swal2-toast {
     font-size: 0.8rem !important;
-    padding: 0.5rem 1.2rem !important;
-    margin: 0 0.3rem !important;
+}
+
+.swal2-title {
+    font-size: 1rem !important;
+    margin-bottom: 0.2rem !important;
+}
+
+.swal2-html-container {
+    font-size: 0.8rem !important;
+    margin-top: 0.2rem !important;
+}
+
+/* Style untuk dialog konfirmasi hapus */
+.small-title {
+    font-size: 1rem !important;
+    margin-bottom: 0.5rem !important;
+}
+
+.small-content {
+    font-size: 0.8rem !important;
+    line-height: 1.3 !important;
+}
+
+.small-actions {
+    margin-top: 0.8rem !important;
+}
+
+.small-button {
+    font-size: 0.75rem !important;
+    padding: 0.4rem 1rem !important;
+    margin: 0 0.2rem !important;
 }
 </style>
 

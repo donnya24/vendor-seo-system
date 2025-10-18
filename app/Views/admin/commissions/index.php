@@ -160,6 +160,7 @@
             <th scope="col" class="px-4 sm:px-6 py-3 text-right text-xs font-medium uppercase tracking-wider">Jumlah</th>
             <th scope="col" class="px-4 sm:px-6 py-3 text-center text-xs font-medium uppercase tracking-wider">Bukti</th>
             <th scope="col" class="px-4 sm:px-6 py-3 text-center text-xs font-medium uppercase tracking-wider">Status</th>
+            <th scope="col" class="px-4 sm:px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Diproses Oleh</th>
             <th scope="col" class="px-4 sm:px-6 py-3 text-center text-xs font-medium uppercase tracking-wider">Aksi</th>
           </tr>
         </thead>
@@ -252,6 +253,111 @@
                   </span>
                 </td>
 
+                <!-- Diproses Oleh -->
+                <td class="px-4 sm:px-6 py-4">
+                    <?php if (!empty($c['action_by_name'])): ?>
+                        <?php 
+                        // Tentukan role user - langsung di view tanpa memanggil method controller
+                        $role = 'admin'; // Default
+                        
+                        // Cek apakah user_id ada di tabel admin_profiles
+                        $db = \Config\Database::connect();
+                        $adminProfile = $db->table('admin_profiles')
+                            ->where('user_id', $c['action_by_user_id'])
+                            ->get()
+                            ->getRowArray();
+                            
+                        // Cek apakah user_id ada di tabel seo_profiles
+                        $seoProfile = $db->table('seo_profiles')
+                            ->where('user_id', $c['action_by_user_id'])
+                            ->get()
+                            ->getRowArray();
+                        
+                        // Tentukan role berdasarkan hasil query
+                        if ($seoProfile) {
+                            $role = 'seo';
+                        } elseif ($adminProfile) {
+                            $role = 'admin';
+                        }
+                        
+                        $iconClass = $role === 'seo' ? 'fa-user' : 'fa-user-tie';
+                        $bgColor = $role === 'seo' ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600';
+                        $roleLabel = $role === 'seo' ? 'SEO' : 'Admin';
+                        ?>
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-8 w-8 <?= $bgColor ?> rounded-full flex items-center justify-center">
+                                <i class="fas <?= $iconClass ?> text-xs"></i>
+                            </div>
+                            <div class="ml-2">
+                                <div class="text-sm font-medium text-gray-900"><?= esc($c['action_by_name']) ?></div>
+                                <div class="text-xs text-gray-500">
+                                    <?= $roleLabel ?>
+                                    <?php if (strtolower($c['status'] ?? '') === 'paid' && !empty($c['paid_at'])): ?>
+                                        • <?= date('d/m/Y H:i', strtotime($c['paid_at'])) ?>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                    <?php elseif (!empty($c['action_by_user_id']) && $c['action_by_user_id'] != 1): ?>
+                        <!-- Fallback jika action_by_name tidak ada tapi action_by_user_id ada -->
+                        <?php 
+                        // Cek role user
+                        $role = 'admin'; // Default
+                        
+                        $db = \Config\Database::connect();
+                        $adminProfile = $db->table('admin_profiles')
+                            ->where('user_id', $c['action_by_user_id'])
+                            ->get()
+                            ->getRowArray();
+                            
+                        $seoProfile = $db->table('seo_profiles')
+                            ->where('user_id', $c['action_by_user_id'])
+                            ->get()
+                            ->getRowArray();
+                        
+                        if ($seoProfile) {
+                            $role = 'seo';
+                        } elseif ($adminProfile) {
+                            $role = 'admin';
+                        }
+                        
+                        $iconClass = $role === 'seo' ? 'fa-user' : 'fa-user-tie';
+                        $bgColor = $role === 'seo' ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600';
+                        $roleLabel = $role === 'seo' ? 'SEO' : 'Admin';
+                        ?>
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-8 w-8 <?= $bgColor ?> rounded-full flex items-center justify-center">
+                                <i class="fas <?= $iconClass ?> text-xs"></i>
+                            </div>
+                            <div class="ml-2">
+                                <div class="text-sm font-medium text-gray-900"><?= $roleLabel ?> User #<?= $c['action_by_user_id'] ?></div>
+                                <div class="text-xs text-gray-500">
+                                    <?php if (strtolower($c['status'] ?? '') === 'paid' && !empty($c['paid_at'])): ?>
+                                        <?= date('d/m/Y H:i', strtotime($c['paid_at'])) ?>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                    <?php elseif (!empty($c['action_by']) && $c['action_by'] != 1): ?>
+                        <!-- Fallback jika hanya action_by yang ada -->
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-8 w-8 bg-purple-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-user-tie text-purple-600 text-xs"></i>
+                            </div>
+                            <div class="ml-2">
+                                <div class="text-sm font-medium text-gray-900">ID: <?= $c['action_by'] ?></div>
+                                <div class="text-xs text-gray-500">
+                                    <?php if (strtolower($c['status'] ?? '') === 'paid' && !empty($c['paid_at'])): ?>
+                                        <?= date('d/m/Y H:i', strtotime($c['paid_at'])) ?>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                    <?php else: ?>
+                        <span class="text-gray-400 text-sm">-</span>
+                    <?php endif; ?>
+                </td>
+
                 <!-- Aksi -->
                 <td class="px-4 sm:px-6 py-4 text-center">
                   <div class="flex flex-col gap-2 justify-center">
@@ -284,7 +390,7 @@
             <?php endforeach ?>
           <?php else: ?>
             <tr>
-              <td colspan="8" class="px-4 sm:px-6 py-12 text-center text-gray-500">
+              <td colspan="9" class="px-4 sm:px-6 py-12 text-center text-gray-500">
                 <div class="flex flex-col items-center justify-center">
                   <i class="fas fa-inbox text-gray-300 text-5xl mb-4"></i>
                   <p class="text-lg font-medium text-gray-900 mb-2">Tidak ada data komisi</p>
@@ -404,6 +510,8 @@
       <p class="text-gray-700 font-medium">Memproses...</p>
     </div>
   </div>
+</div>
+
 <style>
 /* PERBAIKAN: Backdrop overlay yang memenuhi seluruh halaman */
 .fixed.inset-0 {

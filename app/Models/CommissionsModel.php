@@ -13,7 +13,7 @@ class CommissionsModel extends Model
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
     
-    // PERBAIKAN: Hanya kolom yang benar-benar ada di database
+    // PERBAIKAN: Tambahkan action_by ke allowedFields
     protected $allowedFields = [
         'vendor_id',
         'period_start', 
@@ -23,6 +23,7 @@ class CommissionsModel extends Model
         'status',
         'proof',
         'paid_at', 
+        'action_by', // Kolom baru
         'created_at',
         'updated_at'
     ];
@@ -75,5 +76,24 @@ class CommissionsModel extends Model
         $builder->orderBy('commissions.period_start', 'DESC');
 
         return $builder->get()->getResultArray();
+    }
+    
+    /**
+     * Mendapatkan nama admin yang melakukan aksi
+     */
+    public function getActionByAdmin($commissionId)
+    {
+        $commission = $this->find($commissionId);
+        
+        if (!$commission || empty($commission['action_by'])) {
+            return null;
+        }
+        
+        $adminProfile = $this->db->table('admin_profiles')
+            ->where('user_id', $commission['action_by'])
+            ->get()
+            ->getRowArray();
+            
+        return $adminProfile['name'] ?? null;
     }
 }

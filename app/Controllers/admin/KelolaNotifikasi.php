@@ -7,6 +7,7 @@ use App\Models\NotificationsModel;
 use App\Models\NotificationsUserStateModel;
 use App\Models\SeoProfilesModel;
 use App\Models\VendorProfilesModel;
+use App\Models\AdminProfileModel;
 use CodeIgniter\Shield\Models\UserModel as ShieldUserModel;
 
 class KelolaNotifikasi extends BaseAdminController
@@ -15,6 +16,7 @@ class KelolaNotifikasi extends BaseAdminController
     protected $userStateModel;
     protected $seoProfilesModel;
     protected $vendorProfilesModel;
+    protected $adminProfileModel;
     protected $userModel;
 
     public function __construct()
@@ -23,6 +25,7 @@ class KelolaNotifikasi extends BaseAdminController
         $this->userStateModel = new NotificationsUserStateModel();
         $this->seoProfilesModel = new SeoProfilesModel();
         $this->vendorProfilesModel = new VendorProfilesModel();
+        $this->adminProfileModel = new AdminProfileModel();
         $this->userModel = new ShieldUserModel();
     }
 
@@ -63,12 +66,14 @@ class KelolaNotifikasi extends BaseAdminController
             // Get SEO profiles dan Vendor profiles untuk dropdown
             $seoProfiles = $this->seoProfilesModel->findAll();
             $vendorProfiles = $this->vendorProfilesModel->findAll();
+            $adminProfiles = $this->adminProfileModel->findAll();
             $allUsers = $this->userModel->findAll();
 
             $data = [
                 'title' => 'Buat Notifikasi Baru',
                 'seoProfiles' => $seoProfiles,
                 'vendorProfiles' => $vendorProfiles,
+                'adminProfiles' => $adminProfiles,
                 'allUsers' => $allUsers,
                 'userModel' => $this->userModel // Pass userModel to view
             ];
@@ -102,8 +107,7 @@ class KelolaNotifikasi extends BaseAdminController
                 'user_id' => 'required|numeric',
                 'title' => 'required|max_length[255]',
                 'message' => 'required|max_length[1000]',
-                'type' => 'required|in_list[commission,announcement,system]',
-                'is_read' => 'permit_empty|in_list[0,1]',
+                'type' => 'required|in_list[system,announcement,commission]',
             ]);
 
             if (!$validation->withRequest($this->request)->run()) {
@@ -117,17 +121,45 @@ class KelolaNotifikasi extends BaseAdminController
                 return redirect()->back()->withInput()->with('errors', $validation->getErrors());
             }
 
-            $data = [
-                'user_id' => $this->request->getPost('user_id'),
+            // Get user type
+            $user = $this->userModel->find($this->request->getPost('user_id'));
+            $userType = $user ? $user->user_type : 'user';
+            
+            // Prepare notification data
+            $notificationData = [
                 'title' => $this->request->getPost('title'),
                 'message' => $this->request->getPost('message'),
                 'type' => $this->request->getPost('type'),
-                'is_read' => $this->request->getPost('is_read') ? 1 : 0,
                 'created_at' => date('Y-m-d H:i:s'),
                 'updated_at' => date('Y-m-d H:i:s'),
             ];
+            
+            // Set user_id based on user type
+            if ($userType === 'admin') {
+                $notificationData['admin_id'] = $this->request->getPost('user_id');
+            } elseif ($userType === 'vendor') {
+                $notificationData['vendor_id'] = $this->request->getPost('user_id');
+            } elseif ($userType === 'seo') {
+                $notificationData['seo_id'] = $this->request->getPost('user_id');
+            } else {
+                $notificationData['user_id'] = $this->request->getPost('user_id');
+            }
 
-            if ($this->notificationsModel->insert($data)) {
+            // Insert notification
+            $notificationId = $this->notificationsModel->insert($notificationData);
+            
+            if ($notificationId) {
+                // Create notification user state
+                $userStateData = [
+                    'notification_id' => $notificationId,
+                    'user_id' => $this->request->getPost('user_id'),
+                    'is_read' => 0,
+                    'hidden' => 0,
+                    'created_at' => date('Y-m-d H:i:s'),
+                ];
+                
+                $this->userStateModel->insert($userStateData);
+                
                 if ($this->request->isAJAX()) {
                     return $this->response->setJSON([
                         'status' => 'success',
@@ -174,7 +206,8 @@ class KelolaNotifikasi extends BaseAdminController
                 ]);
             }
 
-            $notification = $this->notificationsModel->find($id);
+            // Get notification with user state
+            $notification = $this->getNotificationWithUserState($id);
             
             if (!$notification) {
                 if ($this->request->isAJAX()) {
@@ -189,6 +222,7 @@ class KelolaNotifikasi extends BaseAdminController
             // Get SEO profiles dan Vendor profiles untuk dropdown
             $seoProfiles = $this->seoProfilesModel->findAll();
             $vendorProfiles = $this->vendorProfilesModel->findAll();
+            $adminProfiles = $this->adminProfileModel->findAll();
             $allUsers = $this->userModel->findAll();
 
             $data = [
@@ -196,6 +230,7 @@ class KelolaNotifikasi extends BaseAdminController
                 'notification' => $notification,
                 'seoProfiles' => $seoProfiles,
                 'vendorProfiles' => $vendorProfiles,
+                'adminProfiles' => $adminProfiles,
                 'allUsers' => $allUsers,
                 'userModel' => $this->userModel // Pass userModel to view
             ];
@@ -251,8 +286,7 @@ class KelolaNotifikasi extends BaseAdminController
                 'user_id' => 'required|numeric',
                 'title' => 'required|max_length[255]',
                 'message' => 'required|max_length[1000]',
-                'type' => 'required|in_list[commission,announcement,system]',
-                'is_read' => 'permit_empty|in_list[0,1]',
+                'type' => 'required|in_list[system,announcement,commission]',
             ]);
 
             if (!$validation->withRequest($this->request)->run()) {
@@ -266,16 +300,50 @@ class KelolaNotifikasi extends BaseAdminController
                 return redirect()->back()->withInput()->with('errors', $validation->getErrors());
             }
 
-            $data = [
-                'user_id' => $this->request->getPost('user_id'),
+            // Get user type
+            $user = $this->userModel->find($this->request->getPost('user_id'));
+            $userType = $user ? $user->user_type : 'user';
+            
+            // Prepare notification data
+            $notificationData = [
                 'title' => $this->request->getPost('title'),
                 'message' => $this->request->getPost('message'),
                 'type' => $this->request->getPost('type'),
-                'is_read' => $this->request->getPost('is_read') ? 1 : 0,
                 'updated_at' => date('Y-m-d H:i:s'),
             ];
+            
+            // Set user_id based on user type
+            if ($userType === 'admin') {
+                $notificationData['admin_id'] = $this->request->getPost('user_id');
+                $notificationData['user_id'] = null;
+                $notificationData['vendor_id'] = null;
+                $notificationData['seo_id'] = null;
+            } elseif ($userType === 'vendor') {
+                $notificationData['vendor_id'] = $this->request->getPost('user_id');
+                $notificationData['user_id'] = null;
+                $notificationData['admin_id'] = null;
+                $notificationData['seo_id'] = null;
+            } elseif ($userType === 'seo') {
+                $notificationData['seo_id'] = $this->request->getPost('user_id');
+                $notificationData['user_id'] = null;
+                $notificationData['admin_id'] = null;
+                $notificationData['vendor_id'] = null;
+            } else {
+                $notificationData['user_id'] = $this->request->getPost('user_id');
+                $notificationData['admin_id'] = null;
+                $notificationData['vendor_id'] = null;
+                $notificationData['seo_id'] = null;
+            }
 
-            if ($this->notificationsModel->update($id, $data)) {
+            if ($this->notificationsModel->update($id, $notificationData)) {
+                // Update user state if user changed
+                $userState = $this->userStateModel->where('notification_id', $id)->first();
+                if ($userState && $userState['user_id'] != $this->request->getPost('user_id')) {
+                    $this->userStateModel->update($userState['id'], [
+                        'user_id' => $this->request->getPost('user_id')
+                    ]);
+                }
+                
                 if ($this->request->isAJAX()) {
                     return $this->response->setJSON([
                         'status' => 'success',
@@ -322,11 +390,13 @@ class KelolaNotifikasi extends BaseAdminController
             // Get SEO profiles dan Vendor profiles untuk dropdown
             $seoProfiles = $this->seoProfilesModel->findAll();
             $vendorProfiles = $this->vendorProfilesModel->findAll();
+            $adminProfiles = $this->adminProfileModel->findAll();
             $allUsers = $this->userModel->findAll();
 
             $data = [
                 'seoProfiles' => $seoProfiles,
                 'vendorProfiles' => $vendorProfiles,
+                'adminProfiles' => $adminProfiles,
                 'allUsers' => $allUsers
             ];
 
@@ -366,6 +436,10 @@ class KelolaNotifikasi extends BaseAdminController
                 return redirect()->to(base_url('admin/kelola-notifikasi'))->with('error', 'Notifikasi tidak ditemukan');
             }
 
+            // Delete user state first
+            $this->userStateModel->where('notification_id', $id)->delete();
+            
+            // Then delete notification
             if ($this->notificationsModel->delete($id)) {
                 if ($this->request->isAJAX()) {
                     return $this->response->setJSON([
@@ -399,7 +473,16 @@ class KelolaNotifikasi extends BaseAdminController
     public function deleteAll()
     {
         try {
-            if ($this->notificationsModel->emptyTable()) {
+            // Get all notification IDs
+            $notifications = $this->notificationsModel->findAll();
+            
+            // Delete all user states first
+            foreach ($notifications as $notification) {
+                $this->userStateModel->where('notification_id', $notification['id'])->delete();
+            }
+            
+            // Then delete all notifications
+            if ($this->notificationsModel->truncate()) {
                 if ($this->request->isAJAX()) {
                     return $this->response->setJSON([
                         'status' => 'success',
@@ -457,7 +540,7 @@ class KelolaNotifikasi extends BaseAdminController
     public function deleteAllUserState()
     {
         try {
-            if ($this->userStateModel->emptyTable()) {
+            if ($this->userStateModel->truncate()) {
                 if ($this->request->isAJAX()) {
                     return $this->response->setJSON([
                         'status' => 'success',
@@ -490,10 +573,25 @@ class KelolaNotifikasi extends BaseAdminController
     private function getStats()
     {
         try {
+            $db = \Config\Database::connect();
+            
+            // Total notifications
+            $totalNotifications = $db->table('notifications')->countAllResults();
+            
+            // Unread count from notification_user_state
+            $unreadCount = $db->table('notification_user_state')
+                              ->where('is_read', 0)
+                              ->countAllResults();
+            
+            // User state count (hidden notifications)
+            $userStateCount = $db->table('notification_user_state')
+                                 ->where('hidden', 1)
+                                 ->countAllResults();
+            
             return [
-                'total_notifications' => $this->notificationsModel->countAll(),
-                'unread_count' => $this->notificationsModel->where('is_read', 0)->countAllResults(),
-                'user_state_count' => $this->userStateModel->countAll(),
+                'total_notifications' => $totalNotifications,
+                'unread_count' => $unreadCount,
+                'user_state_count' => $userStateCount,
             ];
         } catch (\Exception $e) {
             log_message('error', 'Error in getStats: ' . $e->getMessage());
@@ -511,47 +609,88 @@ class KelolaNotifikasi extends BaseAdminController
             $db = \Config\Database::connect();
             
             $builder = $db->table('notifications n')
-                ->select('n.*, u.username, 
-                         sp.name as seo_name, 
-                         vp.business_name as vendor_name')
-                ->join('users u', 'u.id = n.user_id', 'left')
-                ->join('seo_profiles sp', 'sp.user_id = u.id', 'left')
-                ->join('vendor_profiles vp', 'vp.user_id = u.id', 'left');
+                ->select('n.*, nus.is_read, nus.read_at, nus.hidden, nus.hidden_at,
+                         u.username, u.display_name, u.user_type,
+                         ap.name as admin_name, 
+                         vp.business_name as vendor_name, 
+                         sp.name as seo_name')
+                ->join('notification_user_state nus', 'n.id = nus.notification_id', 'left')
+                ->join('users u', 'u.id = nus.user_id', 'left')
+                ->join('admin_profiles ap', 'ap.user_id = u.id', 'left')
+                ->join('vendor_profiles vp', 'vp.user_id = u.id', 'left')
+                ->join('seo_profiles sp', 'sp.user_id = u.id', 'left');
 
             // Apply filter
             switch ($filter) {
                 case 'read':
-                    $builder->where('n.is_read', 1);
+                    $builder->where('nus.is_read', 1);
                     break;
                 case 'unread':
-                    $builder->where('n.is_read', 0);
+                    $builder->where('nus.is_read', 0);
+                    break;
+                case 'system':
+                    $builder->where('n.type', 'system');
+                    break;
+                case 'announcement':
+                    $builder->where('n.type', 'announcement');
                     break;
                 case 'vendor':
-                    $builder->where('vp.business_name IS NOT NULL');
+                    $builder->where('u.user_type', 'vendor');
                     break;
                 case 'seo':
-                    $builder->where('sp.name IS NOT NULL');
+                    $builder->where('u.user_type', 'seo');
                     break;
             }
 
             // Apply search
             if (!empty($search)) {
                 $builder->groupStart()
-                       ->like('sp.name', $search)
-                       ->orLike('vp.business_name', $search)
-                       ->orLike('u.username', $search)
-                       ->orLike('n.title', $search)
-                       ->orLike('n.message', $search)
-                       ->orLike('n.type', $search)
-                       ->groupEnd();
+                    ->like('u.username', $search)
+                    ->orLike('u.display_name', $search)
+                    ->orLike('ap.name', $search)
+                    ->orLike('vp.business_name', $search)
+                    ->orLike('sp.name', $search)
+                    ->orLike('n.title', $search)
+                    ->orLike('n.message', $search)
+                    ->orLike('n.type', $search)
+                    ->groupEnd();
             }
 
-            return $builder->orderBy('n.created_at', 'DESC')
-                          ->get()
-                          ->getResultArray();
+            $results = $builder->orderBy('n.created_at', 'DESC')
+                            ->get()
+                            ->getResultArray();
+            
+            return $results;
         } catch (\Exception $e) {
             log_message('error', 'Error in getFilteredNotifications: ' . $e->getMessage());
             return [];
+        }
+    }
+
+    private function getNotificationWithUserState($id)
+    {
+        try {
+            $db = \Config\Database::connect();
+            
+            $notification = $db->table('notifications n')
+                ->select('n.*, nus.is_read, nus.read_at, nus.hidden, nus.hidden_at, nus.user_id as state_user_id,
+                         u.username, u.display_name, u.user_type,
+                         ap.name as admin_name, 
+                         vp.business_name as vendor_name, 
+                         sp.name as seo_name')
+                ->join('notification_user_state nus', 'n.id = nus.notification_id', 'left')
+                ->join('users u', 'u.id = nus.user_id', 'left')
+                ->join('admin_profiles ap', 'ap.user_id = u.id', 'left')
+                ->join('vendor_profiles vp', 'vp.user_id = u.id', 'left')
+                ->join('seo_profiles sp', 'sp.user_id = u.id', 'left')
+                ->where('n.id', $id)
+                ->get()
+                ->getRowArray();
+            
+            return $notification;
+        } catch (\Exception $e) {
+            log_message('error', 'Error in getNotificationWithUserState: ' . $e->getMessage());
+            return null;
         }
     }
 
@@ -560,13 +699,17 @@ class KelolaNotifikasi extends BaseAdminController
         try {
             $db = \Config\Database::connect();
             
+            // Query yang sudah berfungsi dengan benar
             $builder = $db->table('notification_user_state nus')
                 ->select('nus.*, n.title, n.message, n.type, u.username, 
-                         sp.name as seo_name, vp.business_name as vendor_name')
+                         ap.name as admin_name, 
+                         vp.business_name as vendor_name, 
+                         sp.name as seo_name')
                 ->join('notifications n', 'n.id = nus.notification_id')
                 ->join('users u', 'u.id = nus.user_id')
-                ->join('seo_profiles sp', 'sp.user_id = u.id', 'left')
-                ->join('vendor_profiles vp', 'vp.user_id = u.id', 'left');
+                ->join('admin_profiles ap', 'ap.user_id = u.id', 'left')
+                ->join('vendor_profiles vp', 'vp.user_id = u.id', 'left')
+                ->join('seo_profiles sp', 'sp.user_id = u.id', 'left');
 
             switch ($filter) {
                 case 'read':

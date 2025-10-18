@@ -381,7 +381,7 @@ class Targets extends BaseAdminController
     }
 
     /**
-     * Buat notifikasi untuk vendor dan tim SEO terkait target SEO
+     * PERBAIKAN: Buat notifikasi untuk vendor dan tim SEO terkait target SEO dengan type 'system'
      */
     private function createTargetNotification($targetId, $vendorId, $actionType, $targetData, $oldData = null)
     {
@@ -391,26 +391,42 @@ class Targets extends BaseAdminController
             // Dapatkan informasi vendor
             $vendor = $this->vendorModel->find($vendorId);
             if (!$vendor) {
+                log_message('error', "Notification failed: Vendor with ID {$vendorId} not found");
                 return false;
             }
 
             // Dapatkan user_id dari vendor
             $vendorUserId = $vendor['user_id'] ?? null;
             if (!$vendorUserId) {
+                log_message('error', "Notification failed: Vendor {$vendorId} has no user_id");
                 return false;
             }
 
-            // Dapatkan semua tim SEO users
-            $seoUsers = $db->table('auth_groups_users agu')
+            // PERBAIKAN: Dapatkan semua admin users
+            $adminUsers = $db->table('auth_groups_users agu')
                 ->select('agu.user_id')
                 ->join('users u', 'u.id = agu.user_id')
-                ->where('agu.group', 'seoteam')
+                ->where('agu.group', 'admin')
+                ->where('u.active', 1)
                 ->get()
                 ->getResultArray();
 
-            // Dapatkan admin yang sedang login
-            $adminUser = service('auth')->user();
-            $adminName = $adminUser->username ?? 'Admin';
+            // PERBAIKAN: Dapatkan admin yang sedang login
+            $adminUserId = session()->get('user_id');
+            $adminProfile = $db->table('admin_profiles')
+                ->where('user_id', $adminUserId)
+                ->get()
+                ->getRowArray();
+            $adminName = $adminProfile['name'] ?? 'Admin';
+
+            // PERBAIKAN: Dapatkan semua SEO users
+            $seoUsers = $db->table('seo_profiles sp')
+                ->select('sp.user_id')
+                ->join('users u', 'u.id = sp.user_id')
+                ->where('sp.status', 'active')
+                ->where('u.active', 1)
+                ->get()
+                ->getResultArray();
 
             // Siapkan data notifikasi berdasarkan action type
             $notifications = [];
@@ -418,30 +434,48 @@ class Targets extends BaseAdminController
 
             switch ($actionType) {
                 case 'create':
-                    $title = 'Target SEO Baru Dibuat oleh Admin';
-                    $message = "Admin {$adminName} telah membuat target SEO baru: '{$targetData['keyword']}' untuk vendor {$vendor['business_name']}";
+                    $title = 'Target SEO Baru Dibuat';
+                    $message = "🎯 Target SEO baru '{$targetData['keyword']}' telah dibuat oleh Admin {$adminName} untuk vendor {$vendor['business_name']}";
                     break;
 
                 case 'update':
-                    $title = 'Target SEO Diperbarui oleh Admin';
-                    $message = "Admin {$adminName} telah memperbarui target SEO: '{$targetData['keyword']}' untuk vendor {$vendor['business_name']}";
+                    $title = 'Target SEO Diperbarui';
+                    $message = "✏️ Target SEO '{$targetData['keyword']}' telah diperbarui oleh Admin {$adminName} untuk vendor {$vendor['business_name']}";
                     break;
 
                 case 'complete':
                     $title = 'Target SEO Selesai';
-                    $message = "🎉 Target SEO '{$targetData['keyword']}' untuk vendor {$vendor['business_name']} telah diselesaikan oleh {$adminName}";
+                    $message = "🎉 Target SEO '{$targetData['keyword']}' untuk vendor {$vendor['business_name']} telah diselesaikan oleh Admin {$adminName}";
                     break;
 
                 case 'delete':
-                    $title = 'Target SEO Dihapus oleh Admin';
-                    $message = "{$adminName} telah menghapus target SEO: '{$targetData['keyword']}' untuk vendor {$vendor['business_name']}";
+                    $title = 'Target SEO Dihapus';
+                    $message = "🗑️ Target SEO '{$targetData['keyword']}' untuk vendor {$vendor['business_name']} telah dihapus oleh Admin {$adminName}";
                     break;
 
                 default:
                     return false;
             }
 
-            // Tambahkan detail untuk update
+            // Tambahkan detail target
+            $message .= "\n\nDetail Target:";
+            $message .= "\n• Project: {$targetData['project_name']}";
+            $message .= "\n• Keyword: {$targetData['keyword']}";
+            $message .= "\n• Priority: " . ucfirst($targetData['priority'] ?? 'low');
+            $message .= "\n• Status: " . ucfirst(str_replace('_', ' ', $targetData['status'] ?? 'pending'));
+            
+            if (!empty($targetData['current_position'])) {
+                $message .= "\n• Posisi Saat Ini: {$targetData['current_position']}";
+            }
+            if (!empty($targetData['target_position'])) {
+                $message .= "\n• Target Posisi: {$targetData['target_position']}";
+            }
+            if (!empty($targetData['deadline'])) {
+                $deadline = date('d M Y', strtotime($targetData['deadline']));
+                $message .= "\n• Deadline: {$deadline}";
+            }
+
+            // Tambahkan detail perubahan untuk update
             if ($actionType === 'update' && $oldData) {
                 $changes = [];
                 
@@ -467,12 +501,32 @@ class Targets extends BaseAdminController
                 }
             }
 
-            // Notifikasi untuk VENDOR
+            // PERBAIKAN: Notifikasi untuk VENDOR dengan type 'system'
             if ($vendorUserId) {
                 $notifications[] = [
                     'user_id' => $vendorUserId,
                     'vendor_id' => $vendorId,
-                    'type' => 'admin_target_' . $actionType,
+                    'type' => 'system', // PERUBAHAN: type menjadi 'system'
+                    'title' => $title,
+                    'message' => $message,
+                    'is_read' => 0,
+                    'created_at' => $now,
+                    'updated_at' => $now
+                ];
+                log_message('info', "Added notification for vendor user ID: {$vendorUserId}");
+            }
+
+            // PERBAIKAN: Notifikasi untuk semua ADMIN KECUALI admin yang sedang login dengan type 'system'
+            foreach ($adminUsers as $admin) {
+                // Skip admin yang sedang login
+                if ($admin['user_id'] == $adminUserId) {
+                    continue;
+                }
+                
+                $notifications[] = [
+                    'user_id' => $admin['user_id'],
+                    'vendor_id' => $vendorId,
+                    'type' => 'system', // PERUBAHAN: type menjadi 'system'
                     'title' => $title,
                     'message' => $message,
                     'is_read' => 0,
@@ -480,13 +534,14 @@ class Targets extends BaseAdminController
                     'updated_at' => $now
                 ];
             }
+            log_message('info', "Added notifications for " . (count($adminUsers) - 1) . " admin users (excluding current admin)");
 
-            // Notifikasi untuk semua TIM SEO
+            // PERBAIKAN: Notifikasi untuk semua SEO users dengan type 'system'
             foreach ($seoUsers as $seo) {
                 $notifications[] = [
                     'user_id' => $seo['user_id'],
                     'vendor_id' => $vendorId,
-                    'type' => 'admin_target_' . $actionType,
+                    'type' => 'system', // PERUBAHAN: type menjadi 'system'
                     'title' => $title,
                     'message' => $message,
                     'is_read' => 0,
@@ -494,21 +549,39 @@ class Targets extends BaseAdminController
                     'updated_at' => $now
                 ];
             }
+            log_message('info', "Added notifications for " . count($seoUsers) . " SEO users");
 
-            // Insert semua notifikasi
-            if (!empty($notifications)) {
-                $this->notificationsModel->insertBatch($notifications);
-                
-                // Log untuk debugging
-                log_message('info', "Created admin {$actionType} notifications for target {$targetId}: " . count($notifications) . " notifications sent");
-                
-                return true;
+            // PERBAIKAN: Insert semua notifikasi dengan error handling
+            try {
+                if (!empty($notifications)) {
+                    // Debug: Log data notifikasi sebelum insert
+                    log_message('debug', 'Notifications to insert: ' . json_encode($notifications));
+                    
+                    $insertResult = $this->notificationsModel->insertBatch($notifications);
+                    
+                    if ($insertResult) {
+                        // Log untuk debugging
+                        log_message('info', "Created admin target {$actionType} notifications for target {$targetId}: " . count($notifications) . " notifications sent");
+                        
+                        return true;
+                    } else {
+                        log_message('error', "Failed to insert batch notifications");
+                        log_message('error', "Notification Model Errors: " . json_encode($this->notificationsModel->errors()));
+                        return false;
+                    }
+                } else {
+                    log_message('warning', "No notifications to insert for target {$targetId}");
+                    return false;
+                }
+            } catch (\Exception $e) {
+                log_message('error', "Error inserting notifications: " . $e->getMessage());
+                log_message('error', $e->getTraceAsString());
+                return false;
             }
-
-            return false;
 
         } catch (\Exception $e) {
             log_message('error', "Error creating admin target notification: " . $e->getMessage());
+            log_message('error', $e->getTraceAsString());
             return false;
         }
     }

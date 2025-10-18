@@ -45,7 +45,7 @@
             <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Kontak</th>
             <th scope="col" class="px-5 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Komisi Diminta</th>
             <th scope="col" class="px-5 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Status</th>
-            <th scope="col" class="px-5 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Action By</th>
+            <th scope="col" class="px-5 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Diproses Oleh</th>
             <th scope="col" class="px-5 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Aksi</th>
           </tr>
         </thead>
