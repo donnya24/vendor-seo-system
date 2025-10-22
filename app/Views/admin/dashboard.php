@@ -1,4 +1,3 @@
-dashboard.php
 <!DOCTYPE html>
 <html lang="id">
 <head>
