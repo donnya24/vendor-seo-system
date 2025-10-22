@@ -13,7 +13,7 @@
         <div>
             <a href="<?= site_url('seo/reports?vendor_id='.$vendorId) ?>" 
                class="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition">
-                <i class="fas fa-file-alt mr-2"></i> Laporan SEO
+                <i class="fas fa-file-alt mr-2"></i> Reports SEO
             </a>
         </div>
     </div>

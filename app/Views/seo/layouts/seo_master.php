@@ -145,6 +145,59 @@ else if ($user) {
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>[x-cloak]{display:none!important}</style>
+  
+  <!-- Custom CSS untuk perbaikan layout -->
+  <style>
+    /* Perbaikan untuk sidebar dan konten utama */
+    .sidebar {
+      width: 16rem; /* 64 * 0.25 = 16rem (w-64) */
+    }
+    
+    .main-content {
+      transition: margin-left 0.3s ease-in-out;
+      width: 100%;
+    }
+    
+    .main-content.sidebar-open {
+      margin-left: 16rem;
+      width: calc(100% - 16rem);
+    }
+    
+    .main-content.sidebar-closed {
+      margin-left: 0;
+      width: 100%;
+    }
+    
+    /* Perbaikan untuk topbar */
+    .topbar {
+      transition: margin-left 0.3s ease-in-out;
+      width: 100%;
+    }
+    
+    .topbar.sidebar-open {
+      margin-left: 16rem;
+      width: calc(100% - 16rem);
+    }
+    
+    .topbar.sidebar-closed {
+      margin-left: 0;
+      width: 100%;
+    }
+    
+    /* Perbaikan untuk tabel agar tidak terpotong */
+    .table-container {
+      overflow-x: auto;
+      min-width: 100%;
+    }
+    
+    /* Perbaikan untuk mobile */
+    @media (max-width: 768px) {
+      .main-content, .topbar {
+        margin-left: 0 !important;
+        width: 100% !important;
+      }
+    }
+  </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
 
@@ -156,9 +209,9 @@ else if ($user) {
   <?= $this->include('seo/layouts/sidebar') ?>
 
   <!-- MAIN -->
-  <div class="flex-1 flex flex-col transition-all duration-300" :class="sidebarOpen ? 'md:ml-64' : 'md:ml-0'">
+  <div class="main-content flex-1 flex flex-col" :class="sidebarOpen ? 'sidebar-open' : 'sidebar-closed'">
     <!-- TOPBAR -->
-    <header class="bg-white shadow-sm fixed top-0 left-0 right-0 z-20 border-b border-gray-200 transition-all duration-300" :class="sidebarOpen ? 'md:ml-64' : 'md:ml-0'">
+    <header class="topbar bg-white shadow-sm fixed top-0 left-0 right-0 z-20 border-b border-gray-200" :class="sidebarOpen ? 'sidebar-open' : 'sidebar-closed'">
       <div class="flex items-center justify-between px-4 py-3">
         <!-- Tombol hamburger selalu tampil di semua ukuran layar -->
         <button class="text-gray-600 hover:text-gray-900 p-2 rounded-lg hover:bg-gray-100" @click="sidebarOpen=!sidebarOpen">
