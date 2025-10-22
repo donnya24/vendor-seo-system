@@ -1,3 +1,4 @@
+dashboard.php
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -13,6 +14,8 @@
                     animation: {
                         'fade-up': 'fadeUp 0.55s cubic-bezier(0.22, 0.9, 0.24, 1) forwards',
                         'fade-up-soft': 'fadeUpSoft 0.45s ease-out forwards',
+                        'slide-up': 'slideUp 0.5s ease-out forwards',
+                        'slide-down': 'slideDown 0.5s ease-out forwards',
                     },
                     keyframes: {
                         fadeUp: {
@@ -22,6 +25,14 @@
                         fadeUpSoft: {
                             '0%': { opacity: '0', transform: 'translate3d(0, 12px, 0)' },
                             '100%': { opacity: '1', transform: 'translate3d(0, 0, 0)' }
+                        },
+                        slideUp: {
+                            '0%': { opacity: '0', transform: 'translate3d(0, 20px, 0)' },
+                            '100%': { opacity: '1', transform: 'translate3d(0, 0, 0)' }
+                        },
+                        slideDown: {
+                            '0%': { opacity: '1', transform: 'translate3d(0, 0, 0)' },
+                            '100%': { opacity: '0', transform: 'translate3d(0, -20px, 0)' }
                         }
                     }
                 }
@@ -64,6 +75,74 @@
         .small-swal .swal2-label {
             font-size: 0.9rem !important;
             margin-bottom: 0.3rem !important;
+        }
+        
+        .keyword-slider {
+            position: relative;
+            height: 40px;
+            overflow: hidden;
+        }
+        
+        .keyword-slide {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease-out;
+        }
+        
+        .keyword-slide.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .keyword-slide.prev {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        
+        .slide-indicators {
+            display: flex;
+            justify-content: center;
+            gap: 4px;
+            margin-top: 4px;
+        }
+        
+        .indicator {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: #d1d5db;
+            transition: background-color 0.3s;
+        }
+        
+        .indicator.active {
+            background-color: #7c3aed;
+        }
+        
+        .rank-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 23px; /* Lebih besar */
+            height: 23px; /* Lebih besar */
+            margin-right: 0.4rem;
+            font-size: 1.4rem; /* Lebih besar */
+        }
+        
+        .rank-1 {
+            color: #FFD700; /* Gold */
+        }
+        
+        .rank-2 {
+            color: #C0C0C0; /* Silver */
+        }
+        
+        .rank-3 {
+            color: #CD7F32; /* Bronze */
         }
     </style>
 </head>
@@ -123,13 +202,50 @@
                     </div>
                 </div>
 
-                <!-- 3. Top keyword -->
+                <!-- 3. Top keyword (3 ranking dengan animasi slide) -->
                 <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-2.5 rounded-lg border border-purple-200 shadow-xs hover:shadow-sm transition-shadow animate-fade-up"
                      style="--delay:.20s">
                     <div class="flex items-center justify-between">
                         <div class="flex-1">
                             <p class="text-[10px] font-semibold text-purple-800 uppercase tracking-wider mb-0.5">LEADS PALING DICARI</p>
-                            <p class="text-lg font-bold text-purple-900"><?= esc($stats['topKeyword'] ?? '-'); ?></p>
+                            
+                            <?php if (!empty($stats['topKeywords'])): ?>
+                                <div class="keyword-slider" id="keywordSlider">
+                                    <?php foreach ($stats['topKeywords'] as $index => $keyword): ?>
+                                        <?php 
+                                        $rank = $index + 1;
+                                        $isActive = $index === 0 ? 'active' : '';
+                                        $rankClass = "rank-{$rank}";
+                                        $iconClass = '';
+                                        
+                                        // Set icon based on rank
+                                        if ($rank === 1) {
+                                            $iconClass = 'fa-crown';
+                                        } elseif ($rank === 2) {
+                                            $iconClass = 'fa-medal';
+                                        } else {
+                                            $iconClass = 'fa-award';
+                                        }
+                                        ?>
+                                        <div class="keyword-slide <?= $isActive ?>" data-index="<?= $index ?>">
+                                            <i class="fas <?= $iconClass ?> rank-icon <?= $rankClass ?>"></i>
+                                            <span class="text-xs font-semibold text-purple-900 truncate"><?= esc($keyword['keyword']) ?></span>
+                                            <span class="text-xs text-purple-700 ml-1">(<?= esc($keyword['current_position']) ?>)</span>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                                
+                                <div class="slide-indicators">
+                                    <?php foreach ($stats['topKeywords'] as $index => $keyword): ?>
+                                        <?php $isActive = $index === 0 ? 'active' : ''; ?>
+                                        <div class="indicator <?= $isActive ?>" data-index="<?= $index ?>"></div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php else: ?>
+                                <div class="animate-fade-up-soft" style="--delay:.20s">
+                                    <p class="text-xs font-semibold text-purple-900">-</p>
+                                </div>
+                            <?php endif; ?>
                         </div>
                         <div class="flex items-center justify-center w-8 h-8 bg-purple-600 rounded-md text-white ml-2">
                             <i class="fas fa-search text-xs"></i>
@@ -750,6 +866,55 @@
                 });
             }
         }
+        
+        // Keyword Slider Animation
+        document.addEventListener('DOMContentLoaded', function() {
+            const slider = document.getElementById('keywordSlider');
+            if (!slider) return;
+            
+            const slides = slider.querySelectorAll('.keyword-slide');
+            const indicators = slider.parentElement.querySelectorAll('.indicator');
+            
+            if (slides.length === 0) return;
+            
+            let currentIndex = 0;
+            
+            function showSlide(index) {
+                // Hide all slides
+                slides.forEach((slide, i) => {
+                    slide.classList.remove('active');
+                    if (i < index) {
+                        slide.classList.add('prev');
+                    } else {
+                        slide.classList.remove('prev');
+                    }
+                });
+                
+                // Show current slide
+                slides[index].classList.add('active');
+                
+                // Update indicators
+                indicators.forEach((indicator, i) => {
+                    indicator.classList.toggle('active', i === index);
+                });
+            }
+            
+            function nextSlide() {
+                currentIndex = (currentIndex + 1) % slides.length;
+                showSlide(currentIndex);
+            }
+            
+            // Auto-advance slides every 3 seconds
+            setInterval(nextSlide, 3000);
+            
+            // Click on indicators to go to specific slide
+            indicators.forEach((indicator, index) => {
+                indicator.addEventListener('click', () => {
+                    currentIndex = index;
+                    showSlide(currentIndex);
+                });
+            });
+        });
     </script>
 
     <?= $this->include('admin/layouts/footer'); ?>

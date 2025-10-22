@@ -1,7 +1,7 @@
 <?php
 // ==== Bootstrap data agar modal SELALU punya $sp & $userEmail ==== //
-$auth = service('auth');
-$user = $auth ? $auth->user() : null;
+ $auth = service('auth');
+ $user = $auth ? $auth->user() : null;
 
 // Ambil $sp jika belum ada (fallback query ringan)
 if (!isset($sp) || !is_array($sp)) {
@@ -16,7 +16,7 @@ if (!isset($sp) || !is_array($sp)) {
 }
 
 // Jadikan $profile = $sp jika $profile belum ada (untuk header/topbar)
-$profile = $profile ?? $sp ?? [];
+ $profile = $profile ?? $sp ?? [];
 
 // Email prioritas dari controller ($userEmail). Jika kosong, fallback ke auth_identities.secret
 if (!isset($userEmail) || $userEmail === null) {
@@ -35,9 +35,9 @@ if (!isset($userEmail) || $userEmail === null) {
 }
 
 // Foto profil di header (pakai ikon jika tidak ada foto)
-$defaultAvatar   = base_url('assets/img/default-avatar.png'); 
-$profileImage    = $profile['profile_image'] ?? null;
-$hasProfileImage = false;
+ $defaultAvatar   = base_url('assets/img/default-avatar.png'); 
+ $profileImage    = $profile['profile_image'] ?? null;
+ $hasProfileImage = false;
 if ($profileImage && is_file(FCPATH . 'uploads/seo_profiles/' . $profileImage)) {
     $hasProfileImage  = true;
     $profileImagePath = base_url('uploads/seo_profiles/' . $profileImage);
@@ -46,9 +46,9 @@ if ($profileImage && is_file(FCPATH . 'uploads/seo_profiles/' . $profileImage)) 
 }
 
 // ===== Notifikasi =====
-$notifItems       = []; // untuk dropdown
-$allNotifications = []; // untuk modal
-$unreadCount      = 0;
+ $notifItems       = []; // untuk dropdown
+ $allNotifications = []; // untuk modal
+ $unreadCount      = 0;
 
 // Prioritaskan menggunakan data dari controller jika tersedia
 if (isset($notifications) && is_array($notifications)) {
@@ -123,13 +123,19 @@ else if ($user) {
 }
 
 // Ambil SEMUA notifikasi (hasil query di atas)
-$modalNotifications = $allNotifications;
+ $modalNotifications = $allNotifications;
 
 // Jangan fallback ke $notifItems agar modal tidak cuma 10 notif
-$openNotifModal = !empty($openNotifModal);
+ $openNotifModal = !empty($openNotifModal);
 ?>
 <!DOCTYPE html>
-<html lang="id" x-data="{ sidebarOpen: false, profileOpen: false, notifOpen: false, notifModalOpen: <?= $openNotifModal ? 'true' : 'false' ?> }">
+<html lang="id" x-data="{ 
+    sidebarOpen: window.innerWidth > 768 ? true : false, 
+    profileOpen: false, 
+    notifOpen: false, 
+    notifModalOpen: <?= $openNotifModal ? 'true' : 'false' ?> 
+  }"
+  @resize.window="sidebarOpen = window.innerWidth > 768 ? true : sidebarOpen">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -144,17 +150,18 @@ $openNotifModal = !empty($openNotifModal);
 
 <div class="flex h-screen overflow-hidden">
   <!-- OVERLAY MOBILE -->
-  <div x-show="sidebarOpen" x-cloak class="fixed inset-0 bg-black/40 z-30 md:hidden" @click="sidebarOpen=false"></div>
+  <div x-show="sidebarOpen && window.innerWidth <= 768" x-cloak class="fixed inset-0 bg-black/40 z-30" @click="sidebarOpen=false"></div>
 
   <!-- SIDEBAR - DIPISAH KE FILE TERPISAH -->
   <?= $this->include('seo/layouts/sidebar') ?>
 
   <!-- MAIN -->
-  <div class="flex-1 flex flex-col md:ml-64">
+  <div class="flex-1 flex flex-col transition-all duration-300" :class="sidebarOpen ? 'md:ml-64' : 'md:ml-0'">
     <!-- TOPBAR -->
-    <header class="bg-white shadow-sm fixed top-0 left-0 right-0 z-20 md:ml-64 border-b border-gray-200">
+    <header class="bg-white shadow-sm fixed top-0 left-0 right-0 z-20 border-b border-gray-200 transition-all duration-300" :class="sidebarOpen ? 'md:ml-64' : 'md:ml-0'">
       <div class="flex items-center justify-between px-4 py-3">
-        <button class="md:hidden text-gray-600 hover:text-gray-900 p-2 rounded-lg hover:bg-gray-100" @click="sidebarOpen=!sidebarOpen">
+        <!-- Tombol hamburger selalu tampil di semua ukuran layar -->
+        <button class="text-gray-600 hover:text-gray-900 p-2 rounded-lg hover:bg-gray-100" @click="sidebarOpen=!sidebarOpen">
           <i class="fas fa-bars text-lg"></i>
         </button>
 

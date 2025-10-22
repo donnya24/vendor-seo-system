@@ -2,9 +2,9 @@
 // File: app/Views/seo/layouts/sidebar.php
 
 // Ambil status SEO dari model
-$seoProfileModel = new \App\Models\SeoProfilesModel();
-$seoProfile = $seoProfileModel->getByUserId(user_id()); // Sesuaikan dengan cara Anda mendapatkan user_id
-$isActive = $seoProfile && ($seoProfile['status'] ?? '') === 'active';
+ $seoProfileModel = new \App\Models\SeoProfilesModel();
+ $seoProfile = $seoProfileModel->getByUserId(user_id()); // Sesuaikan dengan cara Anda mendapatkan user_id
+ $isActive = $seoProfile && ($seoProfile['status'] ?? '') === 'active';
 
 // Helper untuk cek menu aktif
 if (!function_exists('isActive')) {
@@ -40,7 +40,8 @@ if (!function_exists('navItem')) {
 <!-- SIDEBAR -->
 <aside 
     x-data="{ confirmLogout: false }"
-    class="fixed inset-y-0 left-0 w-64 bg-gradient-to-b from-blue-800 to-blue-900 text-white flex-col z-40 hidden md:flex shadow-xl"
+    class="fixed inset-y-0 left-0 w-64 bg-gradient-to-b from-blue-800 to-blue-900 text-white flex-col z-40 transform transition-transform duration-300 ease-in-out"
+    :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
 >
   <!-- Logo / Judul -->
   <div class="p-5 border-b border-blue-700">

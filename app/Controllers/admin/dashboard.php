@@ -67,11 +67,13 @@ class Dashboard extends BaseAdminController
             ->selectSum('amount', 'total_commission')
             ->first()['total_commission'] ?? 0;
 
+        // Get top keywords
         $seoKeywordModel = new SeoKeywordTargetsModel();
-        $topKeyword = $seoKeywordModel
-        ->orderBy('current_position', 'ASC')
-        ->first();
-        $topKeyword = $topKeyword ? $topKeyword['keyword'] : '-';
+        $topKeywords = $seoKeywordModel->getTopKeywords(3);
+        // If no data, set as empty array
+        if (!$topKeywords) {
+            $topKeywords = [];
+        }
 
         $totalLeadsIn = $leads->selectSum('jumlah_leads_masuk', 'total_masuk')
                               ->first()['total_masuk'] ?? 0;
@@ -187,7 +189,7 @@ class Dashboard extends BaseAdminController
                 'monthlyDeals' => (int) $monthlyDeals,
                 'totalCommissionPaid' => (float) $totalCommissionPaid,
                 'monthlyCommissionPaid' => (float) $monthlyCommissionPaid,
-                'topKeyword'   => $topKeyword,
+                'topKeywords'  => $topKeywords, // diubah dari topKeyword menjadi topKeywords
                 'totalLeadsIn' => (int) $totalLeadsIn,
                 'totalLeadsClosing' => (int) $totalLeadsClosing,
                 'leadsToday'   => (int) $todayLeads,
@@ -331,11 +333,11 @@ class Dashboard extends BaseAdminController
             ->first()['total_commission'] ?? 0;
 
         $seoKeywordModel = new SeoKeywordTargetsModel();
-        $topKeyword = $seoKeywordModel
-            ->select('keyword')
-            ->orderBy('search_volume', 'DESC')
-            ->first();
-        $topKeyword = $topKeyword ? $topKeyword['keyword'] : '-';
+        $topKeywords = $seoKeywordModel->getTopKeywords(3);
+        // If no data, set as empty array
+        if (!$topKeywords) {
+            $topKeywords = [];
+        }
 
         return $this->response->setJSON([
             'totalVendors' => (int) $totalVendors,
@@ -343,7 +345,7 @@ class Dashboard extends BaseAdminController
             'monthlyDeals' => (int) $monthlyDeals,
             'totalCommissionPaid' => (float) $totalCommissionPaid,
             'monthlyCommissionPaid' => (float) $monthlyCommissionPaid,
-            'topKeyword'   => $topKeyword,
+            'topKeywords'  => $topKeywords, // diubah dari topKeyword menjadi topKeywords
             'totalSeoTeam' => (int) $totalSeoTeam,
         ]);
     }

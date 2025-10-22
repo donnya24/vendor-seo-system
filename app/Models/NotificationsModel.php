@@ -41,6 +41,93 @@ class NotificationsModel extends Model
     ];
 
     /**
+     * Get notifications for specific admin
+     */
+    public function getForAdmin($adminId, $limit = 20)
+    {
+        $db = \Config\Database::connect();
+        
+        return $db->table('notifications n')
+                ->select('n.*, 
+                        u.username,
+                        CASE 
+                            WHEN n.admin_id IS NOT NULL THEN ap.name
+                            WHEN n.seo_id IS NOT NULL THEN sp.name
+                            WHEN n.vendor_id IS NOT NULL THEN vp.business_name
+                            ELSE u.username
+                        END as display_name,
+                        CASE 
+                            WHEN n.admin_id IS NOT NULL THEN "admin"
+                            WHEN n.seo_id IS NOT NULL THEN "seo"
+                            WHEN n.vendor_id IS NOT NULL THEN "vendor"
+                            ELSE "user"
+                        END as user_type')
+                ->join('users u', 'u.id = n.user_id', 'left')
+                ->join('admin_profiles ap', 'ap.user_id = u.id AND n.admin_id IS NOT NULL', 'left')
+                ->join('vendor_profiles vp', 'vp.user_id = u.id AND n.vendor_id IS NOT NULL', 'left')
+                ->join('seo_profiles sp', 'sp.user_id = u.id AND n.seo_id IS NOT NULL', 'left')
+                ->groupStart()
+                    ->where('n.admin_id', $adminId)
+                    ->orWhere('n.type', 'announcement')
+                ->groupEnd()
+                ->orderBy('n.created_at', 'DESC')
+                ->limit($limit)
+                ->get()
+                ->getResultArray();
+    }
+
+    /**
+     * Get unread notifications count for admin
+     */
+    public function unreadCountForAdmin($adminId): int
+    {
+        $db = \Config\Database::connect();
+        
+        return $db->table('notifications n')
+                ->groupStart()
+                    ->where('n.admin_id', $adminId)
+                    ->orWhere('n.type', 'announcement')
+                ->groupEnd()
+                ->where('n.is_read', 0)
+                ->countAllResults();
+    }
+
+    /**
+     * Mark all notifications as read for admin
+     */
+    public function markAllAsReadForAdmin($adminId): bool
+    {
+        try {
+            log_message('info', "Marking all notifications as read for admin {$adminId}");
+            
+            $db = \Config\Database::connect();
+            $result = $db->table('notifications n')
+                          ->groupStart()
+                            ->where('n.admin_id', $adminId)
+                            ->orWhere('n.type', 'announcement')
+                          ->groupEnd()
+                          ->where('n.is_read', 0)
+                          ->set([
+                              'is_read' => 1,
+                              'read_at' => date('Y-m-d H:i:s'),
+                              'updated_at' => date('Y-m-d H:i:s')
+                          ])
+                          ->update();
+
+            if ($result) {
+                log_message('info', "Successfully marked all notifications as read for admin {$adminId}");
+            } else {
+                log_message('error', "Failed to mark all notifications as read for admin {$adminId}");
+            }
+
+            return $result;
+        } catch (\Exception $e) {
+            log_message('error', "Error marking all notifications as read for admin {$adminId}: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Get notifications with related data
      */
     public function getWithRelations($limit = 50)
@@ -388,5 +475,83 @@ class NotificationsModel extends Model
             log_message('error', "Error creating commission system notification: " . $e->getMessage());
             return false;
         }
+    }
+
+    /**
+     * Create commission change notification for all Admin and Seoteam users dengan relasi profil
+     */
+    public function createCommissionChangeNotificationWithProfiles($vendorId, $vendorName, $oldCommission, $newCommission)
+    {
+        try {
+            $db = \Config\Database::connect();
+            
+            // Get all Admin users dengan admin_profiles
+            $adminUsers = $db->table('auth_groups_users agu')
+                ->select('agu.user_id, agu.group, u.username, ap.id as admin_id, NULL as seo_id')
+                ->join('users u', 'u.id = agu.user_id')
+                ->join('admin_profiles ap', 'ap.user_id = u.id', 'left')
+                ->where('agu.group', 'admin')
+                ->get()
+                ->getResultArray();
+
+            // Get all Seoteam users dengan seo_profiles
+            $seoteamUsers = $db->table('auth_groups_users agu')
+                ->select('agu.user_id, agu.group, u.username, NULL as admin_id, sp.id as seo_id')
+                ->join('users u', 'u.id = agu.user_id')
+                ->join('seo_profiles sp', 'sp.user_id = u.id', 'left')
+                ->where('agu.group', 'seoteam')
+                ->get()
+                ->getResultArray();
+
+            $targetUsers = array_merge($adminUsers, $seoteamUsers);
+
+            if (empty($targetUsers)) {
+                log_message('error', 'No Admin or Seoteam users found for commission change notification');
+                return false;
+            }
+
+            $notifications = [];
+            $now = date('Y-m-d H:i:s');
+
+            foreach ($targetUsers as $user) {
+                $notifications[] = [
+                    'user_id' => $user['user_id'],
+                    'admin_id' => $user['admin_id'],
+                    'seo_id' => $user['seo_id'],
+                    'vendor_id' => $vendorId,
+                    'type' => 'commission_change',
+                    'title' => 'Pengajuan Komisi Baru',
+                    'message' => "Vendor <strong>{$vendorName}</strong> mengajukan perubahan komisi dari {$oldCommission} menjadi {$newCommission}. Silakan review pengajuan ini.",
+                    'is_read' => 0,
+                    'created_at' => $now,
+                    'updated_at' => $now
+                ];
+            }
+
+            $result = $this->insertBatch($notifications);
+            
+            if ($result) {
+                log_message('info', "Successfully created commission change notifications for " . count($targetUsers) . " users with profile relations");
+            } else {
+                log_message('error', "Failed to create commission change notifications with profile relations");
+            }
+
+            return $result;
+
+        } catch (\Throwable $e) {
+            log_message('error', 'Error creating commission change notifications with profiles: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Get commission change notifications
+     */
+    public function getCommissionChangeNotifications($limit = 50)
+    {
+        return $this->where('type', 'commission_change')
+                   ->orderBy('created_at', 'DESC')
+                   ->limit($limit)
+                   ->findAll();
     }
 }

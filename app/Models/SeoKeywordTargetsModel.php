@@ -46,4 +46,18 @@ class SeoKeywordTargetsModel extends Model
                 'left'
             );
     }
+    
+    /**
+     * Get top keywords by position (ascending) with status 'completed'
+     * @param int $limit
+     * @return array
+     */
+    public function getTopKeywords($limit = 3)
+    {
+        return $this->where('status', 'completed')
+                    ->orderBy('current_position', 'ASC')
+                    ->orderBy('updated_at', 'DESC') // if same position, take the latest
+                    ->limit($limit)
+                    ->find();
+    }
 }
