@@ -22,7 +22,7 @@
       <label class="text-sm font-semibold mb-1 block">Penghasilan (Rp) *</label>
       <input type="text" name="earning_display" id="earning_display" min="0" 
              value="<?= old('earning', esc($item['earning'])) ? number_format(old('earning', esc($item['earning'])), 0, ',', '.') : '' ?>" required
-             class="w-full border rounded-lg px-3 py-2" onkeyup="formatNumber(this)">
+             class="w-full border rounded-lg px-3 py-2" onkeyup="formatNumber(this)" onblur="formatNumber(this)">
       <input type="hidden" name="earning" id="earning" value="<?= old('earning', esc($item['earning'])) ?>">
     </div>
 
@@ -30,7 +30,7 @@
       <label class="text-sm font-semibold mb-1 block">Nominal Total (Rp) *</label>
       <input type="text" name="amount_display" id="amount_display" min="0" 
              value="<?= old('amount', esc($item['amount'])) ? number_format(old('amount', esc($item['amount'])), 0, ',', '.') : '' ?>" required
-             class="w-full border rounded-lg px-3 py-2" onkeyup="formatNumber(this)">
+             class="w-full border rounded-lg px-3 py-2" onkeyup="formatNumber(this)" onblur="formatNumber(this)">
       <input type="hidden" name="amount" id="amount" value="<?= old('amount', esc($item['amount'])) ?>">
     </div>
 
@@ -63,9 +63,22 @@
 </div>
 
 <script>
+// PERBAIKAN: Fungsi formatNumber yang diperbaiki untuk menangani angka besar
 function formatNumber(input) {
   // Remove all non-digit characters
   let value = input.value.replace(/\D/g, '');
+  
+  // Pastikan nilai tidak kosong
+  if (value === '') {
+    input.value = '';
+    // Update the hidden field value
+    let hiddenFieldId = input.id.replace('_display', '');
+    document.getElementById(hiddenFieldId).value = '';
+    return;
+  }
+  
+  // Konversi ke number untuk memastikan tidak ada leading zeros
+  value = parseInt(value, 10).toString();
   
   // Format with thousand separators
   let formattedValue = value.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
@@ -96,4 +109,19 @@ function validateForm(form) {
   }
   return true;
 }
+
+// Inisialisasi formatNumber saat halaman dimuat
+document.addEventListener('DOMContentLoaded', function() {
+  // Format nilai awal jika ada
+  const earningDisplay = document.getElementById('earning_display');
+  const amountDisplay = document.getElementById('amount_display');
+  
+  if (earningDisplay && earningDisplay.value) {
+    formatNumber(earningDisplay);
+  }
+  
+  if (amountDisplay && amountDisplay.value) {
+    formatNumber(amountDisplay);
+  }
+});
 </script>

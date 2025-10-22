@@ -33,6 +33,13 @@
         return $okStart && $okEnd;
       }));
 
+      // PERBAIKAN: Urutkan data berdasarkan created_at descending agar yang terbaru tampil di bawah
+      usort($filtered, function($a, $b) {
+        $dateA = strtotime($a['created_at'] ?? '1970-01-01');
+        $dateB = strtotime($b['created_at'] ?? '1970-01-01');
+        return $dateA - $dateB; // Ascending order (terlama ke terbaru)
+      });
+
       // Pagination 10/hal
       $perPage     = 10;
       $total       = count($filtered);
@@ -250,10 +257,25 @@ function closeModal() {
   modal.classList.add('hidden'); modal.classList.remove('flex');
 }
 
-// Format number function
+// PERBAIKAN: Fungsi formatNumber yang diperbaiki untuk menangani angka besar
 function formatNumber(input) {
   // Remove all non-digit characters
   let value = input.value.replace(/\D/g, '');
+  
+  // Pastikan nilai tidak kosong
+  if (value === '') {
+    input.value = '';
+    // Update the hidden field value
+    let hiddenFieldId = input.id.replace('_display', '');
+    const hiddenField = document.getElementById(hiddenFieldId);
+    if (hiddenField) {
+      hiddenField.value = '';
+    }
+    return;
+  }
+  
+  // Konversi ke number untuk memastikan tidak ada leading zeros
+  value = parseInt(value, 10).toString();
   
   // Format with thousand separators
   let formattedValue = value.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
@@ -272,10 +294,22 @@ function formatNumber(input) {
 // Initialize formatNumber for inputs with onkeyup attribute
 function initializeFormatNumber() {
   document.querySelectorAll('input[onkeyup*="formatNumber"]').forEach(input => {
-    input.addEventListener('keyup', function() {
-      formatNumber(this);
-    });
+    // Remove existing event listeners to avoid duplicates
+    input.removeEventListener('keyup', formatNumberHandler);
+    input.removeEventListener('blur', formatNumberHandler);
+    
+    // Add new event listeners
+    input.addEventListener('keyup', formatNumberHandler);
+    input.addEventListener('blur', formatNumberHandler);
+    
+    // Format initial value
+    formatNumber(input);
   });
+}
+
+// Handler function to avoid issues with 'this' context
+function formatNumberHandler(e) {
+  formatNumber(e.target);
 }
 
 document.addEventListener('DOMContentLoaded', () => {

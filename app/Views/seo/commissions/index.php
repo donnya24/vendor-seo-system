@@ -152,31 +152,31 @@
       <table class="min-w-full text-sm divide-y divide-gray-200">
         <thead class="bg-blue-600 text-white">
           <tr>
-            <th scope="col" class="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider">No</th>
-            <th scope="col" class="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider">Periode</th>
-            <th scope="col" class="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider">Nama Vendor</th>
-            <th scope="col" class="px-5 py-3 text-right text-xs font-medium uppercase tracking-wider">Jumlah Komisi</th>
-            <th scope="col" class="px-5 py-3 text-center text-xs font-medium uppercase tracking-wider">Bukti Transfer</th>
-            <th scope="col" class="px-5 py-3 text-center text-xs font-medium uppercase tracking-wider">Status</th>
-            <th scope="col" class="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider">Diproses Oleh</th>
-            <th scope="col" class="px-5 py-3 text-center text-xs font-medium uppercase tracking-wider">Aksi</th>
+            <th scope="col" class="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider align-middle">No</th>
+            <th scope="col" class="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider align-middle">Periode</th>
+            <th scope="col" class="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider align-middle">Nama Vendor</th>
+            <th scope="col" class="px-5 py-3 text-right text-xs font-medium uppercase tracking-wider align-middle">Jumlah Komisi</th>
+            <th scope="col" class="px-5 py-3 text-center text-xs font-medium uppercase tracking-wider align-middle whitespace-nowrap">Bukti Transfer</th>
+            <th scope="col" class="px-5 py-3 text-center text-xs font-medium uppercase tracking-wider align-middle">Status</th>
+            <th scope="col" class="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider align-middle">Diproses Oleh</th>
+            <th scope="col" class="px-5 py-3 text-center text-xs font-medium uppercase tracking-wider align-middle">Aksi</th>
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
           <?php if (!empty($commissions) && is_array($commissions)): ?>
             <?php $no = 1; foreach ($commissions as $c): ?>
               <tr class="hover:bg-gray-50 transition">
-                <td class="px-5 py-4 text-center text-gray-600"><?= $no++ ?></td>
+                <td class="px-5 py-4 text-center text-gray-600 align-middle"><?= $no++ ?></td>
 
                 <!-- Periode -->
-                <td class="px-5 py-4">
+                <td class="px-5 py-4 align-middle">
                   <div class="text-sm font-medium text-gray-900 whitespace-nowrap">
                     <?= esc($c['period_start']) ?> s/d <?= esc($c['period_end']) ?>
                   </div>
                 </td>
 
                 <!-- Nama Vendor -->
-                <td class="px-5 py-4">
+                <td class="px-5 py-4 align-middle">
                   <div class="flex items-center">
                     <div class="flex-shrink-0 h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
                       <i class="fas fa-building text-blue-600 text-sm"></i>
@@ -189,28 +189,28 @@
                 </td>
 
                 <!-- Jumlah Komisi -->
-                <td class="px-5 py-4 text-right font-semibold text-gray-900">
+                <td class="px-5 py-4 text-right font-semibold text-gray-900 align-middle">
                   Rp <?= number_format($c['amount'] ?? 0, 0, ',', '.') ?>
                 </td>
 
                 <!-- Bukti Transfer -->
-                <td class="px-5 py-4 text-center">
+                <td class="px-5 py-4 text-center align-middle">
                   <?php if (!empty($c['proof'])): ?>
                     <?php 
                       $ext = strtolower(pathinfo($c['proof'], PATHINFO_EXTENSION));
                       $imgExt = ['jpg','jpeg','png','gif','webp'];
                     ?>
                     <?php if (in_array($ext, $imgExt)): ?>
-                      <div class="flex justify-center">
+                      <div class="flex flex-col items-center gap-2">
                         <img src="<?= base_url('uploads/commissions/'.$c['proof']) ?>" 
                              alt="Bukti Transfer" class="h-12 w-12 object-cover rounded-lg border border-gray-200 shadow-sm cursor-pointer hover:shadow-md transition"
                              onclick="window.open('<?= base_url('uploads/commissions/'.$c['proof']) ?>', '_blank')">
+                        <a href="<?= base_url('uploads/commissions/'.$c['proof']) ?>" 
+                           target="_blank" 
+                           class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200">
+                          <i class="fas fa-file-download mr-1"></i> Lihat File
+                        </a>
                       </div>
-                      <a href="<?= base_url('uploads/commissions/'.$c['proof']) ?>" 
-                         target="_blank" 
-                         class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200">
-                        <i class="fas fa-file-download mr-1"></i> Lihat File
-                      </a>
                     <?php endif; ?>
                   <?php else: ?>
                     <span class="text-gray-400">-</span>
@@ -218,7 +218,7 @@
                 </td>
 
                 <!-- Status -->
-                <td class="px-5 py-4 text-center">
+                <td class="px-5 py-4 text-center align-middle">
                   <?php 
                     $status = strtolower($c['status'] ?? '-');
                     $badgeClass = 'bg-gray-100 text-gray-700';
@@ -240,7 +240,7 @@
                 </td>
 
                 <!-- Diproses Oleh -->
-                <td class="px-5 py-4">
+                <td class="px-5 py-4 align-middle">
                     <?php if (!empty($c['action_by_name']) && $c['action_by_name'] != 'ID1'): ?>
                         <div class="flex items-center">
                             <div class="flex-shrink-0 h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
@@ -292,7 +292,7 @@
                 </td>
                 
                 <!-- Aksi -->
-                <td class="px-5 py-4 text-center">
+                <td class="px-5 py-4 text-center align-middle">
                   <div class="flex flex-col sm:flex-row gap-2 justify-center">
                     <?php if ($status === 'unpaid'): ?>
                       <button @click="confirmAction(<?= $c['id'] ?>)"

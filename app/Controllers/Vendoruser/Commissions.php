@@ -252,9 +252,10 @@ class Commissions extends BaseController
                 ->with('error', 'Akun vendor Anda belum diverifikasi. Silakan lengkapi profil dan tunggu verifikasi dari admin.');
         }
 
+        // PERBAIKAN: Ubah pengurutan data agar yang terbaru tampil di bawah
         $list = $this->commissionModel
             ->where('vendor_id', $this->vendorId)
-            ->orderBy('period_start', 'DESC')
+            ->orderBy('period_start', 'ASC') // PERBAIKAN: Ubah dari DESC ke ASC
             ->findAll();
 
         $this->logActivity('view', 'Melihat daftar komisi');

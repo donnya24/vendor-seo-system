@@ -11,7 +11,7 @@
         <p class="mt-1 text-sm text-gray-600">Kelola dan verifikasi komisi semua vendor</p>
     </div>
     
-    <!-- Bulk Actions & Export -->
+    <!-- Export Button Only -->
     <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
         <!-- Export Button -->
         <a href="<?= site_url('admin/commissions/export-csv') . 
@@ -20,21 +20,6 @@
            class="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center gap-2 w-full sm:w-auto justify-center">
             <i class="fas fa-file-export"></i> Export CSV
         </a>
-        
-        <!-- Bulk Actions -->
-        <div class="flex gap-2 w-full sm:w-auto">
-            <select x-model="bulkAction" class="rounded-lg border-gray-300 text-sm py-2 px-3 w-full sm:w-40">
-                <option value="">Aksi Massal</option>
-                <option value="verify">Verifikasi Pembayaran</option>
-                <option value="unpaid">Tandai Belum Dibayar</option>
-                <option value="delete">Hapus</option>
-            </select>
-            <button @click="executeBulkAction()" 
-                    :disabled="!bulkAction || selectedCommissions.length === 0"
-                    class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors whitespace-nowrap w-full sm:w-auto">
-                Terapkan
-            </button>
-        </div>
     </div>
 </div>
 
@@ -137,9 +122,6 @@
     <div class="px-4 sm:px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
       <h3 class="text-lg font-semibold text-gray-800">Daftar Komisi</h3>
       <div class="text-sm text-gray-500 flex items-center gap-4">
-        <span x-show="selectedCommissions.length > 0" class="text-blue-600 font-medium bg-blue-50 px-3 py-1 rounded-full">
-          <span x-text="selectedCommissions.length"></span> terpilih
-        </span>
         <span class="flex items-center gap-1">
           <i class="fas fa-database"></i>
           <span><?= !empty($commissions) && is_array($commissions) ? count($commissions) : 0 ?> record</span>
@@ -151,9 +133,6 @@
       <table class="min-w-full text-sm divide-y divide-gray-200">
         <thead class="bg-blue-600 text-white">
           <tr>
-            <th scope="col" class="px-4 sm:px-6 py-3 text-center w-12">
-              <input type="checkbox" @change="toggleAllCommissions($event)" class="rounded border-gray-300">
-            </th>
             <th scope="col" class="px-4 sm:px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">No</th>
             <th scope="col" class="px-4 sm:px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Periode</th>
             <th scope="col" class="px-4 sm:px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Vendor</th>
@@ -168,14 +147,6 @@
           <?php if (!empty($commissions) && is_array($commissions)): ?>
             <?php $no = 1; foreach ($commissions as $c): ?>
               <tr class="hover:bg-gray-50 transition-colors">
-                <!-- Checkbox -->
-                <td class="px-4 sm:px-6 py-4 text-center">
-                  <input type="checkbox" 
-                         value="<?= $c['id'] ?>" 
-                         @change="toggleCommission($event)"
-                         class="commission-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                </td>
-
                 <!-- No -->
                 <td class="px-4 sm:px-6 py-4 text-center text-gray-600 font-medium"><?= $no++ ?></td>
 
@@ -390,7 +361,7 @@
             <?php endforeach ?>
           <?php else: ?>
             <tr>
-              <td colspan="9" class="px-4 sm:px-6 py-12 text-center text-gray-500">
+              <td colspan="8" class="px-4 sm:px-6 py-12 text-center text-gray-500">
                 <div class="flex flex-col items-center justify-center">
                   <i class="fas fa-inbox text-gray-300 text-5xl mb-4"></i>
                   <p class="text-lg font-medium text-gray-900 mb-2">Tidak ada data komisi</p>
@@ -448,7 +419,7 @@
         <p class="text-gray-600 text-center mb-6" x-text="modalMessage"></p>
         
         <div class="flex flex-col sm:flex-row gap-3 justify-center">
-          <button @click="showConfirmModal = false"
+          <button @click="closeModal()"
                   class="px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 font-medium transition-colors">
             Batal
           </button>
@@ -554,12 +525,13 @@
     justify-content: center !important;
 }
 
-/* Pastikan body tidak scroll saat modal terbuka */
+/* PERBAIKAN: Style untuk body saat modal terbuka - gunakan pendekatan yang lebih baik */
 body.modal-open {
     overflow: hidden !important;
-    height: 100vh !important;
-    position: fixed !important;
-    width: 100% !important;
+    /* Menggunakan position: sticky dan top: 0 untuk menjaga posisi scroll */
+    position: sticky;
+    top: 0;
+    width: 100%;
 }
 
 /* Style untuk baris error */
@@ -598,9 +570,8 @@ function commissionManager() {
         showConfirmModal: false,
         actionType: '',
         commissionId: null,
-        bulkAction: '',
-        selectedCommissions: [],
         loading: false,
+        scrollPosition: 0, // Tambahkan variabel untuk menyimpan posisi scroll
         actionLabels: {
             'verify': 'Verifikasi Pembayaran',
             'unpaid': 'Tandai Belum Dibayar',
@@ -635,18 +606,36 @@ function commissionManager() {
         confirmAction(action, id) {
             this.actionType = action;
             this.commissionId = id;
+            
+            // PERBAIKAN: Simpan posisi scroll sebelum membuka modal
+            this.scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+            
             this.showConfirmModal = true;
-            // Prevent body scroll
-            document.body.classList.add('modal-open');
+            
+            // PERBAIKAN: Gunakan pendekatan yang lebih baik untuk mencegah scroll
             document.body.style.overflow = 'hidden';
+            document.body.style.position = 'fixed';
+            document.body.style.top = `-${this.scrollPosition}px`;
+            document.body.style.width = '100%';
+        },
+        
+        // PERBAIKAN: Tambahkan fungsi untuk menutup modal dengan benar
+        closeModal() {
+            this.showConfirmModal = false;
+            
+            // PERBAIKAN: Kembalikan posisi scroll ke semula
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.width = '';
+            
+            // Kembalikan posisi scroll ke posisi sebelumnya
+            window.scrollTo(0, this.scrollPosition);
         },
                 
         async executeAction() {
-            this.showConfirmModal = false;
+            this.closeModal(); // Gunakan fungsi closeModal yang baru
             this.loading = true;
-            // Restore body scroll
-            document.body.classList.remove('modal-open');
-            document.body.style.overflow = '';
 
             let url;
             
@@ -744,216 +733,6 @@ function commissionManager() {
             }
         },
 
-        toggleCommission(event) {
-            const commissionId = event.target.value;
-            if (event.target.checked) {
-                if (!this.selectedCommissions.includes(commissionId)) {
-                    this.selectedCommissions.push(commissionId);
-                }
-            } else {
-                this.selectedCommissions = this.selectedCommissions.filter(id => id !== commissionId);
-            }
-        },
-
-        toggleAllCommissions(event) {
-            const checkboxes = document.querySelectorAll('.commission-checkbox');
-            if (event.target.checked) {
-                this.selectedCommissions = Array.from(checkboxes).map(cb => cb.value);
-                checkboxes.forEach(cb => {
-                    if (cb) cb.checked = true;
-                });
-            } else {
-                this.selectedCommissions = [];
-                checkboxes.forEach(cb => {
-                    if (cb) cb.checked = false;
-                });
-            }
-        },
-        async executeBulkAction() {
-            if (!this.bulkAction || this.selectedCommissions.length === 0) {
-                this.showNotification('error', 'Gagal', 'Pilih aksi dan komisi yang akan diproses.');
-                return;
-            }
-
-            const confirmMessage = this.bulkAction === 'delete' 
-                ? `Anda akan menghapus ${this.selectedCommissions.length} komisi. Tindakan ini tidak dapat dibatalkan. Lanjutkan?`
-                : `Anda akan memproses ${this.selectedCommissions.length} komisi dengan aksi "${this.actionLabels[this.bulkAction]}". Lanjutkan?`;
-
-            if (!confirm(confirmMessage)) {
-                return;
-            }
-
-            this.loading = true;
-
-            try {
-                const formData = new FormData();
-                formData.append('action', this.bulkAction);
-                this.selectedCommissions.forEach(id => {
-                    formData.append('commission_ids[]', id);
-                });
-
-                const response = await fetch(`<?= site_url('admin/commissions/bulk-action') ?>`, {
-                    method: 'POST',
-                    headers: { 
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': '<?= csrf_hash() ?>',
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: new URLSearchParams(formData)
-                });
-
-                if (!response.ok) {
-                    if (response.status === 500) {
-                        throw new Error('Server error 500. Silakan coba lagi atau hubungi administrator.');
-                    }
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const data = await response.json();
-                console.log('Bulk action response:', data);
-
-                if (data.success || (data.success_count && data.success_count > 0)) {
-                    let successMessage = data.message;
-                    
-                    if (data.error_count > 0 && data.errors && data.errors.length > 0) {
-                        successMessage += '\n\nDetail Error:\n' + data.errors.join('\n');
-                        
-                        if (data.errors.length > 3) {
-                            this.showDetailedErrorModal(data.message, data.errors, data.success_count, data.error_count);
-                        } else {
-                            this.showNotification(
-                                'success', 
-                                `Berhasil Sebagian (${data.success_count} sukses, ${data.error_count} gagal)`, 
-                                successMessage
-                            );
-                        }
-                    } else {
-                        this.showNotification('success', 'Berhasil', successMessage);
-                    }
-
-                    // Reset seleksi
-                    if (data.success_ids && data.success_ids.length > 0) {
-                        this.selectedCommissions = this.selectedCommissions.filter(id => 
-                            !data.success_ids.includes(id.toString())
-                        );
-                        
-                        data.success_ids.forEach(successId => {
-                            const checkbox = document.querySelector(`.commission-checkbox[value="${successId}"]`);
-                            if (checkbox) checkbox.checked = false;
-                        });
-                    }
-
-                    // Highlight error rows jika ada
-                    if (data.error_ids && data.error_ids.length > 0) {
-                        this.bulkAction = '';
-                        this.highlightErrorRows(data.error_ids);
-                    } else {
-                        this.selectedCommissions = [];
-                        this.bulkAction = '';
-                        
-                        document.querySelectorAll('.commission-checkbox').forEach(cb => {
-                            if (cb) cb.checked = false;
-                        });
-                        
-                        const selectAllCheckbox = document.querySelector('input[type="checkbox"]');
-                        if (selectAllCheckbox) {
-                            selectAllCheckbox.checked = false;
-                        }
-                    }
-
-                    // Refresh halaman setelah 3 detik jika ada yang berhasil
-                    if (data.success_count > 0) {
-                        setTimeout(() => window.location.reload(), 3000);
-                    }
-
-                } else {
-                    let errorMessage = data.message || 'Terjadi kesalahan tidak diketahui';
-                    if (data.errors && data.errors.length > 0) {
-                        errorMessage += '\n\nDetail Error:\n' + data.errors.join('\n');
-                        
-                        if (data.errors.length > 3) {
-                            this.showDetailedErrorModal(data.message, data.errors, 0, data.error_count);
-                        }
-                    }
-                    
-                    throw new Error(errorMessage);
-                }
-            } catch (error) {
-                console.error('Error executing bulk action:', error);
-                this.showNotification(
-                    'error',
-                    'Gagal',
-                    error.message || 'Terjadi kesalahan saat memproses aksi massal'
-                );
-                
-                this.highlightErrorRows(this.selectedCommissions);
-            } finally {
-                this.loading = false;
-            }
-        },
-
-        showDetailedErrorModal(title, errors, successCount, errorCount) {
-            const modalHtml = `
-                <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm">
-                    <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
-                        <div class="p-6 border-b border-gray-200">
-                            <div class="flex items-center justify-between">
-                                <h3 class="text-lg font-semibold text-gray-900">Detail Hasil Aksi Massal</h3>
-                                <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-500">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </div>
-                            <div class="mt-2 flex gap-4 text-sm">
-                                <span class="text-green-600 font-medium">
-                                    <i class="fas fa-check-circle"></i> ${successCount} Berhasil
-                                </span>
-                                <span class="text-red-600 font-medium">
-                                    <i class="fas fa-exclamation-circle"></i> ${errorCount} Gagal
-                                </span>
-                            </div>
-                        </div>
-                        <div class="p-6 overflow-y-auto max-h-96">
-                            <div class="space-y-3">
-                                ${errors.map(error => `
-                                    <div class="flex items-start gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                                        <i class="fas fa-exclamation-triangle text-red-500 mt-1"></i>
-                                        <div class="flex-1">
-                                            <p class="text-sm text-red-800">${error}</p>
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                        <div class="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
-                            <button onclick="this.closest('.fixed').remove()" 
-                                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                                Tutup
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
-        },
-
-        highlightErrorRows(errorIds) {
-            document.querySelectorAll('.commission-row-error').forEach(row => {
-                row.classList.remove('commission-row-error', 'bg-red-50', 'border-l-4', 'border-red-400');
-            });
-            
-            errorIds.forEach(id => {
-                const row = document.querySelector(`input[value="${id}"]`)?.closest('tr');
-                if (row) {
-                    row.classList.add('commission-row-error', 'bg-red-50', 'border-l-4', 'border-red-400');
-                    
-                    setTimeout(() => {
-                        row.classList.remove('commission-row-error', 'bg-red-50', 'border-l-4', 'border-red-400');
-                    }, 10000);
-                }
-            });
-        },
-
         showNotification(type, title, message) {
             if (this.notification.timeout) {
                 clearTimeout(this.notification.timeout);
@@ -978,16 +757,11 @@ function commissionManager() {
         },
 
         resetState() {
-            this.showConfirmModal = false;
+            this.closeModal(); // Gunakan fungsi closeModal yang baru
             this.actionType = '';
             this.commissionId = null;
-            this.bulkAction = '';
-            this.selectedCommissions = [];
             this.loading = false;
             this.hideNotification();
-            // Restore body scroll
-            document.body.classList.remove('modal-open');
-            document.body.style.overflow = '';
         }
     }
 }
@@ -1000,8 +774,7 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         const manager = document.querySelector('[x-data]').__x.$data;
         if (manager.showConfirmModal) {
-            manager.showConfirmModal = false;
-            document.body.style.overflow = '';
+            manager.closeModal(); // Gunakan fungsi closeModal yang baru
         }
     }
 });

@@ -360,7 +360,7 @@ class Commissions extends BaseAdminController
         // Add BOM untuk UTF-8
         fputs($output, "\xEF\xBB\xBF");
 
-        // Header CSV dengan action_by
+        // PERBAIKAN: Header CSV tanpa kolom tanggal
         $headers = [
             'No',
             'ID Komisi',
@@ -371,9 +371,7 @@ class Commissions extends BaseAdminController
             'Pendapatan Kotor',
             'Komisi',
             'Status',
-            'Diproses Oleh',
-            'Tgl Dibayar',
-            'Tgl Dibuat'
+            'Diproses Oleh'
         ];
         fputcsv($output, $headers);
 
@@ -382,6 +380,7 @@ class Commissions extends BaseAdminController
         foreach ($commissions as $commission) {
             $period = ($commission['period_start'] ?? '-') . ' s/d ' . ($commission['period_end'] ?? '-');
             
+            // PERBAIKAN: Data rows tanpa kolom tanggal
             $row = [
                 $no++,
                 $commission['id'] ?? '-',
@@ -392,9 +391,7 @@ class Commissions extends BaseAdminController
                 $commission['earning'] ?? 0,
                 $commission['amount'] ?? 0,
                 $this->getStatusLabel($commission['status'] ?? ''),
-                $commission['action_by_name'] ?? '-',
-                $commission['paid_at'] ? date('d/m/Y', strtotime($commission['paid_at'])) : '-',
-                $commission['created_at'] ? date('d/m/Y', strtotime($commission['created_at'])) : '-'
+                $commission['action_by_name'] ?? '-'
             ];
             fputcsv($output, $row);
         }
@@ -414,183 +411,6 @@ class Commissions extends BaseAdminController
         ];
         
         return $statusMap[strtolower($status)] ?? 'Unknown';
-    }
-
-    public function bulkAction()
-    {
-        // Validasi AJAX request
-        if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request method.']);
-        }
-
-        $action = $this->request->getPost('action');
-        $commissionIds = $this->request->getPost('commission_ids');
-
-        if (empty($commissionIds)) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Tidak ada komisi yang dipilih.']);
-        }
-
-        // Tambahkan 'unpaid' ke validasi action
-        if (!in_array($action, ['verify', 'unpaid', 'delete'])) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Aksi tidak valid.']);
-        }
-
-        $currentUser = service('auth')->user();
-        if (!$currentUser) {
-            return $this->response->setJSON(['success' => false, 'message' => 'User tidak ditemukan atau session expired.']);
-        }
-        
-        $successCount = 0;
-        $errorCount = 0;
-        $errorMessages = [];
-        $successIds = [];
-        $errorIds = [];
-
-        foreach ($commissionIds as $id) {
-            try {
-                $commission = $this->commissionModel->where('id', $id)->first();
-                
-                if (!$commission) {
-                    $errorCount++;
-                    $errorMessages[] = "Komisi #{$id} tidak ditemukan";
-                    $errorIds[] = $id;
-                    continue;
-                }
-
-                switch ($action) {
-                    case 'verify':
-                        $commissionStatus = $commission['status'] ?? '';
-                        
-                        // Validasi status sebelum verifikasi
-                        if ($commissionStatus === 'paid') {
-                            $errorCount++;
-                            $errorMessages[] = "Komisi #{$id} sudah dalam status Paid dan tidak dapat diverifikasi ulang";
-                            $errorIds[] = $id;
-                            continue 2; // Skip ke komisi berikutnya
-                        }
-
-                        $updateData = [
-                            'status' => 'paid',
-                            'action_by' => $currentUser->id
-                        ];
-
-                        // Tambahkan paid_at hanya jika kolomnya ada di allowedFields
-                        if (in_array('paid_at', $this->commissionModel->allowedFields)) {
-                            $updateData['paid_at'] = date('Y-m-d H:i:s');
-                        }
-
-                        // Update status menjadi 'paid'
-                        $this->commissionModel->update($id, $updateData);
-
-                        // 🔔 KIRIM NOTIFIKASI KE VENDOR DAN TIM SEO
-                        $this->createCommissionNotification($id, $commission['vendor_id'], 'verify', $commission, $currentUser->id);
-                        break;
-
-                    case 'unpaid':
-                        $commissionStatus = $commission['status'] ?? '';
-                        
-                        // Validasi status sebelum unpaid
-                        if ($commissionStatus === 'unpaid') {
-                            $errorCount++;
-                            $errorMessages[] = "Komisi #{$id} sudah dalam status Unpaid";
-                            $errorIds[] = $id;
-                            continue 2; // Skip ke komisi berikutnya
-                        }
-
-                        $updateData = [
-                            'status' => 'unpaid',
-                            'action_by' => $currentUser->id
-                        ];
-
-                        // Reset paid_at jika ada
-                        if (in_array('paid_at', $this->commissionModel->allowedFields)) {
-                            $updateData['paid_at'] = null;
-                        }
-
-                        // Update status menjadi 'unpaid'
-                        $this->commissionModel->update($id, $updateData);
-
-                        // 🔔 KIRIM NOTIFIKASI KE VENDOR DAN TIM SEO
-                        $this->createCommissionNotification($id, $commission['vendor_id'], 'unpaid', $commission, $currentUser->id);
-                        break;
-
-                    case 'delete':
-                        $this->commissionModel->delete($id);
-                        
-                        // 🔔 KIRIM NOTIFIKASI KE VENDOR DAN TIM SEO
-                        $this->createCommissionNotification($id, $commission['vendor_id'], 'delete', $commission, $currentUser->id);
-                        break;
-
-                    default:
-                        $errorCount++;
-                        $errorMessages[] = "Aksi '{$action}' tidak valid untuk komisi #{$id}";
-                        $errorIds[] = $id;
-                        continue 2;
-                }
-
-                $vendorId = $commission['vendor_id'] ?? 0;
-                
-                // Log activity
-                $this->logActivity(
-                    'bulk_' . $action . '_commission',
-                    "Komisi #{$id} telah diproses dengan aksi: {$action}",
-                    [
-                        'commission_id' => $id,
-                        'vendor_id' => $vendorId,
-                        'amount' => $commission['amount'] ?? 0,
-                        'action' => $action,
-                        'action_by' => $currentUser->id
-                    ]
-                );
-
-                $successCount++;
-                $successIds[] = $id;
-
-            } catch (\Exception $e) {
-                log_message('error', "Error processing commission #{$id}: " . $e->getMessage());
-                $errorCount++;
-                $errorMessages[] = "Komisi #{$id}: " . $e->getMessage();
-                $errorIds[] = $id;
-            }
-        }
-
-        // Log bulk activity
-        $this->logActivity(
-            'bulk_action_commission',
-            "Melakukan aksi bulk {$action} untuk " . count($commissionIds) . " komisi",
-            [
-                'action' => $action,
-                'total_count' => count($commissionIds),
-                'success_count' => $successCount,
-                'error_count' => $errorCount,
-                'success_ids' => $successIds,
-                'error_ids' => $errorIds,
-                'action_by' => $currentUser->id
-            ]
-        );
-
-        // Response yang lebih detail
-        $response = [
-            'success' => $successCount > 0,
-            'success_count' => $successCount,
-            'error_count' => $errorCount,
-            'success_ids' => $successIds,
-            'error_ids' => $errorIds,
-            'errors' => $errorMessages
-        ];
-
-        if ($successCount > 0 && $errorCount === 0) {
-            // Semua berhasil
-            $response['message'] = "Berhasil memproses {$successCount} komisi.";
-        } elseif ($successCount > 0 && $errorCount > 0) {
-            // Sebagian berhasil, sebagian gagal
-            $response['message'] = "Berhasil memproses {$successCount} komisi. {$errorCount} komisi gagal diproses.";
-        } else {
-            // Semua gagal
-            $response['message'] = "Gagal memproses komisi yang dipilih.";
-        }
-
-        return $this->response->setJSON($response);
     }
 
     /**
