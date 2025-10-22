@@ -1,17 +1,17 @@
 <div class="bg-white rounded-lg">
     <!-- Form Content -->
     <div class="p-6">
-        <form action="<?= base_url('admin/kelola-notifikasi/store') ?>" method="POST" class="space-y-6">
-            <?= csrf_field() ?>
+        <form action="<?= base_url('admin/notification-management/store') ?>" method="POST" class="space-y-6">
+            <input type="hidden" name="<?= csrf_token() ?>" value="<?= csrf_hash() ?>">
             
-            <!-- Penerima -->
-            <div>
+           <div>
                 <label for="user_id" class="block text-sm font-medium text-gray-700 mb-2">
                     <i class="fas fa-user mr-2 text-blue-500"></i>Penerima *
                 </label>
                 <select name="user_id" id="user_id" required
                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors">
-                    <option value="">Pilih User Penerima</option>
+                    <option value="">Pilih Penerima Notifikasi</option>
+                    <option value="all">👥 Semua User (Kecuali Admin)</option>
                     
                     <!-- Group: SEO Profiles -->
                     <?php if (!empty($seoProfiles)): ?>
@@ -43,7 +43,6 @@
                 </select>
                 <p class="text-xs text-gray-500 mt-2">Pilih penerima notifikasi dari daftar yang tersedia</p>
             </div>
-
             <!-- Judul Notifikasi -->
             <div>
                 <label for="title" class="block text-sm font-medium text-gray-700 mb-2">
@@ -76,7 +75,6 @@
                 <select name="type" id="type" required
                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors">
                     <option value="">Pilih Tipe Notifikasi</option>
-                    <option value="commission">💰 Commission - Notifikasi terkait komisi</option>
                     <option value="announcement">📢 Announcement - Pengumuman penting</option>
                     <option value="system">⚙️ System - Notifikasi sistem</option>
                 </select>

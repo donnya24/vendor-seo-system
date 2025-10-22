@@ -53,12 +53,7 @@ class Filters extends BaseFilters
                     'auth/*',
                 ],
             ],
-            'csrf' => [
-                'except' => [
-                    'admin/vendorrequests/approve',
-                    'admin/vendorrequests/reject',
-                ],
-            ],
+            'csrf', // CSRF protection tanpa pengecualian
         ],
         'after'  => [
             'noCache',
@@ -67,10 +62,10 @@ class Filters extends BaseFilters
     ];
 
     public array $methods = [
-        // 'post'   => ['csrf'],
-        // 'put'    => ['csrf'],
-        // 'patch'  => ['csrf'],
-        // 'delete' => ['csrf'],
+        'post'   => ['csrf'],
+        'put'    => ['csrf'],
+        'patch'  => ['csrf'],
+        'delete' => ['csrf'],
     ];
 
     public array $filters = [

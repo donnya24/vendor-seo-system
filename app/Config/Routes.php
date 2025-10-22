@@ -48,7 +48,7 @@ $routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 
         $routes->post('password-update', 'Profile::passwordUpdate'); // Update password
     });
 
-    // ===== NOTIFICATION HEADER ROUTES (BELL ICON) =====
+    // ===== NOTIFICATION HEADER ROUTES (BELL ICON dan modal notif pada header) =====
     $routes->group('notifications', function($routes) {
         $routes->get('modal-data', 'Notifications::modalData');
         $routes->post('markRead/(:num)', 'Notifications::markRead/$1');
@@ -58,18 +58,24 @@ $routes->group('admin', ['filter' => ['session', 'group:admin'], 'namespace' => 
     }); 
     
     
-    // ===== KELOLA NOTIFIKASI ROUTES =====
-    $routes->group('kelola-notifikasi', function($routes) {
+    // Kelolanotifikasi, untuk mengelola seluruh notifikasi pada user admin
+    $routes->group('notification-management', function($routes) {
         $routes->get('/', 'KelolaNotifikasi::index');
         $routes->get('create', 'KelolaNotifikasi::create');
         $routes->get('edit/(:num)', 'KelolaNotifikasi::edit/$1');
-        $routes->get('get-users', 'KelolaNotifikasi::getUsers');
+        $routes->get('get-users', 'KelolaNotifikasi::getUserList');
         $routes->post('store', 'KelolaNotifikasi::store');
         $routes->post('update/(:num)', 'KelolaNotifikasi::update/$1');
         $routes->post('delete/(:num)', 'KelolaNotifikasi::delete/$1');
+        $routes->post('delete-selected', 'KelolaNotifikasi::deleteSelected');
         $routes->post('delete-all', 'KelolaNotifikasi::deleteAll');
         $routes->get('user-state', 'KelolaNotifikasi::userState');
         $routes->post('user-state/delete-all', 'KelolaNotifikasi::deleteAllUserState');
+        $routes->post('restore/(:num)', 'KelolaNotifikasi::restore/$1');
+        $routes->post('restore-all', 'KelolaNotifikasi::restoreAll');
+        $routes->post('delete-permanent/(:num)', 'KelolaNotifikasi::deletePermanent/$1');
+        $routes->post('delete-selected-permanent', 'KelolaNotifikasi::deleteSelectedPermanent');
+        $routes->get('get-notification/(:num)', 'KelolaNotifikasi::getNotification/$1');
     });
         
     // Add this route to map /admin/areas to VendorAreas controller

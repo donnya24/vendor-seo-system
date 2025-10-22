@@ -114,15 +114,82 @@ class Notifications extends BaseController
 
         $ap = (new AdminProfileModel())->where('user_id', $userId)->first();
 
-        // 👉 BUKA POPUP: openNotifModal = true, dan suppress_content = true
         return view('admin/layouts/admin_master', [
             'title'            => 'Notifikasi',
             'ap'               => $ap ?? [],
             'notifications'    => $items,
             'stats'            => ['unread' => $unread],
-            'openNotifModal'   => true,       // <-- auto-check modal
-            'suppress_content' => true,       // <-- jangan render placeholder konten
-            // TIDAK perlu content_view/content_data di sini
+            'openNotifModal'   => true,
+            'suppress_content' => true,
+        ]);
+    }
+
+    /** Get modal data via AJAX */
+    public function modalData()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'Invalid request']);
+        }
+
+        $user   = $this->currentUser();
+        $userId = (int) ($user?->id ?? 0);
+
+        $items = $this->scopedBuilder()
+            ->orderBy('n.created_at', 'DESC')
+            ->get()->getResultArray();
+
+        $items = $this->normalizeRows($items);
+        $unread = 0;
+        foreach ($items as $it) { 
+            if (empty($it['is_read'])) $unread++; 
+        }
+
+        return $this->response->setJSON([
+            'success' => true,
+            'notifications' => $items,
+            'unread' => $unread
+        ]);
+    }
+
+    /** Get unread notification count */
+    public function getUnreadCount()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'Invalid request']);
+        }
+
+        $user   = $this->currentUser();
+        $userId = (int) ($user?->id ?? 0);
+
+        $items = $this->scopedBuilder()
+            ->orderBy('n.created_at', 'DESC')
+            ->get()->getResultArray();
+
+        $items  = $this->normalizeRows($items);
+        $unread = 0;
+        foreach ($items as $it) { 
+            if (empty($it['is_read'])) $unread++; 
+        }
+
+        return $this->response->setJSON([
+            'success' => true,
+            'unread' => $unread
+        ]);
+    }
+
+    /** Refresh CSRF token */
+    public function refreshCSRF()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'Invalid request']);
+        }
+
+        // Generate new CSRF token
+        $csrf = csrf_hash();
+        
+        return $this->response->setJSON([
+            'success' => true,
+            'token' => $csrf
         ]);
     }
 
@@ -132,11 +199,13 @@ class Notifications extends BaseController
         $id     = (int) $id;
         $userId = (int) ($this->currentUser()?->id ?? 0);
 
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'Invalid request method']);
+        }
+
         $row = $this->scopedBuilder()->where('n.id', $id)->get()->getRowArray();
         if (!$row) {
-            return $this->request->isAJAX()
-                ? $this->response->setJSON(['success' => false, 'message' => 'Notifikasi tidak ditemukan'])
-                : redirect()->back()->with('error', 'Notifikasi tidak ditemukan.');
+            return $this->response->setJSON(['success' => false, 'message' => 'Notifikasi tidak ditemukan']);
         }
 
         if ((int)($row['user_id'] ?? 0) === $userId) {
@@ -157,15 +226,17 @@ class Notifications extends BaseController
             'notification_title' => $row['title'] ?? 'Unknown',
         ]);
 
-        return $this->request->isAJAX()
-            ? $this->response->setJSON(['success' => true])
-            : redirect()->back()->with('success', 'Notifikasi sudah ditandai dibaca.');
+        return $this->response->setJSON(['success' => true]);
     }
 
     /** Tandai semua dibaca */
     public function markAllRead()
     {
         $userId = (int) ($this->currentUser()?->id ?? 0);
+
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'Invalid request method']);
+        }
 
         $ids = $this->scopedBuilder()->select('n.id, n.user_id')->get()->getResultArray();
         $marked = 0;
@@ -201,65 +272,65 @@ class Notifications extends BaseController
             'notifications_marked' => $marked,
         ]);
 
-        return $this->request->isAJAX()
-            ? $this->response->setJSON(['success' => true, 'marked_count' => $marked])
-            : redirect()->back()->with('success', 'Semua notifikasi sudah dibaca.');
+        return $this->response->setJSON(['success' => true, 'marked_count' => $marked]);
     }
 
-    /** Hide satu (per-user) */
+    /** Hapus satu notifikasi (permanen dari database) */
     public function delete($id)
     {
         $id     = (int) $id;
         $userId = (int) ($this->currentUser()?->id ?? 0);
 
-        $row = $this->scopedBuilder()->where('n.id', $id)->get()->getRowArray();
-        if (!$row) {
-            return $this->request->isAJAX()
-                ? $this->response->setJSON(['success' => false, 'message' => 'Notifikasi tidak ditemukan'])
-                : redirect()->back()->with('error', 'Notifikasi tidak ditemukan.');
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'Invalid request method']);
         }
 
-        $sql = "INSERT INTO notification_user_state (notification_id, user_id, hidden, hidden_at)
-                VALUES (?, ?, 1, NOW())
-                ON DUPLICATE KEY UPDATE hidden=VALUES(hidden), hidden_at=VALUES(hidden_at)";
-        $this->db->query($sql, [$id, $userId]);
+        $row = $this->scopedBuilder()->where('n.id', $id)->get()->getRowArray();
+        if (!$row) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Notifikasi tidak ditemukan']);
+        }
 
-        $this->logActivity($userId, null, 'hide_notification', 'success', 'Menyembunyikan notifikasi', [
+        // Hapus permanen dari database
+        $this->db->table($this->table)->where('id', $id)->delete();
+        
+        // Hapus juga dari notification_user_state jika ada
+        $this->db->table('notification_user_state')->where('notification_id', $id)->delete();
+
+        $this->logActivity($userId, null, 'delete_notification', 'success', 'Menghapus notifikasi', [
             'notification_id'    => $id,
             'notification_title' => $row['title'] ?? 'Unknown',
         ]);
 
-        return $this->request->isAJAX()
-            ? $this->response->setJSON(['success' => true])
-            : redirect()->back()->with('success', 'Notifikasi berhasil dihapus.');
+        return $this->response->setJSON(['success' => true]);
     }
 
-    /** Hide semua (per-user) */
+    /** Hapus semua notifikasi (permanen dari database) */
     public function deleteAll()
     {
         $userId = (int) ($this->currentUser()?->id ?? 0);
+
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'Invalid request method']);
+        }
 
         $ids   = $this->scopedBuilder()->select('n.id')->get()->getResultArray();
         $count = count($ids);
 
         if ($count > 0) {
-            $values = [];
-            foreach ($ids as $r) {
-                $values[] = '(' . (int)$r['id'] . ',' . $userId . ',1,NOW())';
-            }
-            $sql = "INSERT INTO notification_user_state (notification_id, user_id, hidden, hidden_at)
-                    VALUES " . implode(',', $values) . "
-                    ON DUPLICATE KEY UPDATE hidden=VALUES(hidden), hidden_at=VALUES(hidden_at)";
-            $this->db->query($sql);
+            $notificationIds = array_column($ids, 'id');
+            
+            // Hapus permanen dari database
+            $this->db->table($this->table)->whereIn('id', $notificationIds)->delete();
+            
+            // Hapus juga dari notification_user_state
+            $this->db->table('notification_user_state')->whereIn('notification_id', $notificationIds)->delete();
         }
 
-        $this->logActivity($userId, null, 'hide_all_notifications', 'success', 'Menyembunyikan semua notifikasi', [
-            'hidden_count' => $count,
+        $this->logActivity($userId, null, 'delete_all_notifications', 'success', 'Menghapus semua notifikasi', [
+            'deleted_count' => $count,
         ]);
 
-        return $this->request->isAJAX()
-            ? $this->response->setJSON(['success' => true, 'hidden_count' => $count])
-            : redirect()->back()->with('success', 'Semua notifikasi disembunyikan.');
+        return $this->response->setJSON(['success' => true, 'deleted_count' => $count]);
     }
 
     /**
@@ -269,10 +340,14 @@ class Notifications extends BaseController
     {
         $db = db_connect();
         
-        // 1. Ambil SEMUA user dengan group 'admin' dan 'seoteam'
+        // Dapatkan admin yang sedang login
+        $currentUserId = (int) ($this->currentUser()?->id ?? 0);
+        
+        // 1. Ambil SEMUA user dengan group 'admin' dan 'seoteam' KECUALI admin yang sedang login
         $targetUsers = $db->table('auth_groups_users')
             ->select('user_id, group')
             ->whereIn('group', ['admin', 'seoteam'])
+            ->where('user_id !=', $currentUserId)  // Kecualikan admin yang sedang login
             ->get()
             ->getResultArray();
         
@@ -318,6 +393,11 @@ class Notifications extends BaseController
             // Set vendor_id untuk semua notifikasi
             $notification['vendor_id'] = $vendorData['user_id'];
             
+            // Set admin_id jika user adalah admin
+            if ($targetUser['group'] === 'admin') {
+                $notification['admin_id'] = $targetUser['user_id'];
+            }
+            
             // Set seo_id jika user adalah seoteam
             if ($targetUser['group'] === 'seoteam') {
                 $notification['seo_id'] = $targetUser['user_id'];
@@ -331,9 +411,7 @@ class Notifications extends BaseController
             $db->table('notifications')->insertBatch($notificationsToInsert);
             log_message('info', 'SUKSES: Berhasil mengirim ' . count($notificationsToInsert) . ' notifikasi komisi.');
         } catch (\Throwable $e) {
-            // Log jika terjadi error
             log_message('error', 'GAGAL INSERT NOTIFIKASI: ' . $e->getMessage());
-            // Lempar error agar bisa ditangkap di try-catch luar
             throw $e;
         }
     }
@@ -345,10 +423,14 @@ class Notifications extends BaseController
     {
         $db = db_connect();
         
-        // 1. Ambil SEMUA user dengan group 'admin' dan 'seoteam'
+        // Dapatkan admin yang sedang login
+        $currentUserId = (int) ($this->currentUser()?->id ?? 0);
+        
+        // 1. Ambil SEMUA user dengan group 'admin' dan 'seoteam' KECUALI admin yang sedang login
         $targetUsers = $db->table('auth_groups_users')
             ->select('user_id, group')
             ->whereIn('group', ['admin', 'seoteam'])
+            ->where('user_id !=', $currentUserId)  // Kecualikan admin yang sedang login
             ->get()
             ->getResultArray();
         
@@ -380,6 +462,11 @@ class Notifications extends BaseController
             // Set vendor_id untuk semua notifikasi
             $notification['vendor_id'] = $vendorData['user_id'];
             
+            // Set admin_id jika user adalah admin
+            if ($targetUser['group'] === 'admin') {
+                $notification['admin_id'] = $targetUser['user_id'];
+            }
+            
             // Set seo_id jika user adalah seoteam
             if ($targetUser['group'] === 'seoteam') {
                 $notification['seo_id'] = $targetUser['user_id'];
@@ -393,9 +480,7 @@ class Notifications extends BaseController
             $db->table('notifications')->insertBatch($notificationsToInsert);
             log_message('info', 'SUKSES: Berhasil mengirim ' . count($notificationsToInsert) . ' notifikasi laporan leads.');
         } catch (\Throwable $e) {
-            // Log jika terjadi error
             log_message('error', 'GAGAL INSERT NOTIFIKASI: ' . $e->getMessage());
-            // Lempar error agar bisa ditangkap di try-catch luar
             throw $e;
         }
     }
@@ -407,10 +492,14 @@ class Notifications extends BaseController
     {
         $db = db_connect();
         
-        // 1. Ambil SEMUA user dengan group 'vendor' dan 'seoteam'
+        // Dapatkan admin yang sedang login
+        $currentUserId = (int) ($this->currentUser()?->id ?? 0);
+        
+        // 1. Ambil SEMUA user dengan group 'vendor' dan 'seoteam' KECUALI admin yang sedang login
         $targetUsers = $db->table('auth_groups_users')
             ->select('user_id, group')
             ->whereIn('group', ['vendor', 'seoteam'])
+            ->where('user_id !=', $currentUserId)  // Kecualikan admin yang sedang login
             ->get()
             ->getResultArray();
         
@@ -445,6 +534,11 @@ class Notifications extends BaseController
                 $notification['seo_id'] = $targetUser['user_id'];
             }
             
+            // Set vendor_id jika user adalah vendor
+            if ($targetUser['group'] === 'vendor') {
+                $notification['vendor_id'] = $targetUser['user_id'];
+            }
+            
             $notificationsToInsert[] = $notification;
         }
 
@@ -453,9 +547,7 @@ class Notifications extends BaseController
             $db->table('notifications')->insertBatch($notificationsToInsert);
             log_message('info', 'SUKSES: Berhasil mengirim ' . count($notificationsToInsert) . ' notifikasi pengumuman.');
         } catch (\Throwable $e) {
-            // Log jika terjadi error
             log_message('error', 'GAGAL INSERT NOTIFIKASI: ' . $e->getMessage());
-            // Lempar error agar bisa ditangkap di try-catch luar
             throw $e;
         }
     }
@@ -467,10 +559,14 @@ class Notifications extends BaseController
     {
         $db = db_connect();
         
-        // 1. Ambil SEMUA user dengan group 'seoteam'
+        // Dapatkan admin yang sedang login
+        $currentUserId = (int) ($this->currentUser()?->id ?? 0);
+        
+        // 1. Ambil SEMUA user dengan group 'seoteam' KECUALI admin yang sedang login
         $targetUsers = $db->table('auth_groups_users')
             ->select('user_id')
             ->where('group', 'seoteam')
+            ->where('user_id !=', $currentUserId)  // Kecualikan admin yang sedang login
             ->get()
             ->getResultArray();
         
@@ -510,9 +606,7 @@ class Notifications extends BaseController
             $db->table('notifications')->insertBatch($notificationsToInsert);
             log_message('info', 'SUKSES: Berhasil mengirim ' . count($notificationsToInsert) . ' notifikasi status SEO.');
         } catch (\Throwable $e) {
-            // Log jika terjadi error
             log_message('error', 'GAGAL INSERT NOTIFIKASI: ' . $e->getMessage());
-            // Lempar error agar bisa ditangkap di try-catch luar
             throw $e;
         }
     }
@@ -571,9 +665,7 @@ class Notifications extends BaseController
             $db->table('notifications')->insert($notification);
             log_message('info', 'SUKSES: Berhasil mengirim notifikasi status komisi.');
         } catch (\Throwable $e) {
-            // Log jika terjadi error
             log_message('error', 'GAGAL INSERT NOTIFIKASI: ' . $e->getMessage());
-            // Lempar error agar bisa ditangkap di try-catch luar
             throw $e;
         }
     }
@@ -630,9 +722,7 @@ class Notifications extends BaseController
             $db->table('notifications')->insert($notification);
             log_message('info', 'SUKSES: Berhasil mengirim notifikasi pembayaran komisi.');
         } catch (\Throwable $e) {
-            // Log jika terjadi error
             log_message('error', 'GAGAL INSERT NOTIFIKASI: ' . $e->getMessage());
-            // Lempar error agar bisa ditangkap di try-catch luar
             throw $e;
         }
     }
@@ -691,9 +781,7 @@ class Notifications extends BaseController
             $db->table('notifications')->insert($notification);
             log_message('info', 'SUKSES: Berhasil mengirim notifikasi status komisi dari SEO.');
         } catch (\Throwable $e) {
-            // Log jika terjadi error
             log_message('error', 'GAGAL INSERT NOTIFIKASI: ' . $e->getMessage());
-            // Lempar error agar bisa ditangkap di try-catch luar
             throw $e;
         }
     }
@@ -750,9 +838,7 @@ class Notifications extends BaseController
             $db->table('notifications')->insert($notification);
             log_message('info', 'SUKSES: Berhasil mengirim notifikasi status keyword.');
         } catch (\Throwable $e) {
-            // Log jika terjadi error
             log_message('error', 'GAGAL INSERT NOTIFIKASI: ' . $e->getMessage());
-            // Lempar error agar bisa ditangkap di try-catch luar
             throw $e;
         }
     }

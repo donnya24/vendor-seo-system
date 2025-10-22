@@ -9,7 +9,10 @@
 
  $recentLeads    = $recentLeads   ?? [];
  $topKeywords    = $topKeywords   ?? [];
- $notifications  = $notifications ?? [];
+ 
+ // PERUBAHAN: Gunakan variabel notifikasi header jika ada, jika tidak gunakan variabel default
+ $notifications  = $headerNotifications ?? $notifications ?? [];
+ $unread         = $headerUnread ?? $unread ?? 0;
 
 // Ambil data admin - Gunakan data yang sudah disediakan oleh controller
  $user           = $user ?? service('auth')->user();
@@ -75,7 +78,7 @@
         .main-content-container {
             width: 100%;
             margin-left: 0;
-            transition: margin-left 0.3s ease;
+            transition: margin-left 0.25s ease, width 0.25s ease;
         }
         
         .main-content-container.sidebar-open {
@@ -89,13 +92,14 @@
             }
         }
 
-        /* Header styling */
+        /* Header styling - FIXED: Sinkronisasi transisi dengan sidebar */
         .admin-header {
             background: linear-gradient(90deg, #1e40af 0%, #1e3a8a 100%);
             box-shadow: 0 4px 12px rgba(0,0,0,.1);
-            transition: all .3s ease;
+            transition: all 0.25s ease;
             z-index: 20;
             width: 100%;
+            left: 0;
         }
 
         @media (min-width: 768px) {
@@ -217,10 +221,10 @@
                                 class="relative p-2 text-white/90 hover:text-white hover:bg-white/12 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-white/30 focus:ring-offset-1 focus:ring-offset-transparent"
                                 :aria-expanded="notifOpen" aria-haspopup="true">
                             <i class="fas fa-bell text-lg sm:text-base"></i>
-                            <?php if (($unread ?? 0) > 0): ?>
+                            <?php if ($unread > 0): ?>
                                 <span id="notifBadge"
                                     class="absolute -top-0.5 -right-0.5 bg-red-500 text-white rounded-full min-w-[1.25rem] h-5 flex items-center justify-center text-xs font-medium px-1">
-                                    <?= min(99, (int)($unread ?? 0)) ?><?= (int)($unread ?? 0) > 99 ? '+' : '' ?>
+                                    <?= min(99, (int)$unread) ?><?= (int)$unread > 99 ? '+' : '' ?>
                                 </span>
                             <?php endif; ?>
                         </button>
@@ -336,3 +340,4 @@
         <!-- Content Area - FIXED: Menghilangkan padding/margin yang tidak perlu -->
         <div class="content-area flex-1">
             <!-- Konten utama akan dimasukkan di sini -->
+

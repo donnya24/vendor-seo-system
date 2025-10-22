@@ -4,7 +4,7 @@
     data-turbo-permanent
     class="sidebar z-40 text-white w-64 fixed inset-y-0 left-0 flex flex-col
            bg-gradient-to-b from-blue-800 via-blue-700 to-blue-900
-           transform transition-transform duration-300 ease-in-out shadow-2xl"
+           transform transition-transform duration-250 ease-in-out shadow-2xl"
     :class="$store.ui.sidebar ? 'translate-x-0' : '-translate-x-full'"
     x-cloak
     role="navigation"
@@ -22,7 +22,7 @@
                 (url_is("admin/leads*") ? "leads" :
                 (url_is("admin/commissions*") ? "commissions" :
                 (url_is("admin/announcements*") ? "announcements" :
-                (url_is("admin/kelola-notifikasi*") ? "notifications" :
+                (url_is("admin/notification-management*") ? "notifications" :
                 (url_is("admin/activity-logs*") ? "activity-logs" : ""))))))))))
             ?>',
             userSubmenu: <?= (url_is('admin/userseo*') || url_is('admin/uservendor*')) ? 'true' : 'false' ?>,
@@ -65,7 +65,7 @@
                 else if(path.includes('/admin/announcements')) {
                     this.activeMenu = 'announcements';
                 }
-                else if(path.includes('/admin/kelola-notifikasi')) {
+                else if(path.includes('/admin/notification-management')) {
                     this.activeMenu = 'notifications';
                 }
                 else if(path.includes('/admin/activity-logs')) {
@@ -292,7 +292,7 @@
         </a>
 
         <!-- Kelola Notifikasi -->
-        <a href="<?= site_url('admin/kelola-notifikasi'); ?>"
+        <a href="<?= site_url('admin/notification-management'); ?>"
            class="group flex items-center gap-3 py-2.5 px-3 rounded-lg mb-1 transition-all
                   hover:bg-blue-700/50 text-blue-100 hover:text-white"
            :class="{'bg-blue-600 text-white shadow-lg shadow-blue-600/30': activeMenu === 'notifications'}"

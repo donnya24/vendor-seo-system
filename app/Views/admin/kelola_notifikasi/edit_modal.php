@@ -1,84 +1,10 @@
+<!-- Edit Notification Modal -->
 <div class="bg-white rounded-lg">
-
-    <!-- Form Content -->
-    <div class="p-6">
-        <?php if (isset($notification) && !empty($notification)): ?>
-        <form action="<?= base_url('admin/kelola-notifikasi/update/' . $notification['id']) ?>" method="POST" class="space-y-6">
-            <?= csrf_field() ?>
+    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+        <form action="<?= base_url('admin/notification-management/update/' . $notification['id']) ?>" method="POST" class="space-y-6">
+            <input type="hidden" name="<?= csrf_token() ?>" value="<?= csrf_hash() ?>">
             <input type="hidden" name="id" value="<?= $notification['id'] ?>">
             
-            <!-- Penerima -->
-            <div>
-                <label for="user_id" class="block text-sm font-medium text-gray-700 mb-2">
-                    <i class="fas fa-user mr-2 text-blue-500"></i>Penerima *
-                </label>
-                <select name="user_id" id="user_id" required
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors">
-                    <option value="">Pilih User Penerima</option>
-                    
-                    <!-- Group: SEO Profiles -->
-                    <?php if (!empty($seoProfiles)): ?>
-                    <optgroup label="👨‍💼 Tim SEO">
-                        <?php foreach ($seoProfiles as $seo): 
-                            // Menggunakan userModel yang sudah diinisialisasi di controller
-                            $user = $userModel->find($seo['user_id']);
-                            $selected = ($notification['user_id'] == $seo['user_id']) ? 'selected' : '';
-                        ?>
-                            <option value="<?= $seo['user_id'] ?>" <?= $selected ?>>
-                                [SEO-<?= $seo['id'] ?>] <?= esc($seo['name']) ?> 
-                                - <?= esc($user->username ?? 'User') ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </optgroup>
-                    <?php endif; ?>
-                    
-                    <!-- Group: Vendor Profiles -->
-                    <?php if (!empty($vendorProfiles)): ?>
-                    <optgroup label="🏢 Vendor">
-                        <?php foreach ($vendorProfiles as $vendor): 
-                            // Menggunakan userModel yang sudah diinisialisasi di controller
-                            $user = $userModel->find($vendor['user_id']);
-                            $selected = ($notification['user_id'] == $vendor['user_id']) ? 'selected' : '';
-                        ?>
-                            <option value="<?= $vendor['user_id'] ?>" <?= $selected ?>>
-                                [VENDOR-<?= $vendor['id'] ?>] <?= esc($vendor['business_name']) ?> 
-                                (<?= esc($vendor['owner_name']) ?>)
-                            </option>
-                        <?php endforeach; ?>
-                    </optgroup>
-                    <?php endif; ?>
-                    
-                    <!-- Group: Other Users -->
-                    <?php if (!empty($allUsers)): ?>
-                    <optgroup label="👥 Users Lainnya">
-                        <?php 
-                        $usedUserIds = [];
-                        if (!empty($seoProfiles)) {
-                            foreach ($seoProfiles as $seo) $usedUserIds[] = $seo['user_id'];
-                        }
-                        if (!empty($vendorProfiles)) {
-                            foreach ($vendorProfiles as $vendor) $usedUserIds[] = $vendor['user_id'];
-                        }
-                        
-                        foreach ($allUsers as $user): 
-                            $userId = $user->id ?? $user['id'];
-                            if (!in_array($userId, $usedUserIds)):
-                                $selected = ($notification['user_id'] == $userId) ? 'selected' : '';
-                        ?>
-                            <option value="<?= $userId ?>" <?= $selected ?>>
-                                [USER-<?= $userId ?>] <?= esc($user->username ?? $user['username']) ?> 
-                                (<?= esc($user->email ?? $user['email'] ?? 'No email') ?>)
-                            </option>
-                        <?php 
-                            endif;
-                        endforeach; 
-                        ?>
-                    </optgroup>
-                    <?php endif; ?>
-                </select>
-                <p class="text-xs text-gray-500 mt-2">Pilih penerima notifikasi dari daftar yang tersedia</p>
-            </div>
-
             <!-- Judul Notifikasi -->
             <div>
                 <label for="title" class="block text-sm font-medium text-gray-700 mb-2">
@@ -112,17 +38,16 @@
                 <select name="type" id="type" required
                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors">
                     <option value="">Pilih Tipe Notifikasi</option>
-                    <option value="commission" <?= ($notification['type'] == 'commission') ? 'selected' : '' ?>>💰 Commission - Notifikasi terkait komisi</option>
-                    <option value="announcement" <?= ($notification['type'] == 'announcement') ? 'selected' : '' ?>>📢 Announcement - Pengumuman penting</option>
-                    <option value="system" <?= ($notification['type'] == 'system') ? 'selected' : '' ?>>⚙️ System - Notifikasi sistem</option>
+                    <option value="announcement" <?= $notification['type'] == 'announcement' ? 'selected' : '' ?>>📢 Announcement - Pengumuman penting</option>
+                    <option value="system" <?= $notification['type'] == 'system' ? 'selected' : '' ?>>⚙️ System - Notifikasi sistem</option>
                 </select>
                 <p class="text-xs text-gray-500 mt-2">Pilih kategori notifikasi sesuai dengan kebutuhan</p>
             </div>
 
             <!-- Status Baca -->
             <div class="flex items-center p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <input type="checkbox" name="is_read" id="is_read" value="1" 
-                       <?= ($notification['is_read'] == 1) ? 'checked' : '' ?>
+                <input type="checkbox" name="is_read" id="is_read" value="1"
+                       <?= !empty($notification['is_read']) ? 'checked' : '' ?>
                        class="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded transition-colors">
                 <label for="is_read" class="ml-3 block text-sm font-medium text-gray-700">
                     📍 Tandai sebagai sudah dibaca
@@ -141,20 +66,6 @@
                 </button>
             </div>
         </form>
-        <?php else: ?>
-        <div class="bg-red-50 border-l-4 border-red-500 p-4">
-            <div class="flex">
-                <div class="flex-shrink-0">
-                    <i class="fas fa-exclamation-triangle text-red-500"></i>
-                </div>
-                <div class="ml-3">
-                    <p class="text-sm text-red-700">
-                        Data notifikasi tidak ditemukan. Silakan coba lagi atau hubungi administrator.
-                    </p>
-                </div>
-            </div>
-        </div>
-        <?php endif; ?>
     </div>
 </div>
 
@@ -177,9 +88,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 messageTextarea.classList.remove('border-red-300');
             }
         });
-        
-        // Trigger initial count
-        messageTextarea.dispatchEvent(new Event('input'));
     }
 });
 </script>
