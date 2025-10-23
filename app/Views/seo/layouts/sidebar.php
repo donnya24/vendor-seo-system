@@ -145,7 +145,7 @@ if (!function_exists('navItem')) {
                         class="px-5 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition flex items-center">
                         <i class="fas fa-sign-out-alt mr-2"></i>
                         Keluar
-                    </button>z
+                    </button>
                 </form>
             </div>
         </div>
