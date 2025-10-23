@@ -337,6 +337,10 @@ $routes->get('admin/dashboard/index', static fn () => redirect()->to('/admin/das
         $routes->post('delete-all',     'Notifications::deleteAll',   ['as' => 'vendor_notif_delete_all']);
         $routes->post('mark-all',       'Notifications::markAllRead', ['as' => 'vendor_notif_mark_all']);
         $routes->get('mark-all',        'Notifications::markAllRead'); // opsional (AJAX GET)
+        // Tambahkan route baru di routes.php (di dalam group notifications)
+        $routes->get('ajax', 'Notifications::getNotificationsAjax', ['as' => 'vendor_notif_ajax']);
+        // Di routes file
+        $routes->get('vendoruser/notifications/csrf', 'Vendoruser\Notifications::getCsrfToken', ['as' => 'vendor_notif_csrf']);
     });
 });
 

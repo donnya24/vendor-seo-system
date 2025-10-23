@@ -9,8 +9,6 @@
     <!-- HEADER DENGAN DELETE ALL -->
     <div class="mb-5 flex flex-col sm:flex-row gap-4 items-center justify-between">
       <div class="text-sm text-gray-600">
-        <i class="fas fa-shield-alt mr-1"></i>
-        Menampilkan aktivitas dari administrator sistem
       </div>
 
       <!-- DELETE ALL BUTTON -->

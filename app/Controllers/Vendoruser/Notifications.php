@@ -153,6 +153,16 @@ class Notifications extends BaseController
         ]));
     }
 
+    // Tambahkan method ini di Notifications controller
+    public function getCsrfToken()
+    {
+        return $this->response->setJSON([
+            'success' => true,
+            'csrf_token' => csrf_hash(),
+            'csrf_header' => csrf_header()
+        ]);
+    }
+
     /** Tandai satu notifikasi dibaca */
     public function markRead($id)
     {
@@ -327,5 +337,26 @@ class Notifications extends BaseController
         return $this->request->isAJAX()
             ? $this->response->setJSON(['success' => true, 'hidden_count' => $count])
             : redirect()->back()->with('success', 'Semua notifikasi disembunyikan.');
+    }
+
+    public function getNotificationsAjax()
+    {
+        if (!$this->vendorId) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Unauthorized']);
+        }
+
+        $items = $this->scopedBuilder()
+            ->orderBy('n.created_at', 'DESC')
+            ->get()->getResultArray();
+
+        $items = $this->normalizeRows($items);
+        $unread = 0;
+        foreach ($items as $it) { if (empty($it['is_read'])) $unread++; }
+
+        return $this->response->setJSON([
+            'success' => true,
+            'notifications' => $items,
+            'unread' => $unread
+        ]);
     }
 }

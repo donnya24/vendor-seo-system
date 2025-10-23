@@ -226,7 +226,11 @@ class Notifications extends BaseController
             'notification_title' => $row['title'] ?? 'Unknown',
         ]);
 
-        return $this->response->setJSON(['success' => true]);
+        // Return new CSRF token
+        return $this->response->setJSON([
+            'success' => true,
+            'csrf_token' => csrf_hash()
+        ]);
     }
 
     /** Tandai semua dibaca */
@@ -272,7 +276,12 @@ class Notifications extends BaseController
             'notifications_marked' => $marked,
         ]);
 
-        return $this->response->setJSON(['success' => true, 'marked_count' => $marked]);
+        // Return new CSRF token
+        return $this->response->setJSON([
+            'success' => true,
+            'marked_count' => $marked,
+            'csrf_token' => csrf_hash()
+        ]);
     }
 
     /** Hapus satu notifikasi (permanen dari database) */
@@ -301,7 +310,11 @@ class Notifications extends BaseController
             'notification_title' => $row['title'] ?? 'Unknown',
         ]);
 
-        return $this->response->setJSON(['success' => true]);
+        // Return new CSRF token
+        return $this->response->setJSON([
+            'success' => true,
+            'csrf_token' => csrf_hash()
+        ]);
     }
 
     /** Hapus semua notifikasi (permanen dari database) */
@@ -330,7 +343,12 @@ class Notifications extends BaseController
             'deleted_count' => $count,
         ]);
 
-        return $this->response->setJSON(['success' => true, 'deleted_count' => $count]);
+        // Return new CSRF token
+        return $this->response->setJSON([
+            'success' => true,
+            'deleted_count' => $count,
+            'csrf_token' => csrf_hash()
+        ]);
     }
 
     /**

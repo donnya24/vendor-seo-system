@@ -103,25 +103,6 @@
             transform: translateY(-20px);
         }
         
-        .slide-indicators {
-            display: flex;
-            justify-content: center;
-            gap: 4px;
-            margin-top: 4px;
-        }
-        
-        .indicator {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background-color: #d1d5db;
-            transition: background-color 0.3s;
-        }
-        
-        .indicator.active {
-            background-color: #7c3aed;
-        }
-        
         .rank-icon {
             display: inline-flex;
             align-items: center;
@@ -201,7 +182,7 @@
                     </div>
                 </div>
 
-                <!-- 3. Top keyword (3 ranking dengan animasi slide) -->
+                <!-- 3. Top keyword (3 ranking dengan animasi slide) - TANPA INDICATORS -->
                 <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-2.5 rounded-lg border border-purple-200 shadow-xs hover:shadow-sm transition-shadow animate-fade-up"
                      style="--delay:.20s">
                     <div class="flex items-center justify-between">
@@ -231,13 +212,6 @@
                                             <span class="text-xs font-semibold text-purple-900 truncate"><?= esc($keyword['keyword']) ?></span>
                                             <span class="text-xs text-purple-700 ml-1">(<?= esc($keyword['current_position']) ?>)</span>
                                         </div>
-                                    <?php endforeach; ?>
-                                </div>
-                                
-                                <div class="slide-indicators">
-                                    <?php foreach ($stats['topKeywords'] as $index => $keyword): ?>
-                                        <?php $isActive = $index === 0 ? 'active' : ''; ?>
-                                        <div class="indicator <?= $isActive ?>" data-index="<?= $index ?>"></div>
                                     <?php endforeach; ?>
                                 </div>
                             <?php else: ?>
@@ -866,13 +840,12 @@
             }
         }
         
-        // Keyword Slider Animation
+        // Keyword Slider Animation - TANPA INDICATORS
         document.addEventListener('DOMContentLoaded', function() {
             const slider = document.getElementById('keywordSlider');
             if (!slider) return;
             
             const slides = slider.querySelectorAll('.keyword-slide');
-            const indicators = slider.parentElement.querySelectorAll('.indicator');
             
             if (slides.length === 0) return;
             
@@ -891,11 +864,6 @@
                 
                 // Show current slide
                 slides[index].classList.add('active');
-                
-                // Update indicators
-                indicators.forEach((indicator, i) => {
-                    indicator.classList.toggle('active', i === index);
-                });
             }
             
             function nextSlide() {
@@ -905,14 +873,6 @@
             
             // Auto-advance slides every 3 seconds
             setInterval(nextSlide, 3000);
-            
-            // Click on indicators to go to specific slide
-            indicators.forEach((indicator, index) => {
-                indicator.addEventListener('click', () => {
-                    currentIndex = index;
-                    showSlide(currentIndex);
-                });
-            });
         });
     </script>
 
