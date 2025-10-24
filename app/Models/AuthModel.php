@@ -86,11 +86,6 @@ class AuthModel extends Model
             // Step 4: Extract data
             $userData = $this->extractGoogleData($googleUser);
             
-            log_message('debug', '=== GOOGLE AUTH PROCESS ===');
-            log_message('debug', 'Action: ' . $action);
-            log_message('debug', 'Google ID: ' . ($userData['id'] ?? 'NULL'));
-            log_message('debug', 'Email: ' . ($userData['email'] ?? 'NULL'));
-            
             if (empty($userData['id']) || empty($userData['email'])) {
                 throw new \Exception('Invalid Google user data: missing ID or email');
             }
@@ -98,11 +93,9 @@ class AuthModel extends Model
             // Step 5: Handle berdasarkan action
             if (strpos($state, 'register') !== false) {
                 // REGISTER: Cari atau buat user baru
-                log_message('debug', 'Processing as REGISTRATION');
                 $user = $this->findOrCreateUserForRegistration($userData);
             } else {
                 // LOGIN: Hanya cari user yang sudah ada
-                log_message('debug', 'Processing as LOGIN');
                 $user = $this->findUserForLogin($userData);
             }
 
@@ -120,9 +113,6 @@ class AuthModel extends Model
             $this->auth->login($user);
             session()->remove('oauth2state');
             
-            log_message('debug', 'Login successful - User ID: ' . $user->id);
-            log_message('debug', 'User Google ID: ' . ($user->google_id ?? 'NULL'));
-            
             return ['success' => true, 'user' => $user];
 
         } catch (\Exception $e) {
@@ -136,27 +126,17 @@ class AuthModel extends Model
      */
     private function findOrCreateUserForRegistration($userData)
     {
-        log_message('debug', '=== findOrCreateUserForRegistration START ===');
-        
         // 1. Cari by Google ID menggunakan UserModel
         $user = $this->userModel->findByGoogleId($userData['id']);
         if ($user) {
-            log_message('debug', 'User found by Google ID: ' . $user->id);
             return $user;
         }
 
         // 2. Cari by email menggunakan UserModel
         $existingUser = $this->getUserByEmail($userData['email']);
         if ($existingUser) {
-            log_message('debug', 'Existing user found by email: ' . $existingUser->id);
-            log_message('debug', 'Existing user active: ' . ($existingUser->active ? 'YES' : 'NO'));
-            log_message('debug', 'Existing user google_id: ' . ($existingUser->google_id ?? 'NULL'));
-            log_message('debug', 'Existing user deleted_at: ' . ($existingUser->deleted_at ?? 'NULL'));
-            
             // Hanya update jika user aktif, belum punya google_id, dan tidak soft deleted
             if ($existingUser->active && empty($existingUser->google_id) && empty($existingUser->deleted_at)) {
-                log_message('debug', 'Updating existing active user with Google data');
-                
                 // Update menggunakan UserModel
                 $this->userModel->update($existingUser->id, [
                     'google_id' => $userData['id'],
@@ -168,17 +148,11 @@ class AuthModel extends Model
                 $this->updateIdentityForGoogleUser($existingUser->id, $userData['email']);
                 
                 // Get updated user
-                $updatedUser = $this->userModel->find($existingUser->id);
-                log_message('debug', 'After update - Google ID: ' . ($updatedUser->google_id ?? 'NULL'));
-                
-                return $updatedUser;
-            } else {
-                log_message('debug', 'Existing user not suitable for update, creating new user');
+                return $this->userModel->find($existingUser->id);
             }
         }
 
         // 3. Buat user baru
-        log_message('debug', 'Creating brand new user for Google registration');
         return $this->createNewUser($userData);
     }
 
@@ -187,23 +161,18 @@ class AuthModel extends Model
      */
     private function findUserForLogin($userData)
     {
-        log_message('debug', '=== findUserForLogin START ===');
-        
         // Cari by Google ID
         $user = $this->userModel->findByGoogleId($userData['id']);
         if ($user) {
-            log_message('debug', 'User found by Google ID: ' . $user->id);
             return $user;
         }
 
         // Cari by email - hanya yang aktif dan punya Google ID
         $user = $this->getUserByEmail($userData['email']);
         if ($user && $user->active && !empty($user->google_id)) {
-            log_message('debug', 'User found by email with Google ID: ' . $user->id);
             return $user;
         }
 
-        log_message('debug', 'No suitable user found for login');
         return null;
     }
 
@@ -256,7 +225,6 @@ class AuthModel extends Model
                     'secret2' => null,
                     'updated_at' => date('Y-m-d H:i:s')
                 ]);
-                log_message('debug', 'Updated identity for Google user: ' . $userId);
             }
         } catch (\Exception $e) {
             log_message('error', 'Failed to update identity for Google user: ' . $e->getMessage());
@@ -290,11 +258,6 @@ class AuthModel extends Model
 
             // Buat username dari email
             $username = $this->generateUsername($userData['email']);
-            
-            log_message('debug', 'Creating new user with data:');
-            log_message('debug', ' - Username: ' . $username);
-            log_message('debug', ' - Google ID: ' . $userData['id']);
-            log_message('debug', ' - Email: ' . $userData['email']);
 
             // Data user lengkap - GUNAKAN USERMODEL
             $userDataToSave = [
@@ -307,15 +270,11 @@ class AuthModel extends Model
                 'updated_at' => date('Y-m-d H:i:s')
             ];
 
-            log_message('debug', 'User data to save: ' . json_encode($userDataToSave));
-
             $userId = $this->userModel->insert($userDataToSave);
 
             if (!$userId) {
                 throw new \Exception('Failed to insert user: ' . implode(', ', $this->userModel->errors()));
             }
-
-            log_message('debug', 'User created with ID: ' . $userId);
 
             // Buat identity
             $identityModel = new \App\Models\IdentityModel();
@@ -332,8 +291,6 @@ class AuthModel extends Model
             if (!$identityResult) {
                 throw new \Exception('Failed to create identity: ' . implode(', ', $identityModel->errors()));
             }
-
-            log_message('debug', 'Identity created for user: ' . $userId);
 
             // Assign ke group vendor
             $this->assignUserToGroup($userId, 'vendor');
@@ -355,20 +312,10 @@ class AuthModel extends Model
                 throw new \Exception('Failed to create vendor profile: ' . implode(', ', $vendorProfileModel->errors()));
             }
 
-            log_message('debug', 'Vendor profile created for user: ' . $userId);
-
             $db->transComplete();
 
             // Ambil user yang baru dibuat
-            $newUser = $this->userModel->find($userId);
-            
-            log_message('debug', 'New user created successfully:');
-            log_message('debug', ' - User ID: ' . $newUser->id);
-            log_message('debug', ' - Username: ' . $newUser->username);
-            log_message('debug', ' - Google ID: ' . ($newUser->google_id ?? 'NULL'));
-            log_message('debug', ' - Google Profile: ' . (!empty($newUser->google_profile) ? 'SET' : 'NULL'));
-
-            return $newUser;
+            return $this->userModel->find($userId);
 
         } catch (\Exception $e) {
             $db->transRollback();
@@ -437,27 +384,13 @@ class AuthModel extends Model
                 ->first();
             
             if (!$identity) {
-                log_message('debug', "User {$userId}: Identity not found");
                 return false;
             }
-            
-            // DEBUG: Log identity details
-            log_message('debug', "=== USER HAS PASSWORD CHECK ===");
-            log_message('debug', "User ID: {$userId}");
-            log_message('debug', "Secret: " . ($identity['secret'] ?? 'NULL'));
-            log_message('debug', "Secret2: " . ($identity['secret2'] ?? 'NULL'));
-            log_message('debug', "Secret2 Type: " . gettype($identity['secret2']));
-            log_message('debug', "Secret2 === null: " . ($identity['secret2'] === null ? 'YES' : 'NO'));
-            log_message('debug', "Secret2 === '': " . ($identity['secret2'] === '' ? 'YES' : 'NO'));
-            log_message('debug', "empty(Secret2): " . (empty($identity['secret2']) ? 'YES' : 'NO'));
-            log_message('debug', "is_null(Secret2): " . (is_null($identity['secret2']) ? 'YES' : 'NO'));
             
             // USER TIDAK PUNYA PASSWORD JIKA:
             // - secret2 adalah NULL, ATAU
             // - secret2 adalah empty string ''
             $hasPassword = !is_null($identity['secret2']) && $identity['secret2'] !== '';
-            
-            log_message('debug', "Final Result - User has password: " . ($hasPassword ? 'YES' : 'NO'));
             
             return $hasPassword;
             
@@ -515,22 +448,11 @@ class AuthModel extends Model
                 ->first();
             
             if (!$identity) {
-                log_message('debug', "User {$userId}: Identity not found");
                 return false;
             }
             
-            // Debug detail identity
-            log_message('debug', "User {$userId} identity details:");
-            log_message('debug', " - secret: " . ($identity['secret'] ?? 'NULL'));
-            log_message('debug', " - secret2: " . ($identity['secret2'] ?? 'NULL'));
-            log_message('debug', " - secret2 is null: " . (is_null($identity['secret2']) ? 'YES' : 'NO'));
-            log_message('debug', " - secret2 is empty: " . (empty($identity['secret2']) ? 'YES' : 'NO'));
-            
             // User Google tanpa password: secret2 harus NULL atau empty string
-            $result = empty($identity['secret2']) || is_null($identity['secret2']);
-            log_message('debug', "User {$userId} isGoogleWithoutPassword result: " . ($result ? 'YES' : 'NO'));
-            
-            return $result;
+            return empty($identity['secret2']) || is_null($identity['secret2']);
             
         } catch (\Exception $e) {
             log_message('error', 'Error checking Google user status: ' . $e->getMessage());
@@ -547,15 +469,10 @@ class AuthModel extends Model
             $user = $this->userModel->find($userId);
             
             if (!$user) {
-                log_message('debug', "User {$userId} not found in users table");
                 return false;
             }
             
-            $result = !empty($user->google_id);
-            log_message('debug', "User {$userId} isGoogleUser: " . ($result ? 'YES' : 'NO'));
-            log_message('debug', "User {$userId} google_id: " . ($user->google_id ?? 'NULL'));
-            
-            return $result;
+            return !empty($user->google_id);
         } catch (\Exception $e) {
             log_message('error', 'Error checking Google user: ' . $e->getMessage());
             return false;

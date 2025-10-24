@@ -88,9 +88,6 @@ class Profile extends BaseController
         }
 
         $user = $this->user();
-        
-        // Debug informasi awal
-        log_message('info', "Memulai update profil vendor ID: {$this->vendorId}, User ID: {$user->id}");
 
         // Ambil semua data POST
         $postData = $this->request->getPost();
@@ -179,7 +176,6 @@ class Profile extends BaseController
                     $commissionChanged = true;
                     $data['requested_commission'] = $newCommission;
                     $data['requested_commission_nominal'] = null;
-                    log_message('info', "Komisi percent berubah: {$oldCommission} -> {$newCommission}");
                 }
             } else {
                 // Data nominal sudah dibersihkan sebelumnya
@@ -190,7 +186,6 @@ class Profile extends BaseController
                     $commissionChanged = true;
                     $data['requested_commission_nominal'] = $newCommissionNominal;
                     $data['requested_commission'] = null;
-                    log_message('info', "Komisi nominal berubah: {$oldCommissionNominal} -> {$newCommissionNominal}");
                 }
             }
             
@@ -199,7 +194,6 @@ class Profile extends BaseController
                 $data['status'] = 'pending';
                 $data['approved_at'] = null;
                 $data['action_by'] = null;
-                log_message('info', "Status direset ke pending karena perubahan komisi");
             }
         }
 
@@ -255,11 +249,8 @@ class Profile extends BaseController
                 throw new \Exception('Gagal update data vendor');
             }
 
-            log_message('info', "Update profil vendor berhasil, commissionChanged: " . ($commissionChanged ? 'YES' : 'NO'));
-
             // ==== CREATE NOTIFICATION JIKA ADA PERUBAHAN KOMISI ====
             if ($commissionChanged && !$this->isVerified) {
-                log_message('info', "Memanggil createCommissionChangeNotification...");
                 $this->createCommissionChangeNotification($oldCommissionType, $oldCommissionValue, $data);
             }
 
@@ -327,10 +318,6 @@ class Profile extends BaseController
             $vendorName = $this->vendorProfile['business_name'] ?? 'Vendor';
             $vendorId = $this->vendorId;
 
-            // Debug informasi
-            log_message('info', "Membuat notifikasi perubahan komisi untuk vendor: {$vendorName}");
-            log_message('info', "Komisi: {$oldCommissionFormatted} -> {$newCommissionFormatted}");
-
             // 1. Dapatkan semua admin users yang aktif
             $adminUsers = $db->table('auth_groups_users agu')
                 ->select('agu.user_id')
@@ -339,8 +326,6 @@ class Profile extends BaseController
                 ->where('u.active', 1) // Pastikan user aktif
                 ->get()
                 ->getResultArray();
-            
-            log_message('info', "Found " . count($adminUsers) . " active admin users for commission notification");
 
             // 2. Dapatkan semua SEO users yang aktif
             // Metode 1: Melalui auth_groups_users (jika SEO users memiliki grup 'seo')
@@ -354,8 +339,6 @@ class Profile extends BaseController
             
             // Jika tidak ada SEO users melalui auth_groups, coba metode 2
             if (empty($seoUsers)) {
-                log_message('info', "No SEO users found through auth_groups, trying seo_profiles table");
-                
                 // Metode 2: Melalui seo_profiles table
                 $seoProfiles = $this->seoProfilesModel
                     ->select('user_id')
@@ -383,11 +366,6 @@ class Profile extends BaseController
                 
                 // Re-index array
                 $seoUsers = array_values($seoUsers);
-            }
-            
-            log_message('info', "Found " . count($seoUsers) . " active SEO users for commission notification");
-            if (empty($seoUsers)) {
-                log_message('warning', "No active SEO users found. Check if group name 'seo' is correct and users are active.");
             }
 
             // Siapkan data notifikasi
@@ -435,9 +413,6 @@ class Profile extends BaseController
             if (!empty($notifications)) {
                 $this->notificationsModel->insertBatch($notifications);
                 
-                // Log untuk debugging
-                log_message('info', "Created commission change notifications: " . count($notifications) . " notifications sent");
-                
                 // Log aktivitas notifikasi
                 if (function_exists('log_activity_auto')) {
                     log_activity_auto('notification', 'Notifikasi pengajuan perubahan komisi dibuat untuk admin dan SEO', [
@@ -452,12 +427,9 @@ class Profile extends BaseController
                 return;
             }
 
-            log_message('warning', "No notifications were created for commission change");
-
         } catch (\Throwable $e) {
             // Log error tanpa mengganggu flow utama
             log_message('error', 'Gagal membuat notifikasi perubahan komisi: ' . $e->getMessage());
-            log_message('error', $e->getTraceAsString());
             
             if (function_exists('log_activity_auto')) {
                 log_activity_auto('error', 'Gagal membuat notifikasi perubahan komisi: ' . $e->getMessage(), [
@@ -484,58 +456,37 @@ class Profile extends BaseController
         }
     }
 
-public function password()
-{
-    if (! $this->vendorId) {
-        return redirect()->to(site_url('vendoruser/dashboard'))
-            ->with('error', 'Profil vendor belum ada. Lengkapi profil terlebih dahulu.');
+    public function password()
+    {
+        if (! $this->vendorId) {
+            return redirect()->to(site_url('vendoruser/dashboard'))
+                ->with('error', 'Profil vendor belum ada. Lengkapi profil terlebih dahulu.');
+        }
+
+        $user = $this->user();
+        
+        // METHOD: Check langsung dari database
+        $identityModel = new \App\Models\IdentityModel();
+        $identity = $identityModel
+            ->where('user_id', $user->id)
+            ->where('type', 'email_password')
+            ->first();
+        
+        // User TIDAK punya password jika secret2 NULL atau empty string
+        $hasPassword = $identity && !is_null($identity['secret2']) && $identity['secret2'] !== '';
+
+        $contentData = [
+            'page' => 'Ubah Password',
+            'hasPassword' => $hasPassword
+        ];
+
+        return view('vendoruser/layouts/vendor_master', $this->withVendorData([
+            'title'        => 'Ubah Password',
+            'content_view' => 'vendoruser/profile/ubahpassword',
+            'content_data' => $contentData,
+        ]));
     }
 
-    $user = $this->user();
-    
-    // METHOD: Check langsung dari database
-    $identityModel = new \App\Models\IdentityModel();
-    $identity = $identityModel
-        ->where('user_id', $user->id)
-        ->where('type', 'email_password')
-        ->first();
-    
-    // User TIDAK punya password jika secret2 NULL atau empty string
-    $hasPassword = $identity && !is_null($identity['secret2']) && $identity['secret2'] !== '';
-    
-    // DEBUG DETAIL
-    log_message('debug', '=== PASSWORD CONTROLLER DEBUG ===');
-    log_message('debug', "User ID: {$user->id}");
-    log_message('debug', "Username: {$user->username}");
-    log_message('debug', "Google ID: " . ($user->google_id ?? 'NULL'));
-    log_message('debug', "Identity Secret2: " . ($identity['secret2'] ?? 'NULL'));
-    log_message('debug', "Secret2 === null: " . ($identity['secret2'] === null ? 'YES' : 'NO'));
-    log_message('debug', "Calculated hasPassword: " . ($hasPassword ? 'YES' : 'NO'));
-
-    // === TEMPORARY: FORCE TEST ===
-    // UNCOMMENT BARIS INI UNTUK TESTING - HAPUS SETELAH BERHASIL
-    $hasPassword = false;
-    log_message('debug', "TEMPORARY: Force hasPassword = FALSE");
-    // === END TEMPORARY ===
-
-    $contentData = [
-        'page' => 'Ubah Password',
-        'hasPassword' => $hasPassword,
-        'debug_controller' => [
-            'user_id' => $user->id,
-            'secret2' => $identity['secret2'] ?? 'NULL',
-            'hasPassword' => $hasPassword,
-            'timestamp' => date('Y-m-d H:i:s'),
-            'source' => 'password_controller'
-        ]
-    ];
-
-    return view('vendoruser/layouts/vendor_master', $this->withVendorData([
-        'title'        => 'Ubah Password',
-        'content_view' => 'vendoruser/profile/ubahpassword',
-        'content_data' => $contentData,
-    ]));
-}
     public function passwordUpdate()
     {
         if (! $this->vendorId) {

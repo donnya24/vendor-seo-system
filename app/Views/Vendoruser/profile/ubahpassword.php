@@ -11,31 +11,9 @@ $errorsArr   = $session->getFlashdata('errors') ?? $session->getFlashdata('error
 $successMsg  = $session->getFlashdata('success') ?? $session->getFlashdata('success_password');
 $errorMsg    = $session->getFlashdata('error')   ?? $session->getFlashdata('error_password');
 
-// Data dari controller - DENGAN FALLBACK KE GLOBAL
+// Data dari controller
 $hasPassword = $content_data['hasPassword'] ?? true;
-$debugData = $content_data['debug_controller'] ?? $content_data ?? [];
-$source = $debugData['source'] ?? 'unknown';
-
-// Cache busting
-$cacheBuster = time();
 ?>
-
-<!-- DEBUG INFO - TAMPILKAN DI LAYAR UNTUK TESTING -->
-<div style="background: #ffeb3b; padding: 10px; margin: 10px; border: 2px solid #ff9800; border-radius: 5px;">
-    <strong>🚨 DEBUG INFO (HAPUS SETELAH FIX):</strong><br>
-    hasPassword: <strong><?= $hasPassword ? 'YES' : 'NO' ?></strong><br>
-    Source: <?= $source ?><br>
-    User ID: <?= $debugData['user_id'] ?? 'UNKNOWN' ?><br>
-    Secret2: <?= $debugData['secret2'] ?? 'UNKNOWN' ?><br>
-    Cache Buster: <?= $cacheBuster ?>
-</div>
-
-<script>
-console.log('=== PASSWORD MODAL DEBUG ===');
-console.log('hasPassword:', <?= $hasPassword ? 'true' : 'false' ?>);
-console.log('Source:', '<?= $source ?>');
-console.log('Cache buster:', <?= $cacheBuster ?>);
-</script>
 
 <div x-show="$store.ui.modal==='passwordEdit'" x-cloak
      class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4">
@@ -162,13 +140,10 @@ console.log('Cache buster:', <?= $cacheBuster ?>);
   </div>
 </div>
 
-<!-- ... script tetap sama ... -->
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('passwordForm');
     if (!form) return;
-
-    console.log('Password Form Loaded - hasPassword:', <?= $hasPassword ? 'true' : 'false' ?>);
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -222,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Force page reload untuk update status
                 setTimeout(() => {
-                    window.location.reload(true); // force reload dari server
+                    window.location.reload(true);
                 }, 1000);
                 
             } else {
