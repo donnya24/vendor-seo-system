@@ -13,14 +13,19 @@ use CodeIgniter\Router\RouteCollection;
  $routes->get('/', 'Landpage\Landpage::index');
 
 // Auth
+// Google OAuth Routes - DIPISAH UNTUK LOGIN DAN REGISTER
+$routes->get('auth/google/login', 'Auth\AuthController::googleLogin');
+$routes->get('auth/google/register', 'Auth\AuthController::googleRegister');
+$routes->get('auth/google/callback', 'Auth\AuthController::googleCallback');
+
 $routes->get('login',  'Auth\AuthController::login');
 $routes->post('login', 'Auth\AuthController::attemptLogin');
-$routes->get('logout', 'Auth\AuthController::logout');  // GET logout
-$routes->post('logout','Auth\AuthController::logout'); // POST logout (untuk form)
+$routes->get('logout', 'Auth\AuthController::logout');
+$routes->post('logout','Auth\AuthController::logout');
 
 // Register (vendor)
- $routes->get('register',  'Auth\AuthController::registerForm');
- $routes->post('register', 'Auth\AuthController::registerProcess');
+$routes->get('register',  'Auth\AuthController::registerForm');
+$routes->post('register', 'Auth\AuthController::registerProcess');
 
 // Forgot / Reset Password
  $routes->get('forgot-password',  'Auth\ForgotPasswordController::showForgotForm');

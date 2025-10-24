@@ -11,12 +11,14 @@ class AuthController extends Controller
     protected $auth;
     protected $vendorProfilesModel;
     protected $seoProfilesModel;
+    protected $authModel;
 
     public function __construct()
     {
         $this->auth = service('auth');
         $this->vendorProfilesModel = new VendorProfilesModel();
         $this->seoProfilesModel = new SeoProfilesModel();
+        $this->authModel = new \App\Models\AuthModel();
     }
 
     // ===== LOGIN =====
@@ -38,7 +40,6 @@ class AuthController extends Controller
         ]);
 
         if (! $validation->withRequest($this->request)->run()) {
-            // Log activity untuk validasi login gagal menggunakan helper
             log_activity_auto('login_failed', 'Validasi login gagal - ' . json_encode($validation->getErrors()), [
                 'module' => 'auth',
                 'email' => $this->request->getPost('email')
@@ -51,26 +52,21 @@ class AuthController extends Controller
         $email = (string) $this->request->getPost('email');
         $password = (string) $this->request->getPost('password');
 
-        $result = $this->auth->attempt([
-            'email'    => $email,
-            'password' => $password,
-        ], $remember);
+        $result = $this->authModel->attemptLogin($email, $password, $remember);
 
-        if ($result->isOK()) {
-            $user = $this->auth->user();
+        if ($result['success']) {
+            $user = $result['user'];
             
             // ✅ CEK STATUS USER: Hanya inactive yang tidak bisa login
             $statusCheck = $this->checkUserStatus($user);
             if (!$statusCheck['success']) {
                 $this->auth->logout();
                 
-                // Log activity untuk login ditolak karena status inactive
                 log_activity_auto('login_blocked', 'Login ditolak - status ' . $statusCheck['role'] . ' ' . $statusCheck['reason'] . ': ' . $email, [
                     'module' => 'auth',
                     'reason' => $statusCheck['reason']
                 ]);
                 
-                // ✅ Hanya tampilkan kontak admin untuk status inactive
                 session()->setFlashdata('error', $statusCheck['message']);
                 if ($statusCheck['reason'] === 'vendor_inactive' || $statusCheck['reason'] === 'seo_inactive') {
                     session()->setFlashdata('show_contact', true);
@@ -88,13 +84,11 @@ class AuthController extends Controller
                 }
             }
             
-            // Log activity untuk login berhasil menggunakan helper
             $this->logLoginSuccess($user);
             
             return $this->redirectByRole($user);
         }
 
-        // Log activity untuk login gagal menggunakan helper
         log_activity_auto('login_failed', 'Login gagal - kredensial salah untuk email: ' . $email, [
             'module' => 'auth'
         ]);
@@ -102,10 +96,103 @@ class AuthController extends Controller
         return redirect()->back()->withInput()->with('error', 'Login gagal. Periksa kembali kredensial Anda.');
     }
 
+    // ===== GOOGLE OAUTH LOGIN =====
+    public function googleLogin()
+    {
+        $result = $this->authModel->handleGoogleAuth('login');
+        
+        if (isset($result['type']) && $result['type'] === 'redirect') {
+            return redirect()->to($result['url']);
+        }
+        
+        if ($result['success']) {
+            // Get fresh user from auth service
+            $user = $this->auth->user();
+            
+            if (!$user) {
+                return redirect()->to('/login')->with('error', 'Failed to authenticate user.');
+            }
+            
+            // ✅ CEK STATUS USER untuk Google login juga
+            $statusCheck = $this->checkUserStatus($user);
+            if (!$statusCheck['success']) {
+                $this->auth->logout();
+                
+                session()->setFlashdata('error', $statusCheck['message']);
+                if ($statusCheck['reason'] === 'vendor_inactive' || $statusCheck['reason'] === 'seo_inactive') {
+                    session()->setFlashdata('show_contact', true);
+                }
+                
+                return redirect()->to('/login');
+            }
+            
+            $this->logLoginSuccess($user);
+            return $this->redirectByRole($user);
+        }
+        
+        // Jika user tidak terdaftar di login, beri pesan error
+        if (isset($result['user_not_found']) && $result['user_not_found']) {
+            session()->setFlashdata('google_user_data', $result['google_data']);
+            session()->setFlashdata('error', 'Akun tidak terdaftar. Silakan daftar terlebih dahulu.');
+            return redirect()->to('/login');
+        }
+        
+        return redirect()->to('/login')->with('error', $result['error'] ?? 'Google login gagal.');
+    }
+
+    // ===== GOOGLE OAUTH REGISTER =====
+    public function googleRegister()
+    {
+        $result = $this->authModel->handleGoogleAuth('register');
+        
+        if (isset($result['type']) && $result['type'] === 'redirect') {
+            return redirect()->to($result['url']);
+        }
+        
+        if ($result['success']) {
+            // Get fresh user from auth service
+            $user = $this->auth->user();
+            
+            if (!$user) {
+                return redirect()->to('/register')->with('error', 'Failed to authenticate user.');
+            }
+            
+            // ✅ CEK STATUS USER untuk Google register
+            $statusCheck = $this->checkUserStatus($user);
+            if (!$statusCheck['success']) {
+                $this->auth->logout();
+                
+                session()->setFlashdata('error', $statusCheck['message']);
+                if ($statusCheck['reason'] === 'vendor_inactive' || $statusCheck['reason'] === 'seo_inactive') {
+                    session()->setFlashdata('show_contact', true);
+                }
+                
+                return redirect()->to('/register');
+            }
+            
+            $this->logLoginSuccess($user);
+            return $this->redirectByRole($user);
+        }
+        
+        return redirect()->to('/register')->with('error', $result['error'] ?? 'Google registration gagal.');
+    }
+
+    // ===== GOOGLE CALLBACK =====
+    public function googleCallback()
+    {
+        // Cek dari state apakah ini untuk login atau register
+        $state = service('request')->getGet('state');
+        
+        if (strpos($state, 'register') !== false) {
+            return $this->googleRegister();
+        } else {
+            return $this->googleLogin();
+        }
+    }
+
     // ===== CEK STATUS USER =====
     private function checkUserStatus($user)
     {
-        // Default response - allow login
         $response = [
             'success' => true,
             'message' => '',
@@ -113,7 +200,6 @@ class AuthController extends Controller
             'reason' => ''
         ];
 
-        // Cek status user berdasarkan role
         if ($user->inGroup('vendor')) {
             $response['role'] = 'vendor';
             $vendorProfile = $this->vendorProfilesModel->getByUserId($user->id);
@@ -123,17 +209,10 @@ class AuthController extends Controller
                 $response['message'] = 'Profil vendor tidak ditemukan. Silakan hubungi administrator.';
                 $response['reason'] = 'vendor_profile_not_found';
             } elseif ($vendorProfile['status'] === 'inactive') {
-                // ✅ HANYA INACTIVE YANG TIDAK BISA LOGIN
                 $response['success'] = false;
                 $response['message'] = 'Akun vendor Anda dinonaktifkan. Silakan hubungi administrator.';
                 $response['reason'] = 'vendor_inactive';
             }
-            // ✅ PENDING & REJECTED TETAP BISA LOGIN
-            // elseif ($vendorProfile['status'] === 'rejected') {
-            //     // Tetap bisa login meski rejected
-            // } elseif ($vendorProfile['status'] === 'pending') {
-            //     // Tetap bisa login meski pending
-            // }
             
         } elseif ($user->inGroup('seoteam')) {
             $response['role'] = 'seoteam';
@@ -144,16 +223,11 @@ class AuthController extends Controller
                 $response['message'] = 'Profil SEO tidak ditemukan. Silakan hubungi administrator.';
                 $response['reason'] = 'seo_profile_not_found';
             } elseif ($seoProfile['status'] === 'inactive') {
-                // ✅ HANYA INACTIVE YANG TIDAK BISA LOGIN
                 $response['success'] = false;
                 $response['message'] = 'Akun SEO Anda dinonaktifkan. Silakan hubungi administrator.';
                 $response['reason'] = 'seo_inactive';
             }
-            // ✅ SEO dengan status lain tetap bisa login
-        }
-        
-        // Untuk admin, selalu allow login
-        elseif ($user->inGroup('admin')) {
+        } elseif ($user->inGroup('admin')) {
             $response['role'] = 'admin';
         }
 
@@ -165,15 +239,11 @@ class AuthController extends Controller
     {
         $user = null;
         
-        // Ambil data user sebelum logout
         if ($this->auth->loggedIn()) {
             $user = $this->auth->user();
-            
-            // Log activity sebelum logout menggunakan helper
             $this->logLogout($user);
         }
 
-        // Hapus remember token jika ada
         helper('auth_remember');
         try {
             forget_remember_token_from_cookie();
@@ -181,13 +251,9 @@ class AuthController extends Controller
             log_message('error', 'forget_remember_token_from_cookie failed: ' . $e->getMessage());
         }
 
-        // Logout menggunakan Shield
         $this->auth->logout();
-        
-        // Hancurkan session
         session()->destroy();
 
-        // Redirect ke halaman login dengan pesan sukses
         return redirect()->to('/login')->with('success', 'Anda telah berhasil keluar.');
     }
 
@@ -220,7 +286,18 @@ class AuthController extends Controller
     // ========== REGISTER (FORM) ==========
     public function registerForm()
     {
-        return view('auth/register_vendor');
+        // Cek apakah ada data Google dari proses login
+        $googleData = session()->getFlashdata('google_user_data');
+        $prefillData = [];
+        
+        if ($googleData) {
+            $prefillData = [
+                'vendor_name' => $googleData['name'] ?? '',
+                'email' => $googleData['email'] ?? ''
+            ];
+        }
+        
+        return view('auth/register_vendor', ['prefillData' => $prefillData]);
     }
 
     // ========== REGISTER (PROSES) ==========
@@ -239,7 +316,6 @@ class AuthController extends Controller
         ]);
 
         if (! $validation->withRequest($this->request)->run()) {
-            // Log activity untuk validasi gagal menggunakan helper
             log_activity_auto('register_failed', 'Validasi pendaftaran vendor gagal - ' . json_encode($validation->getErrors()), [
                 'module' => 'auth',
                 'email' => $this->request->getPost('email')
@@ -260,7 +336,6 @@ class AuthController extends Controller
         try {
             resolve_identity_table();
             if (identity_exists($email)) {
-                // Log activity untuk email sudah terdaftar menggunakan helper
                 log_activity_auto('register_failed', 'Email sudah terdaftar: ' . $email, [
                     'module' => 'auth'
                 ]);
@@ -271,31 +346,24 @@ class AuthController extends Controller
             $db->transException(true);
             $db->transStart();
 
-            // 1) Buat user Shield dengan status ACTIVE
             $username   = make_unique_username($vendorName, $email);
             
-            // Buat user entity dengan status active
             $userEntity = new User([
                 'username' => $username,
-                'status'   => 'active', // Set status langsung active
-                'active'   => 1         // Set active = 1
+                'status'   => 'active',
+                'active'   => 1
             ]);
             
             $userId = $users->insert($userEntity, true);
 
-            // 2) Identitas email+password & grup vendor
             create_email_password_identity((int) $userId, $email, $password);
             assign_user_to_group((int) $userId, 'vendor');
 
-            // **Tambahkan update 'name' di auth_identities**
             $db->table('auth_identities')
             ->where('user_id', $userId)
             ->where('type', 'email_password')
             ->update(['name' => $vendorName]);
 
-            // 3) Buat profil vendor - HAPUS is_verified
-            $vendorProfileId = null;
-            
             $vendorData = [
                 'user_id'        => $userId,
                 'business_name'  => $vendorName,
@@ -307,7 +375,6 @@ class AuthController extends Controller
 
             $vendorProfileId = $this->vendorProfilesModel->insert($vendorData);
 
-            // 4) Catat aktivitas registrasi berhasil menggunakan helper
             $this->logRegisterSuccess($userId, $vendorName, $email, $vendorProfileId);
 
             $db->transComplete();
@@ -318,7 +385,6 @@ class AuthController extends Controller
                 $db->transRollback();
             }
             
-            // Log activity untuk error registrasi menggunakan helper
             log_activity_auto('register_error', 'Registrasi vendor gagal: ' . $e->getMessage(), [
                 'module' => 'auth',
                 'email' => $email,
@@ -355,12 +421,10 @@ class AuthController extends Controller
         $role = $this->getUserRole($user);
         $description = "Login berhasil sebagai {$role} - {$user->username}";
         
-        // Gunakan helper untuk log activity
         log_activity_auto('login', $description, [
             'module' => 'auth'
         ]);
 
-        // Debug info
         log_message('info', "Login success - User ID: {$user->id}, Username: {$user->username}, Role: {$role}");
     }
 
@@ -375,12 +439,10 @@ class AuthController extends Controller
         $role = $this->getUserRole($user);
         $description = "Logout sebagai {$role} - {$user->username}";
         
-        // Gunakan helper untuk log activity
         log_activity_auto('logout', $description, [
             'module' => 'auth'
         ]);
 
-        // Debug info
         log_message('info', "Logout - User ID: {$user->id}, Username: {$user->username}, Role: {$role}");
     }
 
@@ -388,7 +450,6 @@ class AuthController extends Controller
     private function logRegisterSuccess($userId, $vendorName, $email, $vendorProfileId)
     {
         try {
-            // Karena user belum login, kita perlu manual insert ke activity logs
             $logs = new \App\Models\ActivityLogsModel();
             
             $data = [
