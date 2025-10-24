@@ -28,7 +28,7 @@ class Filters extends BaseFilters
         'performance'   => PerformanceMetrics::class,
         'noCache'       => \App\Filters\NoCacheFilter::class,
 
-        // Shield
+        // Shield (Auth)
         'session'       => \CodeIgniter\Shield\Filters\SessionAuth::class,
         'group'         => \CodeIgniter\Shield\Filters\GroupFilter::class,
         'permission'    => \CodeIgniter\Shield\Filters\PermissionFilter::class,
@@ -42,20 +42,29 @@ class Filters extends BaseFilters
 
     public array $globals = [
         'before' => [
-            'secureheaders',      // Security headers
-            'forcehttps',         // HTTPS redirect
-            'session' => [        // Auth global dengan pengecualian
+            // Security protections
+            'secureheaders',
+            'forcehttps',
+
+            // Session auth with exceptions (public routes)
+            'session' => [
                 'except' => [
-                    'login',
-                    'register',
-                    'forgot-password',
-                    'reset-password',
-                    'auth/*',
+                    '/',                      // Landing page
+                    'login',                  // Login form
+                    'register',               // Register form
+                    'forgot-password',        // Forgot password
+                    'reset-password',         // Reset password
+                    'auth/*',                 // Google OAuth routes
+                    'vendor/assets/*',        // Public assets if needed
+                    'seo/assets/*',
+                    'landpage/*',             // Landpage controller routes
                 ],
             ],
-            'csrf', // CSRF protection tanpa pengecualian
+
+            // CSRF protection
+            'csrf',
         ],
-        'after'  => [
+        'after' => [
             'noCache',
             'toolbar',
         ],
@@ -69,14 +78,14 @@ class Filters extends BaseFilters
     ];
 
     public array $filters = [
-        // Permission-based access
+        // Role & permission based protections
         'admin/vendorrequests/approve' => ['permission:verify_vendor'],
         'admin/vendorrequests/reject'  => ['permission:verify_vendor'],
         'admin/users/*'                => ['permission:manage_users'],
         'seo/commissions/*'            => ['permission:commission_verify'],
         'vendor/leads/*'               => ['permission:leads_crud'],
-        
-        // Additional protection for sensitive operations
+
+        // Restrict sensitive admin routes
         'admin/settings' => ['group:admin', 'permission:manage_settings'],
     ];
 }

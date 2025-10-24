@@ -15,6 +15,8 @@ class UserModel extends ShieldUserModel
         'status_message',
         'active',
         'last_active',
+        'google_id',        // ← TAMBAHKAN INI
+        'google_profile',   // ← TAMBAHKAN INI
         'created_at',
         'updated_at',
         'deleted_at'
@@ -25,9 +27,6 @@ class UserModel extends ShieldUserModel
     protected $updatedField = 'updated_at';
     protected $deletedField = 'deleted_at';
 
-    // ==== HAPUS method reset password karena kolom tidak ada ====
-    // Kolom reset_token dan reset_expires_at tidak ada di tabel
-    
     /**
      * Update status user menjadi active
      */
@@ -65,5 +64,23 @@ class UserModel extends ShieldUserModel
     public function getUsersByStatus($status)
     {
         return $this->where('status', $status)->findAll();
+    }
+
+    /**
+     * Find user by Google ID
+     */
+    public function findByGoogleId($googleId)
+    {
+        return $this->where('google_id', $googleId)->first();
+    }
+
+    /**
+     * Find users without Google ID (email/password users)
+     */
+    public function findNonGoogleUsers()
+    {
+        return $this->where('google_id IS NULL', null, false)
+                    ->orWhere('google_id', '')
+                    ->findAll();
     }
 }
