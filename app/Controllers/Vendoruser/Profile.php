@@ -7,6 +7,7 @@ use App\Models\VendorProfilesModel;
 use App\Models\NotificationsModel;
 use App\Models\UserModel;
 use App\Models\SeoProfilesModel;
+use App\Models\AuthModel;
 
 class Profile extends BaseController
 {
@@ -14,6 +15,7 @@ class Profile extends BaseController
     protected $notificationsModel;
     protected $userModel;
     protected $seoProfilesModel;
+    protected $authModel;
 
     private $vendorProfile;
     private $vendorId;
@@ -25,6 +27,7 @@ class Profile extends BaseController
         $this->notificationsModel = new NotificationsModel();
         $this->userModel = new UserModel();
         $this->seoProfilesModel = new SeoProfilesModel();
+        $this->authModel = new AuthModel();
         $this->initVendor();
     }
 
@@ -481,30 +484,58 @@ class Profile extends BaseController
         }
     }
 
-    public function password()
-    {
-        if (! $this->vendorId) {
-            return redirect()->to(site_url('vendoruser/dashboard'))
-                ->with('error', 'Profil vendor belum ada. Lengkapi profil terlebih dahulu.');
-        }
-
-        // Log activity
-        if (function_exists('log_activity_auto')) {
-            log_activity_auto('view_form', 'Membuka form ubah password', [
-                'module' => 'vendor_profile',
-                'vendor_id' => $this->vendorId
-            ]);
-        }
-
-        return view('vendoruser/layouts/vendor_master', $this->withVendorData([
-            'title'        => 'Ubah Password',
-            'content_view' => 'vendoruser/profile/ubahpassword',
-            'content_data' => [
-                'page' => 'Ubah Password',
-            ],
-        ]));
+public function password()
+{
+    if (! $this->vendorId) {
+        return redirect()->to(site_url('vendoruser/dashboard'))
+            ->with('error', 'Profil vendor belum ada. Lengkapi profil terlebih dahulu.');
     }
 
+    $user = $this->user();
+    
+    // METHOD: Check langsung dari database
+    $identityModel = new \App\Models\IdentityModel();
+    $identity = $identityModel
+        ->where('user_id', $user->id)
+        ->where('type', 'email_password')
+        ->first();
+    
+    // User TIDAK punya password jika secret2 NULL atau empty string
+    $hasPassword = $identity && !is_null($identity['secret2']) && $identity['secret2'] !== '';
+    
+    // DEBUG DETAIL
+    log_message('debug', '=== PASSWORD CONTROLLER DEBUG ===');
+    log_message('debug', "User ID: {$user->id}");
+    log_message('debug', "Username: {$user->username}");
+    log_message('debug', "Google ID: " . ($user->google_id ?? 'NULL'));
+    log_message('debug', "Identity Secret2: " . ($identity['secret2'] ?? 'NULL'));
+    log_message('debug', "Secret2 === null: " . ($identity['secret2'] === null ? 'YES' : 'NO'));
+    log_message('debug', "Calculated hasPassword: " . ($hasPassword ? 'YES' : 'NO'));
+
+    // === TEMPORARY: FORCE TEST ===
+    // UNCOMMENT BARIS INI UNTUK TESTING - HAPUS SETELAH BERHASIL
+    $hasPassword = false;
+    log_message('debug', "TEMPORARY: Force hasPassword = FALSE");
+    // === END TEMPORARY ===
+
+    $contentData = [
+        'page' => 'Ubah Password',
+        'hasPassword' => $hasPassword,
+        'debug_controller' => [
+            'user_id' => $user->id,
+            'secret2' => $identity['secret2'] ?? 'NULL',
+            'hasPassword' => $hasPassword,
+            'timestamp' => date('Y-m-d H:i:s'),
+            'source' => 'password_controller'
+        ]
+    ];
+
+    return view('vendoruser/layouts/vendor_master', $this->withVendorData([
+        'title'        => 'Ubah Password',
+        'content_view' => 'vendoruser/profile/ubahpassword',
+        'content_data' => $contentData,
+    ]));
+}
     public function passwordUpdate()
     {
         if (! $this->vendorId) {
@@ -515,12 +546,21 @@ class Profile extends BaseController
 
         $user = $this->user();
         $isAjax = $this->request->isAJAX();
+        $userId = $user->id;
 
+        // Cek apakah user memiliki password
+        $hasPassword = $this->authModel->userHasPassword($userId);
+
+        // Set rules berdasarkan apakah user memiliki password atau tidak
         $rules = [
-            'current_password' => 'required',
-            'new_password'     => 'required|min_length[8]',
-            'pass_confirm'     => 'required|matches[new_password]',
+            'new_password' => 'required|min_length[8]',
+            'pass_confirm' => 'required|matches[new_password]',
         ];
+
+        // Untuk user yang sudah punya password, validasi current password
+        if ($hasPassword) {
+            $rules['current_password'] = 'required';
+        }
 
         if (! $this->validate($rules)) {
             $errors = $this->validator->getErrors();
@@ -530,6 +570,7 @@ class Profile extends BaseController
                 log_activity_auto('error', 'Validasi ubah password gagal', [
                     'module' => 'vendor_profile',
                     'vendor_id' => $this->vendorId,
+                    'has_password' => $hasPassword,
                     'errors' => $errors
                 ]);
             }
@@ -549,59 +590,86 @@ class Profile extends BaseController
         $current = (string) $this->request->getPost('current_password');
         $new     = (string) $this->request->getPost('new_password');
 
-        $existingHash = $user->password_hash ?? $user->password ?? null;
-
-        if (! $existingHash || ! password_verify($current, $existingHash)) {
-            // Log wrong current password
-            if (function_exists('log_activity_auto')) {
-                log_activity_auto('error', 'Password lama tidak sesuai saat mencoba ubah password', [
-                    'module' => 'vendor_profile',
-                    'vendor_id' => $this->vendorId
-                ]);
+        // Untuk user yang sudah punya password, verifikasi current password
+        if ($hasPassword) {
+            // Dapatkan email user dari identity
+            $identityModel = new \App\Models\IdentityModel();
+            $identity = $identityModel
+                ->where('user_id', $userId)
+                ->where('type', 'email_password')
+                ->first();
+                
+            if (!$identity) {
+                if ($isAjax) {
+                    return $this->response->setJSON([
+                        'status'  => 'error',
+                        'message' => 'Identity user tidak ditemukan.',
+                        'csrf'    => csrf_hash(),
+                    ])->setStatusCode(400);
+                }
+                return redirect()->back()->with('error_password', 'Identity user tidak ditemukan.');
             }
+            
+            $userEmail = $identity['secret'];
 
-            if ($isAjax) {
-                return $this->response->setJSON([
-                    'status'  => 'error',
-                    'message' => 'Password lama tidak sesuai.',
-                    'csrf'    => csrf_hash(),
-                ])->setStatusCode(400);
+            // Verifikasi menggunakan Shield
+            $result = service('auth')->attempt([
+                'email' => $userEmail, 
+                'password' => $current
+            ]);
+
+            if (!$result->isOK()) {
+                // Log wrong current password
+                if (function_exists('log_activity_auto')) {
+                    log_activity_auto('error', 'Password lama tidak sesuai saat mencoba ubah password', [
+                        'module' => 'vendor_profile',
+                        'vendor_id' => $this->vendorId
+                    ]);
+                }
+
+                if ($isAjax) {
+                    return $this->response->setJSON([
+                        'status'  => 'error',
+                        'message' => 'Password lama tidak sesuai.',
+                        'csrf'    => csrf_hash(),
+                    ])->setStatusCode(400);
+                }
+
+                return redirect()->back()->with('error_password', 'Password lama tidak sesuai.');
             }
-
-            return redirect()->back()->with('error_password', 'Password lama tidak sesuai.');
         }
 
         try {
-            $newHash = password_hash($new, PASSWORD_DEFAULT);
-
-            if (property_exists($user, 'password_hash')) {
-                $user->password_hash = $newHash;
-            } else {
-                $user->password = $newHash;
-            }
-
-            model('UserModel')->save($user);
+            // Update password menggunakan AuthModel
+            $this->authModel->updateUserPassword($userId, $new);
 
             // Log success
             if (function_exists('log_activity_auto')) {
-                log_activity_auto('update', 'Password berhasil diubah', [
+                $action = $hasPassword ? 'mengubah' : 'membuat';
+                log_activity_auto('update', "Password berhasil {$action}", [
                     'module' => 'vendor_profile',
-                    'vendor_id' => $this->vendorId
+                    'vendor_id' => $this->vendorId,
+                    'action' => $hasPassword ? 'change_password' : 'create_password'
                 ]);
             }
+
+            $successMessage = $hasPassword 
+                ? 'Password berhasil diperbarui.' 
+                : 'Password berhasil dibuat. Sekarang Anda bisa login dengan email dan password.';
 
             if ($isAjax) {
                 return $this->response->setJSON([
                     'status'  => 'success',
-                    'message' => 'Password berhasil diperbarui.',
+                    'message' => $successMessage,
                     'csrf'    => csrf_hash(),
                 ]);
             }
 
-            return redirect()->back()->with('success_password', 'Password berhasil diperbarui.');
+            return redirect()->back()->with('success_password', $successMessage);
 
         } catch (\Throwable $e) {
             // Log error
+            log_message('error', 'Error updating password: ' . $e->getMessage());
             if (function_exists('log_activity_auto')) {
                 log_activity_auto('error', 'Gagal mengubah password: ' . $e->getMessage(), [
                     'module' => 'vendor_profile',
@@ -609,15 +677,16 @@ class Profile extends BaseController
                 ]);
             }
 
+            $errorMessage = 'Terjadi kesalahan, gagal menyimpan password.';
             if ($isAjax) {
                 return $this->response->setJSON([
                     'status'  => 'error',
-                    'message' => 'Terjadi kesalahan, gagal menyimpan password.',
+                    'message' => $errorMessage,
                     'csrf'    => csrf_hash(),
                 ])->setStatusCode(500);
             }
 
-            return redirect()->back()->with('error_password', 'Terjadi kesalahan, gagal menyimpan password.');
+            return redirect()->back()->with('error_password', $errorMessage);
         }
     }
 }

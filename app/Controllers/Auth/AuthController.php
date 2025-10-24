@@ -31,71 +31,80 @@ class AuthController extends Controller
     }
 
     // ===== ATTEMPT LOGIN =====
-    public function attemptLogin()
-    {
-        $validation = service('validation');
-        $validation->setRules([
-            'email'    => 'required|valid_email',
-            'password' => 'required|min_length[6]',
-        ]);
+public function attemptLogin()
+{
+    $validation = service('validation');
+    $validation->setRules([
+        'email'    => 'required|valid_email',
+        'password' => 'required|min_length[6]',
+    ]);
 
-        if (! $validation->withRequest($this->request)->run()) {
-            log_activity_auto('login_failed', 'Validasi login gagal - ' . json_encode($validation->getErrors()), [
+    if (! $validation->withRequest($this->request)->run()) {
+        log_activity_auto('login_failed', 'Validasi login gagal - ' . json_encode($validation->getErrors()), [
+            'module' => 'auth',
+            'email' => $this->request->getPost('email')
+        ]);
+        
+        return redirect()->back()->withInput()->with('error', 'Email dan password harus diisi dengan benar.');
+    }
+
+    $remember = (bool) $this->request->getPost('remember');
+    $email = (string) $this->request->getPost('email');
+    $password = (string) $this->request->getPost('password');
+
+    // Gunakan custom authentication
+    $result = $this->authModel->attemptLogin($email, $password, $remember);
+
+    if ($result['success']) {
+        $user = $result['user'];
+        
+        // ✅ CEK STATUS USER: Hanya inactive yang tidak bisa login
+        $statusCheck = $this->checkUserStatus($user);
+        if (!$statusCheck['success']) {
+            $this->auth->logout();
+            
+            log_activity_auto('login_blocked', 'Login ditolak - status ' . $statusCheck['role'] . ' ' . $statusCheck['reason'] . ': ' . $email, [
                 'module' => 'auth',
-                'email' => $this->request->getPost('email')
+                'reason' => $statusCheck['reason']
             ]);
             
-            return redirect()->back()->withInput()->with('error', 'Email dan password harus diisi dengan benar.');
-        }
-
-        $remember = (bool) $this->request->getPost('remember');
-        $email = (string) $this->request->getPost('email');
-        $password = (string) $this->request->getPost('password');
-
-        $result = $this->authModel->attemptLogin($email, $password, $remember);
-
-        if ($result['success']) {
-            $user = $result['user'];
-            
-            // ✅ CEK STATUS USER: Hanya inactive yang tidak bisa login
-            $statusCheck = $this->checkUserStatus($user);
-            if (!$statusCheck['success']) {
-                $this->auth->logout();
-                
-                log_activity_auto('login_blocked', 'Login ditolak - status ' . $statusCheck['role'] . ' ' . $statusCheck['reason'] . ': ' . $email, [
-                    'module' => 'auth',
-                    'reason' => $statusCheck['reason']
-                ]);
-                
-                session()->setFlashdata('error', $statusCheck['message']);
-                if ($statusCheck['reason'] === 'vendor_inactive' || $statusCheck['reason'] === 'seo_inactive') {
-                    session()->setFlashdata('show_contact', true);
-                }
-                
-                return redirect()->back()->withInput();
+            session()->setFlashdata('error', $statusCheck['message']);
+            if ($statusCheck['reason'] === 'vendor_inactive' || $statusCheck['reason'] === 'seo_inactive') {
+                session()->setFlashdata('show_contact', true);
             }
             
-            if ($remember === true) {
-                helper('auth_remember');
-                try {
-                    force_remember_token((int) $user->id);
-                } catch (\Throwable $e) {
-                    log_message('error', 'force_remember_token failed: ' . $e->getMessage());
-                }
-            }
-            
-            $this->logLoginSuccess($user);
-            
-            return $this->redirectByRole($user);
+            return redirect()->back()->withInput();
         }
+        
+        if ($remember === true) {
+            helper('auth_remember');
+            try {
+                force_remember_token((int) $user->id);
+            } catch (\Throwable $e) {
+                log_message('error', 'force_remember_token failed: ' . $e->getMessage());
+            }
+        }
+        
+        $this->logLoginSuccess($user);
+        
+        return $this->redirectByRole($user);
+    }
 
+    // Tandai sebagai Google OAuth error jika perlu
+    if (strpos($result['error'] ?? '', 'Sign in with Google') !== false) {
+        session()->setFlashdata('google_oauth_error', true);
+        log_activity_auto('login_failed', 'Login gagal - user Google OAuth mencoba login dengan password: ' . $email, [
+            'module' => 'auth',
+            'reason' => 'google_oauth_user'
+        ]);
+    } else {
         log_activity_auto('login_failed', 'Login gagal - kredensial salah untuk email: ' . $email, [
             'module' => 'auth'
         ]);
-        
-        return redirect()->back()->withInput()->with('error', 'Login gagal. Periksa kembali kredensial Anda.');
     }
-
+    
+    return redirect()->back()->withInput()->with('error', $result['error'] ?? 'Login gagal. Periksa kembali kredensial Anda.');
+}
     // ===== GOOGLE OAUTH LOGIN =====
     public function googleLogin()
     {

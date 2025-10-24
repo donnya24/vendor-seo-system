@@ -70,66 +70,63 @@ $profileImagePath = ($profileImage && is_file($profileOnDisk))
   </style>
 
   <script>
+  document.addEventListener('alpine:init', () => {
+    const saved = localStorage.getItem('ui.sidebar');
+    const defaultOpen = saved !== null ? (saved === '1') : (window.innerWidth >= 768);
+
     Alpine.store('ui', {
       sidebar: defaultOpen,
-      modal: null,
-      loading: false, // ⬅️ Tambahkan ini
+      modal: null, // 'passwordEdit', 'profileEdit', 'notif', dll
+      loading: false,
 
       _locked: false,
       _y: 0,
-      lockScroll(){ ... },
-      unlockScroll(){ ... },
+      lockScroll(){
+        if (this._locked) return;
+        this._y = window.scrollY || document.documentElement.scrollTop || 0;
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${this._y}px`;
+        document.body.style.left = '0';
+        document.body.style.right = '0';
+        this._locked = true;
+      },
+      unlockScroll(){
+        if (!this._locked) return;
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.body.style.right = '';
+        window.scrollTo(0, this._y);
+        this._locked = false;
+      },
 
-      toggleSidebar(){ ... },
-      openSidebar(){ ... },
-      closeSidebar(){ ... },
+      toggleSidebar(){ 
+        this.sidebar = !this.sidebar; 
+        localStorage.setItem('ui.sidebar', this.sidebar ? '1' : '0'); 
+      },
+      openSidebar(){ 
+        this.sidebar = true; 
+        localStorage.setItem('ui.sidebar', '1'); 
+      },
+      closeSidebar(){ 
+        this.sidebar = false; 
+        localStorage.setItem('ui.sidebar', '0'); 
+      },
     });
 
-    document.addEventListener('alpine:init', () => {
-      const saved = localStorage.getItem('ui.sidebar');
-      const defaultOpen = saved !== null ? (saved === '1') : (window.innerWidth >= 768);
-
-      Alpine.store('ui', {
-        sidebar: defaultOpen,
-        modal: null, // 'notif' saat modal aktif
-
-        // ===== Scroll lock yang menjaga posisi (NO JUMP) =====
-        _locked: false,
-        _y: 0,
-        lockScroll(){
-          if (this._locked) return;
-          this._y = window.scrollY || document.documentElement.scrollTop || 0;
-          document.body.style.position = 'fixed';
-          document.body.style.top = `-${this._y}px`;
-          document.body.style.left = '0';
-          document.body.style.right = '0';
-          this._locked = true;
-        },
-        unlockScroll(){
-          if (!this._locked) return;
-          document.body.style.position = '';
-          document.body.style.top = '';
-          document.body.style.left = '';
-          document.body.style.right = '';
-          window.scrollTo(0, this._y);
-          this._locked = false;
-        },
-
-        toggleSidebar(){ this.sidebar = !this.sidebar; localStorage.setItem('ui.sidebar', this.sidebar ? '1' : '0') },
-        openSidebar(){ this.sidebar = true; localStorage.setItem('ui.sidebar', '1') },
-        closeSidebar(){ this.sidebar = false; localStorage.setItem('ui.sidebar', '0') },
-      });
-
-      Alpine.store('app', {
-        init(){
-          window.addEventListener('resize', () => {
-            if (window.innerWidth >= 768 && !Alpine.store('ui').sidebar) {
-              Alpine.store('ui').openSidebar();
-            }
-          });
-        }
-      });
+    Alpine.store('app', {
+      stats: <?= json_encode($stats ?? []) ?>,
+      recentLeads: <?= json_encode($recentLeads ?? []) ?>,
+      topKeywords: <?= json_encode($topKeywords ?? []) ?>,
+      init(){
+        window.addEventListener('resize', () => {
+          if (window.innerWidth >= 768 && !Alpine.store('ui').sidebar) {
+            Alpine.store('ui').openSidebar();
+          }
+        });
+      }
     });
+  });
   </script>
 </head>
 

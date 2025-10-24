@@ -96,6 +96,18 @@ $title        = $title        ?? 'Vendor Dashboard';
 $content_view = $content_view ?? '';
 $content_data = $content_data ?? [];
 
+// === PERBAIKAN: Hitung hasPassword untuk modal global ===
+$hasPasswordForModal = true; // default safe
+if ($uid > 0) {
+    try {
+        $authModel = new \App\Models\AuthModel();
+        $hasPasswordForModal = $authModel->userHasPassword($uid);
+        log_message('debug', "Global modal - User {$uid} hasPassword: " . ($hasPasswordForModal ? 'YES' : 'NO'));
+    } catch (\Exception $e) {
+        log_message('error', 'Error calculating hasPassword for modal: ' . $e->getMessage());
+    }
+}
+
 /** ===== Render header ===== */
 echo view('vendoruser/layouts/header', get_defined_vars());
 ?>
@@ -185,7 +197,12 @@ function loadingBar() {
 <?php
 // ===== Global Modals =====
 echo view('vendoruser/profile/edit', ['vp' => $vp ?? []]);
-echo view('vendoruser/profile/ubahpassword');
+echo view('vendoruser/profile/ubahpassword', [
+    'content_data' => [
+        'hasPassword' => $hasPasswordForModal,
+        'debug_source' => 'global_modal'
+    ]
+]);
 
 // ===== Footer =====
 echo view('vendoruser/layouts/footer', get_defined_vars());

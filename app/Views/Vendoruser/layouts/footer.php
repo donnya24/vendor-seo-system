@@ -4,15 +4,8 @@ $__recentLeads  = $recentLeads  ?? [];
 $__topKeywords  = $topKeywords  ?? [];
 ?>
 <script>
-document.addEventListener('alpine:init', () => {
-  Alpine.store('ui', { sidebar: window.innerWidth > 768, modal: null });
-  Alpine.store('app', {
-    stats: <?= json_encode($__stats) ?>,
-    recentLeads: <?= json_encode($__recentLeads) ?>,
-    topKeywords: <?= json_encode($__topKeywords) ?>,
-    init(){ /* init app */ }
-  });
-});
+// ==== HAPUS ALPINE STORE INIT DARI FOOTER ====
+// Biarkan inisialisasi hanya di header saja untuk menghindari overwrite state
 
 // tandai notifikasi dibaca (AJAX)
 function markNotifAsRead(){
@@ -48,19 +41,26 @@ function markNotifAsRead(){
     headerName: '<?= csrf_header() ?>',
     cookieName: '<?= config('Security')->cookieName ?>' || 'csrf_cookie_name'
   };
+  
   function getCsrfFromCookie() {
     const n = window.CSRF.cookieName;
     const m = document.cookie.match(new RegExp('(?:^|;\\s*)' + n.replace(/[-[\]{}()*+?.,\\^$|#\s]/g,'\\$&') + '=([^;]*)'));
     return m ? decodeURIComponent(m[1]) : null;
   }
+  
   function refreshAllCsrfFields() {
     const hash = getCsrfFromCookie();
     if (!hash) return;
     document.querySelectorAll('input[name="'+window.CSRF.tokenName+'"]').forEach(i => i.value = hash);
-    const meta = document.querySelector('meta[name="csrf-token"]'); if (meta) meta.setAttribute('content', hash);
+    const meta = document.querySelector('meta[name="csrf-token"]'); 
+    if (meta) meta.setAttribute('content', hash);
   }
+  
   document.addEventListener('submit', function(e){
-    try { refreshAllCsrfFields(); } catch(_) {}
+    try { 
+      refreshAllCsrfFields(); 
+    } catch(_) {}
+    
     const form = e.target;
     const btn = form.querySelector('button[type="submit"],input[type="submit"]');
     if (btn && !btn.dataset.once) {
@@ -76,11 +76,12 @@ function markNotifAsRead(){
   document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('form[onsubmit*="confirm("]')?.forEach(f => f.removeAttribute('onsubmit'));
   });
+  
   document.addEventListener('submit', function (e) {
     const form = e.target;
 
     if (form.classList.contains('js-notif-delete')) {
-      e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+      e.preventDefault(); 
       Swal.fire({
         icon: 'warning',
         title: 'Apakah yakin ingin menghapus?',
@@ -93,11 +94,13 @@ function markNotifAsRead(){
           confirmButton: 'bg-red-600 text-white px-3 py-2 rounded mr-2',
           cancelButton: 'bg-gray-100 text-gray-700 px-3 py-2 rounded'
         }
-      }).then((r) => { if (r.isConfirmed) form.submit(); });
+      }).then((r) => { 
+        if (r.isConfirmed) form.submit(); 
+      });
     }
 
     if (form.classList.contains('js-notif-delete-all')) {
-      e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+      e.preventDefault(); 
       Swal.fire({
         icon: 'warning',
         title: 'Hapus semua notifikasi?',
@@ -110,7 +113,9 @@ function markNotifAsRead(){
           confirmButton: 'bg-red-600 text-white px-3 py-2 rounded mr-2',
           cancelButton: 'bg-gray-100 text-gray-700 px-3 py-2 rounded'
         }
-      }).then((r) => { if (r.isConfirmed) form.submit(); });
+      }).then((r) => { 
+        if (r.isConfirmed) form.submit(); 
+      });
     }
   }, true);
 </script>
@@ -120,7 +125,9 @@ function markNotifAsRead(){
 
 <style>
   [x-cloak]{display:none!important}
-  @media (max-width: 767px){ .max-w-\[90vw\]{max-width:90vw} }
+  @media (max-width: 767px){ 
+    .max-w-\[90vw\]{max-width:90vw} 
+  }
 </style>
 
 <!-- Global Logout Modal -->

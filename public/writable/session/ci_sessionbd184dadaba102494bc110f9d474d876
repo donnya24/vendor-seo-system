@@ -1,1 +1,0 @@
-__ci_last_regenerate|i:1761236873;csrf_test_name|s:32:"10155ffddcb91c5a2bc50ecac79e24a7";_ci_previous_url|s:27:"http://localhost:8080/login";oauth2state|s:32:"ea1bbc9dc56813f640477dd6dffd6596";error|s:58:"Google login gagal: Attempt to read property "id" on array";__ci_vars|a:1:{s:5:"error";s:3:"old";}
