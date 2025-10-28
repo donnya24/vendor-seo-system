@@ -2,23 +2,22 @@
 
 namespace App\Controllers\Admin;
 
-use App\Controllers\Admin\BaseAdminController; // Perbaikan: Extend BaseAdminController
-use App\Models\SeoKeywordTargetsModel;
+use App\Controllers\Admin\BaseAdminController;
+use App\Models\SeoReportsModel;
 use App\Models\VendorProfilesModel;
-use App\Models\ActivityLogsModel; // Tambahkan model ActivityLogs
+use App\Models\ActivityLogsModel;
 
-class Reports extends BaseAdminController // Perbaikan: Extend BaseAdminController
+class Reports extends BaseAdminController
 {
-    protected $targetModel;
+    protected $reportsModel;
     protected $vendorModel;
-    protected $activityLogsModel; // Tambahkan property
+    protected $activityLogsModel;
 
     public function __construct()
     {
-        // Hapus parent::__construct() karena BaseController tidak memiliki constructor
-        $this->targetModel = new SeoKeywordTargetsModel();
+        $this->reportsModel = new SeoReportsModel();
         $this->vendorModel = new VendorProfilesModel();
-        $this->activityLogsModel = new ActivityLogsModel(); // Inisialisasi model
+        $this->activityLogsModel = new ActivityLogsModel();
     }
 
     public function index()
@@ -37,58 +36,13 @@ class Reports extends BaseAdminController // Perbaikan: Extend BaseAdminControll
         $vendorId = $vendorId ? (int) $vendorId : null;
         
         $position = $this->request->getGet('position');
+        $changeFilter = $this->request->getGet('change_filter'); // Tambahkan filter perubahan
 
         // Ambil daftar vendor untuk dropdown filter
         $vendors = $this->vendorModel->findAll();
 
-        $builder = $this->targetModel
-            ->select('seo_keyword_targets.*, vendor_profiles.business_name as vendor_name')
-            ->join('vendor_profiles', 'vendor_profiles.id = seo_keyword_targets.vendor_id', 'left')
-            ->where('seo_keyword_targets.status', 'completed');
-
-        // Filter vendor jika dipilih
-        if (!empty($vendorId)) {
-            $builder->where('seo_keyword_targets.vendor_id', $vendorId);
-        }
-
-        // Filter posisi jika dipilih
-        if (!empty($position)) {
-            if ($position === 'top3') {
-                $builder->where('seo_keyword_targets.current_position <=', 3);
-            } elseif ($position === 'top10') {
-                $builder->where('seo_keyword_targets.current_position <=', 10)
-                        ->where('seo_keyword_targets.current_position >', 3);
-            } elseif ($position === 'top20') {
-                $builder->where('seo_keyword_targets.current_position <=', 20)
-                        ->where('seo_keyword_targets.current_position >', 10);
-            } elseif ($position === 'below20') {
-                $builder->where('seo_keyword_targets.current_position >', 20);
-            }
-        }
-
-        $reports = $builder->orderBy('seo_keyword_targets.updated_at', 'DESC')
-            ->findAll();
-
-        // Hitung perubahan otomatis
-        foreach ($reports as &$r) {
-            $cur = (int)($r['current_position'] ?? 0);
-            $tar = (int)($r['target_position'] ?? 0);
-
-            if ($cur && $tar) {
-                $r['change'] = $cur - $tar; // current - target
-                // Tentukan trend
-                if ($r['change'] > 0) {
-                    $r['trend'] = 'up';
-                } elseif ($r['change'] < 0) {
-                    $r['trend'] = 'down';
-                } else {
-                    $r['trend'] = 'stable';
-                }
-            } else {
-                $r['change'] = null;
-                $r['trend'] = 'unknown';
-            }
-        }
+        // Get reports from the reports table, not targets table
+        $reports = $this->reportsModel->getWithVendor($vendorId, $position, $changeFilter);
 
         // Log aktivitas view reports dengan filter
         $logDescription = "Melihat laporan SEO completed (Admin)";
@@ -112,6 +66,13 @@ class Reports extends BaseAdminController // Perbaikan: Extend BaseAdminControll
             $extraData['position_filter'] = $position;
             $extraData['position_label'] = $positionLabel;
         }
+        
+        if (!empty($changeFilter)) {
+            $changeLabel = $this->getChangeFilterLabel($changeFilter);
+            $logDescription .= " dengan perubahan {$changeLabel}";
+            $extraData['change_filter'] = $changeFilter;
+            $extraData['change_label'] = $changeLabel;
+        }
 
         // Log activity
         $this->logActivity(
@@ -126,6 +87,7 @@ class Reports extends BaseAdminController // Perbaikan: Extend BaseAdminControll
             'reports'    => $reports,
             'vendorId'   => $vendorId,
             'position'   => $position,
+            'changeFilter' => $changeFilter, // Tambahkan ke view
             'vendors'    => $vendors,
         ], $commonData));
     }
@@ -155,6 +117,21 @@ class Reports extends BaseAdminController // Perbaikan: Extend BaseAdminControll
             'below20' => 'Dibawah 20'
         ];
         return $labels[$position] ?? $position;
+    }
+
+    /**
+     * Helper untuk mendapatkan label filter perubahan
+     */
+    private function getChangeFilterLabel(string $changeFilter): string
+    {
+        $labels = [
+            'high_improvement' => 'Peningkatan Tinggi (+10 atau lebih)',
+            'moderate_improvement' => 'Peningkatan Sedang (+5 hingga +9)',
+            'low_improvement' => 'Peningkatan Rendah (+1 hingga +4)',
+            'no_change' => 'Tidak Ada Perubahan',
+            'decline' => 'Penurunan'
+        ];
+        return $labels[$changeFilter] ?? $changeFilter;
     }
 
     /**
@@ -197,57 +174,13 @@ class Reports extends BaseAdminController // Perbaikan: Extend BaseAdminControll
         // Get filter parameters
         $vendorId = $this->request->getGet('vendor_id');
         $position = $this->request->getGet('position');
+        $changeFilter = $this->request->getGet('change_filter'); // Tambahkan filter perubahan
 
-        // Build query
-        $builder = $this->targetModel
-            ->select('seo_keyword_targets.*, vendor_profiles.business_name as vendor_name')
-            ->join('vendor_profiles', 'vendor_profiles.id = seo_keyword_targets.vendor_id', 'left')
-            ->where('seo_keyword_targets.status', 'completed');
-
-        if (!empty($vendorId)) {
-            $builder->where('seo_keyword_targets.vendor_id', $vendorId);
-        }
-
-        if (!empty($position)) {
-            if ($position === 'top3') {
-                $builder->where('seo_keyword_targets.current_position <=', 3);
-            } elseif ($position === 'top10') {
-                $builder->where('seo_keyword_targets.current_position <=', 10)
-                        ->where('seo_keyword_targets.current_position >', 3);
-            } elseif ($position === 'top20') {
-                $builder->where('seo_keyword_targets.current_position <=', 20)
-                        ->where('seo_keyword_targets.current_position >', 10);
-            } elseif ($position === 'below20') {
-                $builder->where('seo_keyword_targets.current_position >', 20);
-            }
-        }
-
-        $reports = $builder->orderBy('seo_keyword_targets.updated_at', 'DESC')
-            ->findAll();
+        // Get reports from the reports table, not targets table
+        $reports = $this->reportsModel->getWithVendor($vendorId, $position, $changeFilter);
 
         if (empty($reports)) {
             return redirect()->back()->with('error', 'Tidak ada data untuk diexport.');
-        }
-
-        // Hitung perubahan otomatis
-        foreach ($reports as &$r) {
-            $cur = (int)($r['current_position'] ?? 0);
-            $tar = (int)($r['target_position'] ?? 0);
-
-            if ($cur && $tar) {
-                $r['change'] = $cur - $tar; // current - target
-                // Tentukan trend
-                if ($r['change'] > 0) {
-                    $r['trend'] = 'up';
-                } elseif ($r['change'] < 0) {
-                    $r['trend'] = 'down';
-                } else {
-                    $r['trend'] = 'stable';
-                }
-            } else {
-                $r['change'] = null;
-                $r['trend'] = 'unknown';
-            }
         }
 
         // Set headers untuk download CSV
@@ -259,21 +192,21 @@ class Reports extends BaseAdminController // Perbaikan: Extend BaseAdminControll
         // Add BOM untuk UTF-8
         fputs($output, "\xEF\xBB\xBF");
 
-        // Header CSV
+        // Header CSV - PERBAIKAN: Urutannya menjadi Posisi | Target | Perubahan
         $headers = [
             'No',
             'Vendor',
             'Project',
             'Keyword',
-            'Target Posisi',
-            'Posisi Saat Ini',
+            'Posisi',
+            'Target',
             'Perubahan',
             'Trend',
-            'Tanggal Selesai'
+            'Tanggal'
         ];
         fputcsv($output, $headers);
 
-        // Data rows
+        // Data rows - PERBAIKAN: Urutannya menjadi Posisi | Target | Perubahan
         $no = 1;
         foreach ($reports as $report) {
             $trendText = '';
@@ -290,13 +223,13 @@ class Reports extends BaseAdminController // Perbaikan: Extend BaseAdminControll
             $row = [
                 $no++,
                 $report['vendor_name'] ?? '-',
-                $report['project_name'] ?? '-',
+                $report['project'] ?? '-',
                 $report['keyword'] ?? '-',
-                $report['target_position'] ?? '-',
-                $report['current_position'] ?? '-',
-                $report['change'] !== null ? $report['change'] : '-',
+                $report['position'] ?? '-',        // Posisi
+                $report['target_position'] ?? '-', // Target
+                $report['change'] !== null ? $report['change'] : '-', // Perubahan
                 $trendText,
-                $report['updated_at'] ? date('d/m/Y', strtotime($report['updated_at'])) : '-'
+                $report['created_at'] ? date('d/m/Y', strtotime($report['created_at'])) : '-'
             ];
             fputcsv($output, $row);
         }

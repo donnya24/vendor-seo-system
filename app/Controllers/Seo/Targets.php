@@ -144,6 +144,15 @@ class Targets extends BaseController
 
             // ===== BUAT NOTIFIKASI UNTUK ADMIN DAN VENDOR =====
             $this->createTargetNotification($id, $vendorId, 'create', $insertData);
+            
+            // If status is completed, create a report
+            if ($insertData['status'] === 'completed') {
+                // PERBAIKAN: Pastikan target diambil dengan benar sebelum membuat report
+                $target = $this->model->find($id);
+                if ($target) {
+                    $this->model->createReportFromTarget($id);
+                }
+            }
         }
 
         return $this->response->setJSON([
@@ -208,6 +217,18 @@ class Targets extends BaseController
                 : 'update';
             
             $this->createTargetNotification($id, $vendorId, $actionType, $updateData, $existingTarget);
+            
+            // PERBAIKAN: Handle status changes
+            if ($updateData['status'] === 'completed' && $existingTarget['status'] !== 'completed') {
+                // Status changed to completed, create a report
+                $updatedTarget = $this->model->find($id);
+                if ($updatedTarget) {
+                    $this->model->createReportFromTarget($id);
+                }
+            } elseif ($updateData['status'] !== 'completed' && $existingTarget['status'] === 'completed') {
+                // Status changed from completed to something else, delete related reports
+                $this->model->deleteRelatedReports($id);
+            }
         }
 
         return $this->response->setJSON([
@@ -252,6 +273,7 @@ class Targets extends BaseController
         $vendorName = $this->getVendorName($target['vendor_id'], $this->vendorModel->findAll());
 
         try {
+            // PERBAIKAN: Model delete method sudah di-override untuk menghapus related reports
             $deleted = $this->model->delete($id);
         } catch (\Exception $e) {
             return $this->response->setStatusCode(500)->setJSON([

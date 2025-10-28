@@ -21,7 +21,6 @@ class Targets extends BaseAdminController
 
     public function __construct()
     {
-        // Hapus parent::__construct() karena BaseController tidak memiliki constructor
         $this->model = new SeoKeywordTargetsModel();
         $this->vendorModel = new VendorProfilesModel();
         $this->activityLogsModel = new ActivityLogsModel();
@@ -53,7 +52,8 @@ class Targets extends BaseAdminController
 
         $builder = $this->model
             ->select('seo_keyword_targets.*, vendor_profiles.business_name as vendor_name')
-            ->join('vendor_profiles', 'vendor_profiles.id = seo_keyword_targets.vendor_id', 'left');
+            ->join('vendor_profiles', 'vendor_profiles.id = seo_keyword_targets.vendor_id', 'left')
+            ->withLatestReport(); // PERBAIKAN: Tambahkan withLatestReport()
 
         // Filter vendor jika dipilih
         if (!empty($vendorId)) {
@@ -78,7 +78,6 @@ class Targets extends BaseAdminController
         // Log activity dengan filter
         $filterData = [];
         if (!empty($vendorId)) {
-            // PERBAIKAN: Cari vendor dari array vendors
             $vendorName = 'Unknown Vendor';
             foreach ($vendors as $vendor) {
                 if ($vendor['id'] == $vendorId) {
@@ -130,6 +129,7 @@ class Targets extends BaseAdminController
         }
 
         $vendorId = $data['vendor_id'] ?? session()->get('vendor_id') ?? 1;
+        $vendorName = $this->getVendorName($vendorId, $this->vendorModel->findAll());
 
         $insertData = [
             'vendor_id'        => $vendorId,
@@ -138,7 +138,7 @@ class Targets extends BaseAdminController
             'current_position' => $data['current_position'] !== '' ? $data['current_position'] : null,
             'target_position'  => $data['target_position'] !== '' ? $data['target_position'] : null,
             'deadline'         => $data['deadline'] ?: null,
-            'priority'         => $data['priority'] ?? 'low',
+            'priority'         => $data['priority'] ?? 'low', // PERBAIKAN: Default 'low' bukan 'Low'
             'status'           => $data['status'] ?? 'pending',
             'notes'            => $data['notes'] ?? null,
             'created_at'       => date('Y-m-d H:i:s'),
@@ -161,8 +161,16 @@ class Targets extends BaseAdminController
                 ]
             );
 
-            // ===== BUAT NOTIFIKASI UNTUK VENDOR DAN TIM SEO =====
+            // BUAT NOTIFIKASI UNTUK VENDOR DAN TIM SEO
             $this->createTargetNotification($id, $vendorId, 'create', $insertData);
+            
+            // PERBAIKAN: If status is completed, create a report
+            if ($insertData['status'] === 'completed') {
+                $target = $this->model->find($id);
+                if ($target) {
+                    $this->model->createReportFromTarget($id);
+                }
+            }
 
         } catch (\Exception $e) {
             // Log activity error
@@ -208,6 +216,7 @@ class Targets extends BaseAdminController
         }
 
         $vendorId = $data['vendor_id'] ?? $existingTarget['vendor_id'];
+        $vendorName = $this->getVendorName($vendorId, $this->vendorModel->findAll());
 
         $updateData = [
             'vendor_id'        => $vendorId,
@@ -216,7 +225,7 @@ class Targets extends BaseAdminController
             'current_position' => $data['current_position'] !== '' ? $data['current_position'] : null,
             'target_position'  => $data['target_position'] !== '' ? $data['target_position'] : null,
             'deadline'         => $data['deadline'] ?: null,
-            'priority'         => $data['priority'] ?? 'low',
+            'priority'         => $data['priority'] ?? 'low', // PERBAIKAN: Default 'low' bukan 'Low'
             'status'           => $data['status'] ?? 'pending',
             'notes'            => $data['notes'] ?? null,
             'updated_at'       => date('Y-m-d H:i:s'),
@@ -239,12 +248,24 @@ class Targets extends BaseAdminController
                 ]
             );
 
-            // ===== BUAT NOTIFIKASI UNTUK VENDOR DAN TIM SEO =====
+            // BUAT NOTIFIKASI UNTUK VENDOR DAN TIM SEO
             $actionType = ($updateData['status'] === 'completed' && $existingTarget['status'] !== 'completed') 
                 ? 'complete' 
                 : 'update';
             
             $this->createTargetNotification($id, $vendorId, $actionType, $updateData, $existingTarget);
+            
+            // PERBAIKAN: Handle status changes
+            if ($updateData['status'] === 'completed' && $existingTarget['status'] !== 'completed') {
+                // Status changed to completed, create a report
+                $updatedTarget = $this->model->find($id);
+                if ($updatedTarget) {
+                    $this->model->createReportFromTarget($id);
+                }
+            } elseif ($updateData['status'] !== 'completed' && $existingTarget['status'] === 'completed') {
+                // Status changed from completed to something else, delete related reports
+                $this->model->deleteRelatedReports($id);
+            }
 
         } catch (\Exception $e) {
             // Log activity error
@@ -307,7 +328,10 @@ class Targets extends BaseAdminController
             return $this->response->setJSON(['success' => false, 'message' => 'Target tidak ditemukan']);
         }
 
+        $vendorName = $this->getVendorName($target['vendor_id'], $this->vendorModel->findAll());
+
         try {
+            // PERBAIKAN: Model delete method sudah di-override untuk menghapus related reports
             $deleted = $this->model->delete($id);
             
             // Log activity delete target
@@ -322,7 +346,7 @@ class Targets extends BaseAdminController
                 ]
             );
 
-            // ===== BUAT NOTIFIKASI UNTUK VENDOR DAN TIM SEO =====
+            // BUAT NOTIFIKASI UNTUK VENDOR DAN TIM SEO
             $this->createTargetNotification($id, $target['vendor_id'], 'delete', $target);
 
         } catch (\Exception $e) {
@@ -381,7 +405,20 @@ class Targets extends BaseAdminController
     }
 
     /**
-     * PERBAIKAN: Buat notifikasi untuk vendor dan tim SEO terkait target SEO dengan type 'system'
+     * Helper untuk mendapatkan nama vendor
+     */
+    private function getVendorName(int $vendorId, array $vendors): string
+    {
+        foreach ($vendors as $vendor) {
+            if ($vendor['id'] == $vendorId) {
+                return $vendor['business_name'];
+            }
+        }
+        return 'Unknown Vendor';
+    }
+
+    /**
+     * Buat notifikasi untuk vendor dan tim SEO terkait target SEO dengan type 'system'
      */
     private function createTargetNotification($targetId, $vendorId, $actionType, $targetData, $oldData = null)
     {
@@ -391,27 +428,24 @@ class Targets extends BaseAdminController
             // Dapatkan informasi vendor
             $vendor = $this->vendorModel->find($vendorId);
             if (!$vendor) {
-                log_message('error', "Notification failed: Vendor with ID {$vendorId} not found");
                 return false;
             }
 
             // Dapatkan user_id dari vendor
             $vendorUserId = $vendor['user_id'] ?? null;
             if (!$vendorUserId) {
-                log_message('error', "Notification failed: Vendor {$vendorId} has no user_id");
                 return false;
             }
 
-            // PERBAIKAN: Dapatkan semua admin users
+            // Dapatkan semua admin users
             $adminUsers = $db->table('auth_groups_users agu')
                 ->select('agu.user_id')
                 ->join('users u', 'u.id = agu.user_id')
                 ->where('agu.group', 'admin')
-                ->where('u.active', 1)
                 ->get()
                 ->getResultArray();
 
-            // PERBAIKAN: Dapatkan admin yang sedang login
+            // Dapatkan admin yang sedang login
             $adminUserId = session()->get('user_id');
             $adminProfile = $db->table('admin_profiles')
                 ->where('user_id', $adminUserId)
@@ -419,12 +453,11 @@ class Targets extends BaseAdminController
                 ->getRowArray();
             $adminName = $adminProfile['name'] ?? 'Admin';
 
-            // PERBAIKAN: Dapatkan semua SEO users
+            // Dapatkan semua SEO users
             $seoUsers = $db->table('seo_profiles sp')
                 ->select('sp.user_id')
                 ->join('users u', 'u.id = sp.user_id')
                 ->where('sp.status', 'active')
-                ->where('u.active', 1)
                 ->get()
                 ->getResultArray();
 
@@ -435,47 +468,29 @@ class Targets extends BaseAdminController
             switch ($actionType) {
                 case 'create':
                     $title = 'Target SEO Baru Dibuat';
-                    $message = "🎯 Target SEO baru '{$targetData['keyword']}' telah dibuat oleh Admin {$adminName} untuk vendor {$vendor['business_name']}";
+                    $message = "Admin {$adminName} telah membuat target SEO baru: '{$targetData['keyword']}' untuk vendor {$vendor['business_name']}";
                     break;
 
                 case 'update':
                     $title = 'Target SEO Diperbarui';
-                    $message = "✏️ Target SEO '{$targetData['keyword']}' telah diperbarui oleh Admin {$adminName} untuk vendor {$vendor['business_name']}";
+                    $message = "Admin {$adminName} telah memperbarui target SEO: '{$targetData['keyword']}' untuk vendor {$vendor['business_name']}";
                     break;
 
                 case 'complete':
                     $title = 'Target SEO Selesai';
-                    $message = "🎉 Target SEO '{$targetData['keyword']}' untuk vendor {$vendor['business_name']} telah diselesaikan oleh Admin {$adminName}";
+                    $message = "🎉 Target SEO '{$targetData['keyword']}' untuk vendor {$vendor['business_name']} telah berhasil diselesaikan oleh Admin {$adminName}";
                     break;
 
                 case 'delete':
                     $title = 'Target SEO Dihapus';
-                    $message = "🗑️ Target SEO '{$targetData['keyword']}' untuk vendor {$vendor['business_name']} telah dihapus oleh Admin {$adminName}";
+                    $message = "Admin {$adminName} telah menghapus target SEO: '{$targetData['keyword']}' untuk vendor {$vendor['business_name']}";
                     break;
 
                 default:
                     return false;
             }
 
-            // Tambahkan detail target
-            $message .= "\n\nDetail Target:";
-            $message .= "\n• Project: {$targetData['project_name']}";
-            $message .= "\n• Keyword: {$targetData['keyword']}";
-            $message .= "\n• Priority: " . ucfirst($targetData['priority'] ?? 'low');
-            $message .= "\n• Status: " . ucfirst(str_replace('_', ' ', $targetData['status'] ?? 'pending'));
-            
-            if (!empty($targetData['current_position'])) {
-                $message .= "\n• Posisi Saat Ini: {$targetData['current_position']}";
-            }
-            if (!empty($targetData['target_position'])) {
-                $message .= "\n• Target Posisi: {$targetData['target_position']}";
-            }
-            if (!empty($targetData['deadline'])) {
-                $deadline = date('d M Y', strtotime($targetData['deadline']));
-                $message .= "\n• Deadline: {$deadline}";
-            }
-
-            // Tambahkan detail perubahan untuk update
+            // Tambahkan detail untuk update
             if ($actionType === 'update' && $oldData) {
                 $changes = [];
                 
@@ -490,18 +505,13 @@ class Targets extends BaseAdminController
                     $newPos = $targetData['current_position'] ?? 'Belum ada';
                     $changes[] = "Posisi saat ini: {$oldPos} → {$newPos}";
                 }
-                if ($targetData['target_position'] != $oldData['target_position']) {
-                    $oldTarget = $oldData['target_position'] ?? 'Belum ada';
-                    $newTarget = $targetData['target_position'] ?? 'Belum ada';
-                    $changes[] = "Target posisi: {$oldTarget} → {$newTarget}";
-                }
 
                 if (!empty($changes)) {
                     $message .= "\n\nPerubahan:\n• " . implode("\n• ", $changes);
                 }
             }
 
-            // PERBAIKAN: Notifikasi untuk VENDOR dengan type 'system'
+            // Notifikasi untuk VENDOR dengan type system
             if ($vendorUserId) {
                 $notifications[] = [
                     'user_id' => $vendorUserId,
@@ -513,10 +523,9 @@ class Targets extends BaseAdminController
                     'created_at' => $now,
                     'updated_at' => $now
                 ];
-                log_message('info', "Added notification for vendor user ID: {$vendorUserId}");
             }
 
-            // PERBAIKAN: Notifikasi untuk semua ADMIN KECUALI admin yang sedang login dengan type 'system'
+            // Notifikasi untuk semua ADMIN KECUALI admin yang sedang login dengan type system
             foreach ($adminUsers as $admin) {
                 // Skip admin yang sedang login
                 if ($admin['user_id'] == $adminUserId) {
@@ -534,9 +543,8 @@ class Targets extends BaseAdminController
                     'updated_at' => $now
                 ];
             }
-            log_message('info', "Added notifications for " . (count($adminUsers) - 1) . " admin users (excluding current admin)");
 
-            // PERBAIKAN: Notifikasi untuk semua SEO users dengan type 'system'
+            // Notifikasi untuk semua SEO users dengan type system
             foreach ($seoUsers as $seo) {
                 $notifications[] = [
                     'user_id' => $seo['user_id'],
@@ -549,39 +557,21 @@ class Targets extends BaseAdminController
                     'updated_at' => $now
                 ];
             }
-            log_message('info', "Added notifications for " . count($seoUsers) . " SEO users");
 
-            // PERBAIKAN: Insert semua notifikasi dengan error handling
-            try {
-                if (!empty($notifications)) {
-                    // Debug: Log data notifikasi sebelum insert
-                    log_message('debug', 'Notifications to insert: ' . json_encode($notifications));
-                    
-                    $insertResult = $this->notificationsModel->insertBatch($notifications);
-                    
-                    if ($insertResult) {
-                        // Log untuk debugging
-                        log_message('info', "Created admin target {$actionType} notifications for target {$targetId}: " . count($notifications) . " notifications sent");
-                        
-                        return true;
-                    } else {
-                        log_message('error', "Failed to insert batch notifications");
-                        log_message('error', "Notification Model Errors: " . json_encode($this->notificationsModel->errors()));
-                        return false;
-                    }
-                } else {
-                    log_message('warning', "No notifications to insert for target {$targetId}");
-                    return false;
-                }
-            } catch (\Exception $e) {
-                log_message('error', "Error inserting notifications: " . $e->getMessage());
-                log_message('error', $e->getTraceAsString());
-                return false;
+            // Insert semua notifikasi
+            if (!empty($notifications)) {
+                $this->notificationsModel->insertBatch($notifications);
+                
+                // Log untuk debugging
+                log_message('info', "Created admin {$actionType} notifications for target {$targetId}: " . count($notifications) . " notifications sent");
+                
+                return true;
             }
+
+            return false;
 
         } catch (\Exception $e) {
             log_message('error', "Error creating admin target notification: " . $e->getMessage());
-            log_message('error', $e->getTraceAsString());
             return false;
         }
     }

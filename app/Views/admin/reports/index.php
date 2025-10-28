@@ -11,8 +11,8 @@
   <!-- Header -->
   <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
       <div>
-          <h2 class="text-2xl font-bold text-gray-900">SEO Reports - Admin</h2>
-          <p class="mt-1 text-sm text-gray-600">Laporan performa keyword yang sudah completed (Akses Admin)</p>
+          <h2 class="text-2xl font-bold text-gray-900">Laporan SEO</h2>
+          <p class="mt-1 text-sm text-gray-600">Laporan performa keyword yang sudah completed</p>
       </div>
       <div>
           <a href="<?= site_url('admin/reports/export-csv') ?>?<?= $_SERVER['QUERY_STRING'] ?? '' ?>" 
@@ -42,18 +42,19 @@
         </select>
       </div>
 
-      <!-- Position Filter -->
+      <!-- Change Filter -->
       <div class="flex-1">
         <label class="block text-sm font-medium text-gray-700 mb-2">
-          <i class="fas fa-chart-line text-blue-600 mr-1"></i> Filter Posisi
+          <i class="fas fa-exchange-alt text-blue-600 mr-1"></i> Filter Perubahan
         </label>
-        <select name="position"
+        <select name="change_filter"
                 class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm">
-          <option value="">Semua Posisi</option>
-          <option value="top3" <?= ($position == 'top3') ? 'selected' : '' ?>>🥇 Top 3</option>
-          <option value="top10" <?= ($position == 'top10') ? 'selected' : '' ?>>🏆 Top 10</option>
-          <option value="top20" <?= ($position == 'top20') ? 'selected' : '' ?>>📈 Top 20</option>
-          <option value="below20" <?= ($position == 'below20') ? 'selected' : '' ?>>📊 Dibawah 20</option>
+          <option value="">Semua Perubahan</option>
+          <option value="high_improvement" <?= ($changeFilter == 'high_improvement') ? 'selected' : '' ?>>🚀 Peningkatan Tinggi (+10 atau lebih)</option>
+          <option value="moderate_improvement" <?= ($changeFilter == 'moderate_improvement') ? 'selected' : '' ?>>📈 Peningkatan Sedang (+5 hingga +9)</option>
+          <option value="low_improvement" <?= ($changeFilter == 'low_improvement') ? 'selected' : '' ?>>📊 Peningkatan Rendah (+1 hingga +4)</option>
+          <option value="no_change" <?= ($changeFilter == 'no_change') ? 'selected' : '' ?>>➖ Tidak Ada Perubahan</option>
+          <option value="decline" <?= ($changeFilter == 'decline') ? 'selected' : '' ?>>📉 Penurunan</option>
         </select>
       </div>
 
@@ -71,7 +72,7 @@
     </div>
 
     <!-- Active Filter Info -->
-    <?php if(!empty($vendorId) || !empty($position)): ?>
+    <?php if(!empty($vendorId) || !empty($changeFilter)): ?>
     <div class="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
       <div class="flex items-center justify-between">
         <div class="flex items-center">
@@ -83,13 +84,14 @@
                 Vendor: <?= $vendorId ?>
               </span>
             <?php endif; ?>
-            <?php if(!empty($position)): ?>
+            <?php if(!empty($changeFilter)): ?>
               <span class="font-medium bg-white px-2 py-1 rounded border border-blue-200 ml-1">
-                Posisi: 
-                <?= $position == 'top3' ? 'Top 3' : '' ?>
-                <?= $position == 'top10' ? 'Top 10' : '' ?>
-                <?= $position == 'top20' ? 'Top 20' : '' ?>
-                <?= $position == 'below20' ? 'Dibawah 20' : '' ?>
+                Perubahan: 
+                <?= $changeFilter == 'high_improvement' ? 'Peningkatan Tinggi' : '' ?>
+                <?= $changeFilter == 'moderate_improvement' ? 'Peningkatan Sedang' : '' ?>
+                <?= $changeFilter == 'low_improvement' ? 'Peningkatan Rendah' : '' ?>
+                <?= $changeFilter == 'no_change' ? 'Tidak Ada Perubahan' : '' ?>
+                <?= $changeFilter == 'decline' ? 'Penurunan' : '' ?>
               </span>
             <?php endif; ?>
           </span>
@@ -106,17 +108,20 @@
   <?php
     $totalReports = count($reports);
     $top3Count = count(array_filter($reports, function($r) {
-        return ($r['current_position'] ?? 0) <= 3;
+        return ($r['position'] ?? 0) <= 3;
     }));
     $top10Count = count(array_filter($reports, function($r) {
-        $pos = $r['current_position'] ?? 0;
+        $pos = $r['position'] ?? 0;
         return $pos > 3 && $pos <= 10;
     }));
     $improvedCount = count(array_filter($reports, function($r) {
         return ($r['change'] ?? 0) > 0;
     }));
+    $highImprovementCount = count(array_filter($reports, function($r) {
+        return ($r['change'] ?? 0) >= 10;
+    }));
   ?>
-  <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+  <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
       <div class="flex items-center">
         <div class="p-3 rounded-lg bg-blue-100 text-blue-600">
@@ -164,6 +169,18 @@
         </div>
       </div>
     </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+      <div class="flex items-center">
+        <div class="p-3 rounded-lg bg-red-100 text-red-600">
+          <i class="fas fa-rocket text-xl"></i>
+        </div>
+        <div class="ml-4">
+          <h3 class="text-sm font-medium text-gray-500">Peningkatan Tinggi</h3>
+          <p class="text-2xl font-bold text-gray-800 mt-1"><?= $highImprovementCount ?></p>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Table Container -->
@@ -186,10 +203,11 @@
             <th class="px-4 py-3 text-left font-semibold tracking-wider">Vendor</th>
             <th class="px-4 py-3 text-left font-semibold tracking-wider">Project</th>
             <th class="px-4 py-3 text-left font-semibold tracking-wider">Keyword</th>
-            <th class="px-4 py-3 text-center font-semibold tracking-wider">Target</th>
             <th class="px-4 py-3 text-center font-semibold tracking-wider">Posisi</th>
+            <th class="px-4 py-3 text-center font-semibold tracking-wider">Target</th>
             <th class="px-4 py-3 text-center font-semibold tracking-wider">Perubahan</th>
-            <th class="px-4 py-3 text-center font-semibold tracking-wider">Selesai</th>
+            <th class="px-4 py-3 text-center font-semibold tracking-wider">Trend</th>
+            <th class="px-4 py-3 text-center font-semibold tracking-wider">Tanggal</th>
           </tr>
         </thead>
 
@@ -209,18 +227,13 @@
                   </div>
                 </div>
               </td>
-              <td class="px-4 py-3 text-gray-700"><?= esc($r['project_name']) ?></td>
+              <td class="px-4 py-3 text-gray-700"><?= esc($r['project']) ?></td>
               <td class="px-4 py-3 text-gray-700 truncate max-w-[200px]" title="<?= esc($r['keyword']) ?>">
                 <?= esc($r['keyword']) ?>
               </td>
               <td class="px-4 py-3 text-center">
-                <span class="inline-flex items-center justify-center px-2 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-medium">
-                  <?= $r['target_position'] ?: '-' ?>
-                </span>
-              </td>
-              <td class="px-4 py-3 text-center">
                 <?php 
-                  $currentPos = $r['current_position'] ?? 0;
+                  $currentPos = $r['position'] ?? 0;
                   $positionClass = match(true) {
                     $currentPos <= 3 => 'bg-green-100 text-green-700',
                     $currentPos <= 10 => 'bg-blue-100 text-blue-700',
@@ -233,39 +246,61 @@
                 </span>
               </td>
               <td class="px-4 py-3 text-center">
+                <span class="inline-flex items-center justify-center px-2 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-medium">
+                  <?= $r['target_position'] ?: '-' ?>
+                </span>
+              </td>
+              <td class="px-4 py-3 text-center">
                 <?php if ($r['change'] !== null): ?>
-                  <?php if ($r['change'] > 0): ?>
-                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-                      +<?= $r['change'] ?> <i class="fas fa-arrow-up ml-1"></i>
-                    </span>
-                  <?php elseif ($r['change'] < 0): ?>
-                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
-                      <?= $r['change'] ?> <i class="fas fa-arrow-down ml-1"></i>
-                    </span>
-                  <?php else: ?>
-                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
-                      0 <i class="fas fa-minus ml-1"></i>
-                    </span>
-                  <?php endif; ?>
+                  <?php 
+                    // PERBAIKAN: Tampilkan perubahan dengan format yang benar
+                    $changeValue = $r['change'];
+                    $changeAbs = abs($changeValue);
+                    $changeClass = $changeValue > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700';
+                    $changeIcon = $changeValue > 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+                  ?>
+                  <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold <?= $changeClass ?>">
+                    <?php if ($changeValue > 0): ?>
+                      +<?= $changeAbs ?> <i class="fas <?= $changeIcon ?> ml-1"></i>
+                    <?php else: ?>
+                      <?= $changeValue ?> <i class="fas <?= $changeIcon ?> ml-1"></i>
+                    <?php endif; ?>
+                  </span>
                 <?php else: ?>
                   <span class="text-gray-400">—</span>
                 <?php endif; ?>
               </td>
+              <td class="px-4 py-3 text-center">
+                <?php 
+                  $trend = $r['trend'] ?? 'stable';
+                  $trendClass = match($trend) {
+                    'up' => 'text-green-600',
+                    'down' => 'text-red-600',
+                    default => 'text-gray-500'
+                  };
+                  $trendIcon = match($trend) {
+                    'up' => 'fa-arrow-up',
+                    'down' => 'fa-arrow-down',
+                    default => 'fa-minus'
+                  };
+                ?>
+                <i class="fas <?= $trendIcon ?> <?= $trendClass ?>"></i>
+              </td>
               <td class="px-4 py-3 text-center text-gray-600 text-sm">
-                <?= date('d M Y', strtotime($r['updated_at'] ?? $r['created_at'])) ?>
+                <?= date('d M Y', strtotime($r['created_at'])) ?>
               </td>
             </tr>
           <?php endforeach; else: ?>
             <tr>
-              <td colspan="8" class="px-6 py-8 text-center text-gray-500">
+              <td colspan="9" class="px-6 py-8 text-center text-gray-500">
                 <div class="flex flex-col items-center justify-center">
                   <i class="fas fa-inbox text-gray-300 text-4xl mb-3"></i>
                   <p class="text-lg font-medium text-gray-900">Tidak ada laporan</p>
                   <p class="mt-1 text-sm text-gray-500">
-                    <?php if(!empty($vendorId) || !empty($position)): ?>
+                    <?php if(!empty($vendorId) || !empty($changeFilter)): ?>
                       Tidak ada laporan dengan filter yang dipilih
                     <?php else: ?>
-                      Belum ada laporan SEO yang completed
+                      Belum ada laporan SEO yang tersedia
                     <?php endif; ?>
                   </p>
                 </div>

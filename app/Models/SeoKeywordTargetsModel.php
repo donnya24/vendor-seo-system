@@ -60,4 +60,91 @@ class SeoKeywordTargetsModel extends Model
                     ->limit($limit)
                     ->find();
     }
+    
+    /**
+     * Create a report when a target is marked as completed
+     * @param int $targetId
+     * @return bool
+     */
+    public function createReportFromTarget($targetId)
+    {
+        // PERBAIKAN: Gunakan builder untuk memastikan query dieksekusi dengan benar
+        $target = $this->where('id', $targetId)
+                       ->where('status', 'completed')
+                       ->first();
+        
+        if (!$target) {
+            return false;
+        }
+        
+        $reportsModel = new \App\Models\SeoReportsModel();
+        
+        // PERBAIKAN: Hitung perubahan dengan logika yang benar
+        $change = null;
+        $trend = 'stable';
+        
+        if (!empty($target['current_position']) && !empty($target['target_position'])) {
+            // PERBAIKAN: Perubahan dihitung sebagai current_position - target_position
+            // Ini menghitung seberapa banyak peringkat yang ditempuh untuk mencapai target
+            // Dalam SEO, angka yang lebih kecil lebih baik, jadi:
+            // current_position (10) - target_position (1) = 9 (peningkatan)
+            $change = $target['current_position'] - $target['target_position'];
+            
+            // PERBAIKAN: Trend dihitung berdasarkan arah perubahan
+            if ($change > 0) {
+                $trend = 'up';    // Posisi membaik (angka mengecil)
+            } elseif ($change < 0) {
+                $trend = 'down';  // Posisi memburuk (angka membesar)
+            }
+        }
+        
+        $reportData = [
+            'vendor_id' => $target['vendor_id'],
+            'keyword' => $target['keyword'],
+            'project' => $target['project_name'],
+            'position' => $target['current_position'],
+            'change' => $change,
+            'trend' => $trend,
+            'status' => 'active',
+            'created_at' => date('Y-m-d H:i:s')
+        ];
+        
+        return $reportsModel->insert($reportData) !== false;
+    }
+    
+    /**
+     * Delete reports related to a target
+     * @param int $targetId
+     * @return bool
+     */
+    public function deleteRelatedReports($targetId)
+    {
+        // PERBAIKAN: Gunakan first() untuk memastikan kita mendapatkan array
+        $target = $this->where('id', $targetId)->first();
+        
+        if (!$target) {
+            return false;
+        }
+        
+        $reportsModel = new \App\Models\SeoReportsModel();
+        
+        // Delete all reports for this vendor and keyword combination
+        return $reportsModel->where('vendor_id', $target['vendor_id'])
+                           ->where('keyword', $target['keyword'])
+                           ->delete() !== false;
+    }
+    
+    /**
+     * Override delete method to also delete related reports
+     * @param int $id
+     * @return bool
+     */
+    public function delete($id = null, bool $purge = false)
+    {
+        // First delete related reports
+        $this->deleteRelatedReports($id);
+        
+        // Then delete the target
+        return parent::delete($id, $purge);
+    }
 }

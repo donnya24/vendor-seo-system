@@ -3,17 +3,17 @@
 namespace App\Controllers\Seo;
 
 use App\Controllers\BaseController;
-use App\Models\SeoKeywordTargetsModel;
+use App\Models\SeoReportsModel;
 use App\Models\VendorProfilesModel;
 
 class Reports extends BaseController
 {
-    protected $targetModel;
+    protected $reportsModel;
     protected $vendorModel;
 
     public function __construct()
     {
-        $this->targetModel = new SeoKeywordTargetsModel();
+        $this->reportsModel = new SeoReportsModel();
         $this->vendorModel = new VendorProfilesModel();
     }
 
@@ -24,58 +24,13 @@ class Reports extends BaseController
         $vendorId = $vendorId ? (int) $vendorId : null;
         
         $position = $this->request->getGet('position');
+        $changeFilter = $this->request->getGet('change_filter'); // Tambahkan filter perubahan
 
         // Ambil daftar vendor untuk dropdown filter
         $vendors = $this->vendorModel->findAll();
 
-        $builder = $this->targetModel
-            ->select('seo_keyword_targets.*, vendor_profiles.business_name as vendor_name')
-            ->join('vendor_profiles', 'vendor_profiles.id = seo_keyword_targets.vendor_id', 'left')
-            ->where('seo_keyword_targets.status', 'completed');
-
-        // Filter vendor jika dipilih
-        if (!empty($vendorId)) {
-            $builder->where('seo_keyword_targets.vendor_id', $vendorId);
-        }
-
-        // Filter posisi jika dipilih
-        if (!empty($position)) {
-            if ($position === 'top3') {
-                $builder->where('seo_keyword_targets.current_position <=', 3);
-            } elseif ($position === 'top10') {
-                $builder->where('seo_keyword_targets.current_position <=', 10)
-                        ->where('seo_keyword_targets.current_position >', 3);
-            } elseif ($position === 'top20') {
-                $builder->where('seo_keyword_targets.current_position <=', 20)
-                        ->where('seo_keyword_targets.current_position >', 10);
-            } elseif ($position === 'below20') {
-                $builder->where('seo_keyword_targets.current_position >', 20);
-            }
-        }
-
-        $targets = $builder->orderBy('seo_keyword_targets.updated_at', 'DESC')
-            ->findAll();
-
-        // Hitung perubahan otomatis
-        foreach ($targets as &$t) {
-            $cur = (int)($t['current_position'] ?? 0);
-            $tar = (int)($t['target_position'] ?? 0);
-
-            if ($cur && $tar) {
-                $t['change'] = $cur - $tar; // current - target
-                // Tentukan trend
-                if ($t['change'] > 0) {
-                    $t['trend'] = 'up';
-                } elseif ($t['change'] < 0) {
-                    $t['trend'] = 'down';
-                } else {
-                    $t['trend'] = 'stable';
-                }
-            } else {
-                $t['change'] = null;
-                $t['trend'] = 'unknown';
-            }
-        }
+        // Get reports from the reports table, not targets table
+        $reports = $this->reportsModel->getWithVendor($vendorId, $position, $changeFilter);
 
         // Log aktivitas view reports
         $logDescription = "Melihat laporan SEO completed";
@@ -94,15 +49,22 @@ class Reports extends BaseController
             $logDescription .= " dengan posisi {$positionLabel}";
             $extraData['position_filter'] = $position;
         }
+        
+        if (!empty($changeFilter)) {
+            $changeLabel = $this->getChangeFilterLabel($changeFilter);
+            $logDescription .= " dengan perubahan {$changeLabel}";
+            $extraData['change_filter'] = $changeFilter;
+        }
 
         log_activity_auto('view', $logDescription, $extraData);
 
         return view('seo/reports/index', [
             'title'      => 'Laporan SEO',
             'activeMenu' => 'reports',
-            'reports'    => $targets,
+            'reports'    => $reports,
             'vendorId'   => $vendorId,
             'position'   => $position,
+            'changeFilter' => $changeFilter, // Tambahkan ke view
             'vendors'    => $vendors,
         ]);
     }
@@ -132,5 +94,20 @@ class Reports extends BaseController
             'below20' => 'Dibawah 20'
         ];
         return $labels[$position] ?? $position;
+    }
+
+    /**
+     * Helper untuk mendapatkan label filter perubahan
+     */
+    private function getChangeFilterLabel(string $changeFilter): string
+    {
+        $labels = [
+            'high_improvement' => 'Peningkatan Tinggi (+10 atau lebih)',
+            'moderate_improvement' => 'Peningkatan Sedang (+5 hingga +9)',
+            'low_improvement' => 'Peningkatan Rendah (+1 hingga +4)',
+            'no_change' => 'Tidak Ada Perubahan',
+            'decline' => 'Penurunan'
+        ];
+        return $labels[$changeFilter] ?? $changeFilter;
     }
 }

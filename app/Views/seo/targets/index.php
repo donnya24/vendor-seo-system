@@ -1,9 +1,6 @@
 <?= $this->extend('seo/layouts/seo_master') ?>
 <?= $this->section('content') ?>
 
-<!-- Alpine.js -->
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-
 <div class="space-y-6" x-data="seoTargets()" x-init="init()">
   <head>
       <meta name="csrf-token-name" content="<?= csrf_token() ?>">
@@ -116,7 +113,7 @@
   </form>
 
 <!-- Table Container -->
-<div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+<div class="bg-white rounded-xl shadow-sm border border-gray-200">
   <!-- Table Header -->
   <div class="px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
     <h2 class="text-lg font-medium text-gray-900">Daftar Target</h2>
@@ -127,25 +124,25 @@
   
   <!-- Table -->
   <div class="overflow-x-auto">
-    <table class="min-w-full divide-y divide-gray-200 text-sm">
+    <table class="table-auto min-w-[1200px] w-full divide-y divide-gray-200 text-sm">
       <thead class="bg-blue-600 text-white uppercase text-xs">
         <tr>
-          <th class="px-4 py-3 text-left w-12">No</th>
-          <th class="px-4 py-3 text-left min-w-[180px]">Vendor</th>
-          <th class="px-4 py-3 text-left min-w-[150px]">Project</th>
-          <th class="px-4 py-3 text-left min-w-[200px]">Keyword</th>
-          <th class="px-4 py-3 text-center w-20">Current</th>
-          <th class="px-4 py-3 text-center w-20">Target</th>
-          <th class="px-4 py-3 text-center min-w-[100px]">Deadline</th>
-          <th class="px-4 py-3 text-center w-24">Priority</th>
-          <th class="px-4 py-3 text-center min-w-[120px]">Status</th>
-          <th class="px-4 py-3 text-left min-w-[200px]">Notes</th>
-          <th class="px-4 py-3 text-center min-w-[120px]">Aksi</th>
+          <th class="px-4 py-3 text-left">No</th>
+          <th class="px-4 py-3 text-left">Vendor</th>
+          <th class="px-4 py-3 text-left">Project</th>
+          <th class="px-4 py-3 text-left">Keyword</th>
+          <th class="px-4 py-3 text-center">Posisi sekarang</th>
+          <th class="px-4 py-3 text-center">Posisi Target</th>
+          <th class="px-4 py-3 text-center">Deadline</th>
+          <th class="px-4 py-3 text-center">Priority</th>
+          <th class="px-4 py-3 text-center">Status</th>
+          <th class="px-4 py-3 text-left">Notes</th>
+          <th class="px-4 py-3 text-center">Aksi</th>
         </tr>
       </thead>
       <tbody class="bg-white divide-y divide-gray-200">
         <?php if (!empty($targets)): $no=1; foreach($targets as $t): ?>
-        <tr class="hover:bg-gray-50 transition-colors">
+        <tr class="hover:bg-gray-50">
           <td class="px-4 py-3 text-gray-500 text-center"><?= $no++ ?></td>
           <td class="px-4 py-3">
             <div class="flex items-center">
@@ -159,7 +156,7 @@
             </div>
           </td>
           <td class="px-4 py-3"><?= esc($t['project_name']) ?></td>
-          <td class="px-4 py-3 truncate max-w-xs" title="<?= esc($t['keyword']) ?>"><?= esc($t['keyword']) ?></td>
+          <td class="px-4 py-3 truncate max-w-[200px]" title="<?= esc($t['keyword']) ?>"><?= esc($t['keyword']) ?></td>
           <td class="px-4 py-3 text-center"><?= $t['current_position'] ?: '—' ?></td>
           <td class="px-4 py-3 text-center"><?= $t['target_position'] ?: '—' ?></td>
           <td class="px-4 py-3 text-center"><?= $t['deadline'] ? date('d M Y', strtotime($t['deadline'])) : '—' ?></td>
@@ -178,31 +175,20 @@
             </span>
           </td>
           <td class="px-4 py-3 text-center">
-            <!-- Badge status dengan tampilan yang lebih rapi -->
+            <!-- badge status -->
             <?php 
               $stat = strtolower($t['status']);
               $statClass = match($stat) {
                 'completed'   => 'bg-green-100 text-green-700',
                 'in_progress' => 'bg-blue-100 text-blue-700',
-                'pending'     => 'bg-gray-100 text-gray-700',
                 default       => 'bg-gray-100 text-gray-700'
               };
-              
-              // Format status untuk tampilan
-              $statusText = match($stat) {
-                'completed'   => 'Completed',
-                'in_progress' => 'In Progress',
-                'pending'     => 'Pending',
-                default       => ucfirst(str_replace('_', ' ', $t['status']))
-              };
             ?>
-            <div class="flex justify-center">
-              <span class="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap <?= $statClass ?>">
-                <?= $statusText ?>
-              </span>
-            </div>
+            <span class="px-2 py-1 rounded-full text-xs font-medium <?= $statClass ?>">
+              <?= ucfirst(str_replace('_',' ',$t['status'])) ?>
+            </span>
           </td>
-          <td class="px-4 py-3 truncate max-w-xs" title="<?= esc($t['notes'] ?? '-') ?>"><?= esc($t['notes'] ?? '-') ?></td>
+          <td class="px-4 py-3 truncate max-w-[200px]" title="<?= esc($t['notes'] ?? '-') ?>"><?= esc($t['notes'] ?? '-') ?></td>
           <td class="px-4 py-3 text-center">
             <div class="flex flex-wrap gap-2 justify-center">
                 <button @click="edit(<?= $t['id'] ?>)" 
@@ -238,9 +224,10 @@
   </div>
 </div>
 
-  <!-- Modal Form -->
+  <!-- Modal Form - PERBAIKAN: Backdrop overlay yang memenuhi seluruh halaman -->
   <div x-show="showModal" x-cloak
-       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm"
+       class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm"
+       style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh;"
        x-transition:enter="transition ease-out duration-300"
        x-transition:enter-start="opacity-0"
        x-transition:enter-end="opacity-100"
@@ -249,7 +236,7 @@
        x-transition:leave-end="opacity-0">
     
     <!-- Modal Content -->
-    <div class="relative bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto z-50"
+    <div class="relative bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="opacity-0 transform scale-95 translate-y-4"
          x-transition:enter-end="opacity-100 transform scale-100 translate-y-0"
@@ -260,7 +247,7 @@
       <!-- Modal Header -->
       <div class="sticky top-0 bg-white z-10 px-6 py-4 border-b border-gray-200 flex items-center justify-between">
         <h3 class="text-xl font-semibold text-gray-900" x-text="modalTitle"></h3>
-        <button @click="closeModal()" class="text-gray-400 hover:text-gray-500 focus:outline-none focus:text-gray-500 transition-colors p-1 rounded-full hover:bg-gray-100">
+        <button @click="closeModal()" class="text-gray-400 hover:text-gray-500 focus:outline-none focus:text-gray-500 transition-colors">
           <i class="fas fa-times text-xl"></i>
         </button>
       </div>
@@ -283,7 +270,7 @@
 
           <!-- Project Name -->
           <div>
-            <label for="project_name" class="block text-sm font-medium text-gray-700 mb-1">Project Name</label>
+            <label for="project_name" class="block text-sm font-medium text-gray-700 mb-1">Nama Project</label>
             <input type="text" id="project_name" x-model="form.project_name" class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-2 px-3 transition-colors duration-200" required>
           </div>
 
@@ -296,11 +283,11 @@
           <!-- Current & Target -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label for="current_position" class="block text-sm font-medium text-gray-700 mb-1">Current Position</label>
+              <label for="current_position" class="block text-sm font-medium text-gray-700 mb-1">Posisi sekarang</label>
               <input type="number" id="current_position" x-model="form.current_position" min="1" class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-2 px-3 transition-colors duration-200">
             </div>
             <div>
-              <label for="target_position" class="block text-sm font-medium text-gray-700 mb-1">Target Position</label>
+              <label for="target_position" class="block text-sm font-medium text-gray-700 mb-1">Posisi Target Tercapai</label>
               <input type="number" id="target_position" x-model="form.target_position" min="1" class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-2 px-3 transition-colors duration-200" required>
             </div>
           </div>
@@ -352,9 +339,10 @@
     </div>
   </div>
 
-  <!-- Modal Konfirmasi Hapus -->
+  <!-- Modal Konfirmasi Hapus - PERBAIKAN: Backdrop overlay yang memenuhi seluruh halaman -->
   <div x-show="showDeleteModal" x-cloak
-       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm"
+       class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm"
+       style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh;"
        x-transition:enter="transition ease-out duration-300"
        x-transition:enter-start="opacity-0"
        x-transition:enter-end="opacity-100"
@@ -363,7 +351,7 @@
        x-transition:leave-end="opacity-0">
     
     <!-- Modal Content -->
-    <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md z-50"
+    <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md"
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="opacity-0 transform scale-95 translate-y-4"
          x-transition:enter-end="opacity-100 transform scale-100 translate-y-0"
@@ -374,7 +362,7 @@
       <!-- Modal Header -->
       <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
         <h3 class="text-lg font-semibold text-gray-900">Konfirmasi Hapus</h3>
-        <button @click="showDeleteModal = false" class="text-gray-400 hover:text-gray-500 focus:outline-none focus:text-gray-500 transition-colors p-1 rounded-full hover:bg-gray-100">
+        <button @click="showDeleteModal = false" class="text-gray-400 hover:text-gray-500 focus:outline-none focus:text-gray-500 transition-colors">
           <i class="fas fa-times text-xl"></i>
         </button>
       </div>
@@ -400,7 +388,7 @@
     </div>
   </div>
 
-  <!-- Notification Toast -->
+  <!-- Notification Toast - PERBAIKAN: Z-index yang lebih tinggi -->
   <div x-show="notification.show" x-cloak
        x-transition:enter="transition ease-out duration-300"
        x-transition:enter-start="opacity-0 transform translate-y-2"
@@ -408,7 +396,7 @@
        x-transition:leave="transition ease-in duration-200"
        x-transition:leave-start="opacity-100 transform translate-y-0"
        x-transition:leave-end="opacity-0 transform translate-y-2"
-       class="fixed bottom-4 right-4 z-50 bg-white rounded-lg shadow-lg border-l-4 p-4 max-w-md"
+       class="fixed bottom-4 right-4 z-[100] bg-white rounded-lg shadow-lg border-l-4 p-4 max-w-md"
        :class="{
          'border-green-500': notification.type === 'success',
          'border-red-500': notification.type === 'error'
@@ -432,15 +420,10 @@
     </div>
   </div>
 
-  <!-- Loading Overlay -->
+  <!-- Loading Overlay - PERBAIKAN: Backdrop overlay yang memenuhi seluruh halaman -->
   <div x-show="loading" x-cloak
-       class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm"
-       x-transition:enter="transition ease-out duration-300"
-       x-transition:enter-start="opacity-0"
-       x-transition:enter-end="opacity-100"
-       x-transition:leave="transition ease-in duration-200"
-       x-transition:leave-start="opacity-100"
-       x-transition:leave-end="opacity-0">
+       class="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm"
+       style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh;">
     
     <!-- Loading Content -->
     <div class="relative bg-white rounded-lg p-6 flex flex-col items-center shadow-xl">
@@ -451,6 +434,47 @@
 </div>
 
 <style>
+/* PERBAIKAN: Backdrop overlay yang memenuhi seluruh halaman */
+.fixed.inset-0 {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    z-index: 9999 !important;
+}
+
+/* Pastikan modal backdrop menutupi seluruh viewport */
+.modal-backdrop-full {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    backdrop-filter: blur(4px) !important;
+    z-index: 9998 !important;
+}
+
+/* Loading overlay yang memenuhi halaman */
+.loading-overlay-full {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(0, 0, 0, 0.7) !important;
+    backdrop-filter: blur(8px) !important;
+    z-index: 10000 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
 /* Pastikan body tidak scroll saat modal terbuka */
 body.modal-open {
     overflow: hidden !important;
@@ -491,47 +515,6 @@ body.modal-open {
 /* Smooth transitions untuk semua modal */
 .modal-transition {
     transition: all 0.3s ease-in-out;
-}
-
-/* PERBAIKAN: Tabel container dan responsif */
-.table-container {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* Pastikan badge status memiliki ruang yang cukup */
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 100px;
-  white-space: nowrap;
-}
-
-/* Untuk tampilan mobile */
-@media (max-width: 768px) {
-  .table-container {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  
-  .table-container table {
-    min-width: 800px;
-  }
-  
-  /* Badge status di mobile */
-  .status-badge {
-    min-width: 90px;
-    padding: 0.25rem 0.5rem;
-    font-size: 0.7rem;
-  }
-}
-
-/* Perbaikan untuk tombol close modal */
-.modal-close-btn {
-    position: relative;
-    z-index: 10;
-    cursor: pointer;
 }
 </style>
 
@@ -612,7 +595,7 @@ function seoTargets() {
         },
         edit(id) {
             this.loading = true;
-            fetch(<?= site_url('seo/targets/edit') ?>/${id}, {
+            fetch(`<?= site_url('seo/targets/edit') ?>/${id}`, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
             .then(async res => {
@@ -659,7 +642,7 @@ function seoTargets() {
             const formData = new FormData();
             formData.append(csrfName, csrfHash);
 
-            fetch(<?= site_url('seo/targets/delete') ?>/${this.deleteId}, {
+            fetch(`<?= site_url('seo/targets/delete') ?>/${this.deleteId}`, {
                 method: 'POST',
                 headers: { 'X-Requested-With': 'XMLHttpRequest' },
                 body: formData
@@ -700,8 +683,8 @@ function seoTargets() {
             }
 
             const url = this.form.id
-                ? <?= site_url('seo/targets/update') ?>/${this.form.id}
-                : <?= site_url('seo/targets/store') ?>;
+                ? `<?= site_url('seo/targets/update') ?>/${this.form.id}`
+                : `<?= site_url('seo/targets/store') ?>`;
 
             fetch(url, {
                 method: 'POST',
@@ -722,17 +705,11 @@ function seoTargets() {
                 this.loading = false;
                 if (data.success) {
                     const action = this.form.id ? 'diperbarui' : 'ditambahkan';
-                    
-                    // Tampilkan notifikasi terlebih dahulu
                     this.showNotification('success', 'Berhasil', 'Target berhasil ' + action);
-                    
-                    // PERUBAHAN: Jangan otomatis menutup modal setelah simpan
-                    // Biarkan modal tetap terbuka hingga user menekan tombol close/batal
-                    
-                    // Update form data dengan data terbaru dari server jika diperlukan
-                    if (data.data) {
-                        this.form = { ...this.form, ...data.data };
-                    }
+                    setTimeout(() => {
+                        this.closeModal();
+                        location.reload();
+                    }, 1500);
                 } else {
                     this.showNotification('error', 'Gagal', data.message || 'Gagal menyimpan data.');
                 }
