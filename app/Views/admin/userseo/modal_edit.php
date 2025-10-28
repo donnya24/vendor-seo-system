@@ -23,7 +23,7 @@
                            value="<?= esc($user['username'] ?? '') ?>"
                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500" 
                            required>
-                    <!-- Error container will be added dynamically by JavaScript -->
+                    <!-- Error container will be added dynamically by JAavaScript -->
                 </div>
                 
                 <!-- Email -->
@@ -126,4 +126,4 @@ document.getElementById('editSeoForm').addEventListener('submit', function(event
     event.preventDefault();
     submitSeoForm(event.target, true); // true = edit
 });
-</script>A
+</script>

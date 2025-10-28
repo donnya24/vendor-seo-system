@@ -32,7 +32,16 @@
                         <i :class="show ? 'fas fa-eye-slash' : 'fas fa-eye'" class="text-sm"></i>
                     </button>
                 </div>
-                <p id="pwHelp" class="text-xs text-gray-500 mt-1">Minimal 8 karakter. Disarankan gabungkan huruf & angka/simbol.</p>
+                <div id="pwHelp" class="text-xs text-gray-500 mt-1">
+                    <p class="font-medium mb-1">Password harus mengandung:</p>
+                    <ul class="space-y-1 ml-4">
+                        <li>• Minimal 8 karakter</li>
+                        <li>• Huruf kecil (a-z)</li>
+                        <li>• Huruf besar (A-Z)</li>
+                        <li>• Angka (0-9)</li>
+                        <li>• Karakter khusus (!@#$%^&*)</li>
+                    </ul>
+                </div>
             </div>
 
             <div x-data="{ show: false }" class="relative">
