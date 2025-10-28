@@ -61,20 +61,17 @@ class Filters extends BaseFilters
                 ],
             ],
 
-            // CSRF protection
-            'csrf',
+            // CSRF protection with exceptions
+            'csrf' => [
+                'except' => [
+                    'seo/profile/password/update', 
+                ],
+            ],
         ],
         'after' => [
             'noCache',
             'toolbar',
         ],
-    ];
-
-    public array $methods = [
-        'post'   => ['csrf'],
-        'put'    => ['csrf'],
-        'patch'  => ['csrf'],
-        'delete' => ['csrf'],
     ];
 
     public array $filters = [
