@@ -334,8 +334,29 @@ document.addEventListener('DOMContentLoaded', function() {
   const PROF_ERRORS  = <?= json_encode(array_values($errors ?? []), JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT) ?>;
 
   document.addEventListener('DOMContentLoaded', () => {
-    if (PROF_SUCCESS && window.swalToast) swalToast('success', PROF_SUCCESS);
-    if (PROF_ERROR   && window.swalToast) swalToast('error',   PROF_ERROR);
-    (PROF_ERRORS || []).forEach(msg => { if (window.swalToast) swalToast('error', msg); });
+    // Tambahkan delay kecil untuk memastikan DOM sepenuhnya dimuat
+    setTimeout(() => {
+      if (PROF_SUCCESS && window.swalToast) {
+        // Potong pesan jika terlalu panjang
+        const shortMessage = PROF_SUCCESS.length > 50 
+          ? PROF_SUCCESS.substring(0, 47) + '...' 
+          : PROF_SUCCESS;
+        swalToast('success', shortMessage);
+      }
+      if (PROF_ERROR && window.swalToast) {
+        const shortError = PROF_ERROR.length > 50 
+          ? PROF_ERROR.substring(0, 47) + '...' 
+          : PROF_ERROR;
+        swalToast('error', shortError);
+      }
+      (PROF_ERRORS || []).forEach(msg => { 
+        if (window.swalToast) {
+          const shortMsg = msg.length > 50 
+            ? msg.substring(0, 47) + '...' 
+            : msg;
+          swalToast('error', shortMsg);
+        }
+      });
+    }, 100);
   });
 </script>

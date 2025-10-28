@@ -222,74 +222,112 @@ class Profile extends BaseController
         ]);
     }
 
-    public function passwordUpdate()
-    {
-        $user = $this->user();
-        if (!$user) {
-            // Log aktivitas gagal - user tidak ditemukan
-            log_activity_auto('update_password', "Gagal ubah password - user tidak ditemukan", [
-                'module' => 'seo_profile',
-                'status' => 'failed'
+// File: app/Controllers/Seo/Profile.php
+
+public function passwordUpdate()
+{
+    $user = $this->user();
+    if (!$user) {
+        // Log aktivitas gagal - user tidak ditemukan
+        log_activity_auto('update_password', "Gagal ubah password - user tidak ditemukan", [
+            'module' => 'seo_profile',
+            'status' => 'failed'
+        ]);
+        
+        // Cek apakah request AJAX
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'status' => 'error',
+                'message' => 'User tidak ditemukan / sesi habis.'
             ]);
-            return redirect()->back()->with('error_password', 'User tidak ditemukan / sesi habis.');
         }
+        
+        return redirect()->back()->with('error_password', 'User tidak ditemukan / sesi habis.');
+    }
 
-        $rules = [
-            'current_password' => 'required',
-            'new_password'     => 'required|min_length[8]',
-            'confirm_password' => 'required|matches[new_password]'
-        ];
+    $rules = [
+        'current_password' => 'required',
+        'new_password'     => 'required|min_length[8]',
+        'confirm_password' => 'required|matches[new_password]'
+    ];
 
-        if (!$this->validate($rules)) {
-            // Log aktivitas validasi password gagal
-            log_activity_auto('update_password', "Validasi ubah password gagal", [
-                'module' => 'seo_profile',
-                'status' => 'failed',
+    if (!$this->validate($rules)) {
+        // Log aktivitas validasi password gagal
+        log_activity_auto('update_password', "Validasi ubah password gagal", [
+            'module' => 'seo_profile',
+            'status' => 'failed',
+            'errors' => $this->validator->getErrors()
+        ]);
+        
+        // Cek apakah request AJAX
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'status' => 'error',
                 'errors' => $this->validator->getErrors()
             ]);
-            return redirect()->back()->withInput()->with('errors_password', $this->validator->getErrors());
         }
-
-        // Ambil record auth_identities (email_password)
-        $db = db_connect();
-        $identity = $db->table('auth_identities')
-            ->where('user_id', $user->id)
-            ->where('type', 'email_password')
-            ->orderBy('id', 'desc')
-            ->get()
-            ->getRow();
-
-        if (!$identity || !password_verify((string)$this->request->getPost('current_password'), (string)$identity->secret2)) {
-            // Log aktivitas password lama salah
-            log_activity_auto('update_password', "Gagal ubah password - password lama salah", [
-                'module' => 'seo_profile',
-                'status' => 'failed'
-            ]);
-            return redirect()->back()->with('error_password', 'Password lama salah.');
-        }
-
-        // Update password
-        $newPasswordHash = password_hash((string)$this->request->getPost('new_password'), PASSWORD_BCRYPT);
-        $db->table('auth_identities')
-            ->where('id', $identity->id)
-            ->update([
-                'secret2'    => $newPasswordHash,
-                'updated_at' => date('Y-m-d H:i:s'),
-            ]);
-
-        // Log aktivitas berhasil ubah password
-        log_activity_auto('update_password', "Berhasil mengubah password", [
-            'module' => 'seo_profile',
-            'status' => 'success'
-        ]);
-
-        service('auth')->logout();
         
-        // Log aktivitas logout setelah ubah password
-        log_activity_auto('logout', "Logout otomatis setelah ubah password", [
-            'module' => 'auth'
+        return redirect()->back()->withInput()->with('errors_password', $this->validator->getErrors());
+    }
+
+    // Ambil record auth_identities (email_password)
+    $db = db_connect();
+    $identity = $db->table('auth_identities')
+        ->where('user_id', $user->id)
+        ->where('type', 'email_password')
+        ->orderBy('id', 'desc')
+        ->get()
+        ->getRow();
+
+    if (!$identity || !password_verify((string)$this->request->getPost('current_password'), (string)$identity->secret2)) {
+        // Log aktivitas password lama salah
+        log_activity_auto('update_password', "Gagal ubah password - password lama salah", [
+            'module' => 'seo_profile',
+            'status' => 'failed'
+        ]);
+        
+        // Cek apakah request AJAX
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'status' => 'error',
+                'message' => 'Password lama salah.'
+            ]);
+        }
+        
+        return redirect()->back()->with('error_password', 'Password lama salah.');
+    }
+
+    // Update password
+    $newPasswordHash = password_hash((string)$this->request->getPost('new_password'), PASSWORD_BCRYPT);
+    $db->table('auth_identities')
+        ->where('id', $identity->id)
+        ->update([
+            'secret2'    => $newPasswordHash,
+            'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
-        return redirect()->to('/login')->with('success_password', 'Password berhasil diubah. Silakan login ulang.');
+    // Log aktivitas berhasil ubah password
+    log_activity_auto('update_password', "Berhasil mengubah password", [
+        'module' => 'seo_profile',
+        'status' => 'success'
+    ]);
+
+    service('auth')->logout();
+    
+    // Log aktivitas logout setelah ubah password
+    log_activity_auto('logout', "Logout otomatis setelah ubah password", [
+        'module' => 'auth'
+    ]);
+
+    // Cek apakah request AJAX
+    if ($this->request->isAJAX()) {
+        return $this->response->setJSON([
+            'status' => 'success',
+            'message' => 'Password berhasil diubah. Silakan login ulang.',
+            'redirect' => site_url('/login')
+        ]);
     }
+    
+    return redirect()->to('/login')->with('success_password', 'Password berhasil diubah. Silakan login ulang.');
+}
 }

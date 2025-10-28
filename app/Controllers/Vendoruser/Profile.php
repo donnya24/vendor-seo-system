@@ -302,9 +302,6 @@ class Profile extends BaseController
         }
     }
 
-    /**
-     * Membuat notifikasi untuk semua Admin dan SEO ketika komisi berubah
-     */
     private function createCommissionChangeNotification(string $oldCommissionType, $oldCommissionValue, array $newData): void
     {
         try {
@@ -323,12 +320,11 @@ class Profile extends BaseController
                 ->select('agu.user_id')
                 ->join('users u', 'u.id = agu.user_id')
                 ->where('agu.group', 'admin')
-                ->where('u.active', 1) // Pastikan user aktif
+                ->where('u.active', 1)
                 ->get()
                 ->getResultArray();
 
             // 2. Dapatkan semua SEO users yang aktif
-            // Metode 1: Melalui auth_groups_users (jika SEO users memiliki grup 'seo')
             $seoUsers = $db->table('auth_groups_users agu')
                 ->select('agu.user_id')
                 ->join('users u', 'u.id = agu.user_id')
@@ -339,18 +335,15 @@ class Profile extends BaseController
             
             // Jika tidak ada SEO users melalui auth_groups, coba metode 2
             if (empty($seoUsers)) {
-                // Metode 2: Melalui seo_profiles table
                 $seoProfiles = $this->seoProfilesModel
                     ->select('user_id')
-                    ->where('status', 'active') // Asumsi status aktif
+                    ->where('status', 'active')
                     ->findAll();
                 
-                // Konversi ke format yang sama dengan metode 1
                 $seoUsers = array_map(function($profile) {
                     return ['user_id' => $profile['user_id']];
                 }, $seoProfiles);
                 
-                // Filter hanya user yang aktif di tabel users
                 $activeSeoUserIds = $db->table('users')
                     ->select('id')
                     ->whereIn('id', array_column($seoUsers, 'user_id'))
@@ -358,13 +351,11 @@ class Profile extends BaseController
                     ->get()
                     ->getResultArray();
                 
-                // Filter seoUsers untuk hanya menyertakan user yang aktif
                 $activeSeoUserIds = array_column($activeSeoUserIds, 'id');
                 $seoUsers = array_filter($seoUsers, function($user) use ($activeSeoUserIds) {
                     return in_array($user['user_id'], $activeSeoUserIds);
                 });
                 
-                // Re-index array
                 $seoUsers = array_values($seoUsers);
             }
 
@@ -372,21 +363,17 @@ class Profile extends BaseController
             $notifications = [];
             $now = date('Y-m-d H:i:s');
 
-            // Buat pesan notifikasi
+            // Buat pesan notifikasi yang lebih ringkas
             $title = 'Pengajuan Perubahan Komisi';
-            $message = "📝 Vendor {$vendorName} mengajukan perubahan komisi dari {$oldCommissionFormatted} menjadi {$newCommissionFormatted}.";
-            $message .= "\n\nDetail Pengajuan:";
-            $message .= "\n• Vendor: {$vendorName}";
-            $message .= "\n• Komisi Lama: {$oldCommissionFormatted}";
-            $message .= "\n• Komisi Baru: {$newCommissionFormatted}";
-            $message .= "\n• Status: Menunggu Verifikasi";
-
-            // PERBAIKAN: Notifikasi untuk semua ADMIN dengan type system
+            // PERUBAHAN: Pesan notifikasi dibuat lebih singkat
+            $message = "Vendor {$vendorName} mengajukan perubahan komisi dari {$oldCommissionFormatted} menjadi {$newCommissionFormatted}.";
+            
+            // Notifikasi untuk semua ADMIN dengan type system
             foreach ($adminUsers as $admin) {
                 $notifications[] = [
                     'user_id' => $admin['user_id'],
                     'vendor_id' => $this->vendorId,
-                    'type' => 'system', // PERUBAHAN: type menjadi 'system'
+                    'type' => 'system',
                     'title' => $title,
                     'message' => $message,
                     'is_read' => 0,
@@ -395,12 +382,12 @@ class Profile extends BaseController
                 ];
             }
 
-            // PERBAIKAN: Notifikasi untuk semua SEO dengan type system
+            // Notifikasi untuk semua SEO dengan type system
             foreach ($seoUsers as $seo) {
                 $notifications[] = [
                     'user_id' => $seo['user_id'],
                     'vendor_id' => $this->vendorId,
-                    'type' => 'system', // PERUBAHAN: type menjadi 'system'
+                    'type' => 'system',
                     'title' => $title,
                     'message' => $message,
                     'is_read' => 0,
@@ -490,13 +477,14 @@ class Profile extends BaseController
     public function passwordUpdate()
     {
         if (! $this->vendorId) {
-            return $this->request->isAJAX()
-                ? $this->response->setJSON(['status' => 'error', 'message' => 'Unauthorized'])
-                : redirect()->back()->with('error', 'Unauthorized.');
+            return $this->response->setJSON([
+                'status' => 'error',
+                'message' => 'Unauthorized.',
+                'csrf' => csrf_hash() // Selalu kirim CSRF token
+            ])->setStatusCode(401);
         }
 
         $user = $this->user();
-        $isAjax = $this->request->isAJAX();
         $userId = $user->id;
 
         // Cek apakah user memiliki password
@@ -515,7 +503,7 @@ class Profile extends BaseController
 
         if (! $this->validate($rules)) {
             $errors = $this->validator->getErrors();
-
+            
             // Log failed validation
             if (function_exists('log_activity_auto')) {
                 log_activity_auto('error', 'Validasi ubah password gagal', [
@@ -526,16 +514,12 @@ class Profile extends BaseController
                 ]);
             }
 
-            if ($isAjax) {
-                return $this->response->setJSON([
-                    'status' => 'error',
-                    'message' => 'Validasi gagal.',
-                    'errors' => $errors,
-                    'csrf'   => csrf_hash(),
-                ])->setStatusCode(422);
-            }
-
-            return redirect()->back()->with('errors_password', $errors);
+            return $this->response->setJSON([
+                'status' => 'error',
+                'message' => 'Validasi gagal.',
+                'errors' => $errors,
+                'csrf' => csrf_hash(), // Selalu kirim CSRF token
+            ])->setStatusCode(422);
         }
 
         $current = (string) $this->request->getPost('current_password');
@@ -549,22 +533,19 @@ class Profile extends BaseController
                 ->where('user_id', $userId)
                 ->where('type', 'email_password')
                 ->first();
-                
+            
             if (!$identity) {
-                if ($isAjax) {
-                    return $this->response->setJSON([
-                        'status'  => 'error',
-                        'message' => 'Identity user tidak ditemukan.',
-                        'csrf'    => csrf_hash(),
-                    ])->setStatusCode(400);
-                }
-                return redirect()->back()->with('error_password', 'Identity user tidak ditemukan.');
+                return $this->response->setJSON([
+                    'status' => 'error',
+                    'message' => 'Identity user tidak ditemukan.',
+                    'csrf' => csrf_hash(),
+                ])->setStatusCode(400);
             }
             
             $userEmail = $identity['secret'];
 
-            // Verifikasi menggunakan Shield
-            $result = service('auth')->attempt([
+            // Gunakan check() bukan attempt() untuk verifikasi tanpa login
+            $result = service('auth')->check([
                 'email' => $userEmail, 
                 'password' => $current
             ]);
@@ -578,15 +559,12 @@ class Profile extends BaseController
                     ]);
                 }
 
-                if ($isAjax) {
-                    return $this->response->setJSON([
-                        'status'  => 'error',
-                        'message' => 'Password lama tidak sesuai.',
-                        'csrf'    => csrf_hash(),
-                    ])->setStatusCode(400);
-                }
-
-                return redirect()->back()->with('error_password', 'Password lama tidak sesuai.');
+                // ✅ RESPONSE ERROR YANG SPESIFIK TANPA TOMBOL COBA LAGI
+                return $this->response->setJSON([
+                    'status' => 'error',
+                    'message' => 'Password lama tidak sesuai.',
+                    'csrf' => csrf_hash(),
+                ])->setStatusCode(400);
             }
         }
 
@@ -605,18 +583,16 @@ class Profile extends BaseController
             }
 
             $successMessage = $hasPassword 
-                ? 'Password berhasil diperbarui.' 
+                ? 'Password berhasil diperbarui! Silakan login kembali dengan password baru Anda.' 
                 : 'Password berhasil dibuat. Sekarang Anda bisa login dengan email dan password.';
 
-            if ($isAjax) {
-                return $this->response->setJSON([
-                    'status'  => 'success',
-                    'message' => $successMessage,
-                    'csrf'    => csrf_hash(),
-                ]);
-            }
-
-            return redirect()->back()->with('success_password', $successMessage);
+            // ✅ RESPONSE SUKSES
+            return $this->response->setJSON([
+                'status' => 'success',
+                'message' => $successMessage,
+                'csrf' => csrf_hash(),
+                'requires_logout' => $hasPassword
+            ]);
 
         } catch (\Throwable $e) {
             // Log error
@@ -628,16 +604,11 @@ class Profile extends BaseController
                 ]);
             }
 
-            $errorMessage = 'Terjadi kesalahan, gagal menyimpan password.';
-            if ($isAjax) {
-                return $this->response->setJSON([
-                    'status'  => 'error',
-                    'message' => $errorMessage,
-                    'csrf'    => csrf_hash(),
-                ])->setStatusCode(500);
-            }
-
-            return redirect()->back()->with('error_password', $errorMessage);
+            return $this->response->setJSON([
+                'status' => 'error',
+                'message' => 'Terjadi kesalahan sistem. Silakan coba lagi.',
+                'csrf' => csrf_hash(),
+            ])->setStatusCode(500);
         }
     }
 }

@@ -67,6 +67,94 @@ $profileImagePath = ($profileImage && is_file($profileOnDisk))
       border: 2px solid transparent!important; background-clip: padding-box!important;
     }
     :where(html, body, *){ scrollbar-width: thin; scrollbar-color: var(--sb-thumb) transparent; }
+    
+    /* ✅ MODAL LOCK STYLES */
+    .modal-lock {
+      pointer-events: auto !important;
+    }
+    
+    .password-edit-modal {
+      z-index: 99998 !important;
+    }
+    
+    .swal2-container {
+      z-index: 99999 !important;
+    }
+    
+    /* Pastikan backdrop modal tidak bisa diklik ketika SweetAlert aktif */
+    .swal2-shown .modal-lock .bg-black\/50 {
+      pointer-events: none !important;
+    }
+    /* Kustomisasi ukuran SweetAlert toast */
+/* ✅ PERBAIKAN FINAL: Atur Layout Internal Agar Teks Tidak Terpotong */
+.swal2-container {
+  z-index: 99999 !important;
+}
+
+.swal2-popup.swal2-toast {
+  /* --- 1. KUASAI TATA LETAK DENGAN FLEXBOX --- */
+  display: flex !important;
+  align-items: center !important; /* Ratakan tengah secara vertikal */
+  justify-content: flex-start !important; /* Mulai dari kiri */
+
+  /* --- 2. POSISI & UKURAN KONTAINER --- */
+  margin-right: 1rem !important; /* Jarak dari tepi layar */
+  box-sizing: border-box !important;
+  min-width: 280px !important;
+  max-width: 350px !important;
+  width: auto !important;
+  padding: 0.75rem 1rem !important;
+  font-size: 0.825rem !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* --- 3. ATUR IKON AGAR TIDAK MENGGANGGU --- */
+.swal2-popup.swal2-toast .swal2-icon {
+  flex-shrink: 0 !important; /* PENTING: Cegah ikon mengecil/menghilang */
+  width: 1.75rem !important;
+  height: 1.75rem !important;
+  margin-right: 0.75rem !important; /* Jarak antara ikon dan teks */
+  margin-left: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* --- 4. BERI RUANG UNTUK TEKS (SOLUSI UTAMA) --- */
+.swal2-popup.swal2-toast .swal2-title {
+  flex-grow: 1 !important; /* PENTING: Biarkan area teks memenuhi sisa ruang */
+  flex-shrink: 1 !important;
+  min-width: 0 !important; /* PENTING: Izinkan teks untuk dipotong dengan benar jika perlu */
+
+  /* --- 5. STILING TEKS --- */
+  font-size: 0.825rem !important;
+  font-weight: 500 !important;
+  margin: 0 !important;
+  line-height: 1.4 !important;
+  text-align: left !important; /* Pastikan teks rata kiri */
+}
+
+/* --- 6. HANDLER JIKA TEKS PANJANG (TAMBAHAN) --- */
+.swal2-popup.swal2-toast .swal2-title {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important; /* Tampilkan "..." jika teks terlalu panjang */
+}
+
+.swal2-popup.swal2-toast .swal2-html-container {
+  flex-grow: 1 !important;
+  flex-shrink: 1 !important;
+  min-width: 0 !important;
+  font-size: 0.825rem !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1.4 !important;
+}
+
+.swal2-popup.swal2-toast .swal2-timer-progress-bar {
+  height: 0.25rem !important;
+  margin: 0.5rem 0 0 0 !important;
+}
   </style>
 
   <script>
@@ -76,8 +164,32 @@ $profileImagePath = ($profileImage && is_file($profileOnDisk))
 
     Alpine.store('ui', {
       sidebar: defaultOpen,
-      modal: null, // 'passwordEdit', 'profileEdit', 'notif', dll
+      _currentModal: null,
       loading: false,
+
+      // ✅ MODAL LOCK SYSTEM
+      modalLock: false,
+      
+      lockModal() {
+        this.modalLock = true;
+      },
+      
+      unlockModal() {
+        this.modalLock = false;
+      },
+      
+      // Modified modal setter with lock protection
+      set modal(value) {
+        if (this.modalLock && value === null) {
+          console.log('Modal locked, preventing close');
+          return;
+        }
+        this._currentModal = value;
+      },
+      
+      get modal() {
+        return this._currentModal;
+      },
 
       _locked: false,
       _y: 0,

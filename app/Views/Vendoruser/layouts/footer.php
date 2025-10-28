@@ -22,16 +22,21 @@ function markNotifAsRead(){
 </script>
 
 <script>
-  // SweetAlert2 toast helper
-  window.swalToast = (icon, title) => {
-    if (!window.Swal || !title) return;
-    const Toast = Swal.mixin({
-      toast: true, position: 'top-end', showConfirmButton: false,
-      timer: 2800, timerProgressBar: true,
-      customClass: { popup: 'rounded-md text-sm shadow' }
-    });
-    Toast.fire({ icon, title });
-  };
+// SweetAlert2 toast helper (VERSI YANG SUDAH DIPERBAIKI)
+window.swalToast = (icon, title) => {
+  if (!window.Swal || !title) return;
+  
+  // Hanya mengatur perilaku, semua styling diatur via CSS di header.php
+  const Toast = Swal.mixin({
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    timer: 3000, // Sedikit lebih lama agar terbaca
+    timerProgressBar: true
+  });
+  
+  Toast.fire({ icon, title });
+};
 </script>
 
 <!-- Sinkronisasi CSRF + cegah double submit -->
@@ -118,6 +123,76 @@ function markNotifAsRead(){
       });
     }
   }, true);
+</script>
+
+<!-- ✅ MODAL LOCK PROTECTION -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Intercept Alpine store modal changes
+    const originalStore = window.Alpine?.store('ui');
+    if (originalStore) {
+        let modalLock = false;
+        
+        // Override modal property
+        Object.defineProperty(originalStore, 'modal', {
+            get: function() {
+                return this._currentModal;
+            },
+            set: function(value) {
+                // Jika ada SweetAlert aktif, prevent modal close
+                if (value === null && this._currentModal === 'passwordEdit' && 
+                    document.querySelector('.swal2-container')) {
+                    console.log('Modal lock: SweetAlert active, preventing close');
+                    return;
+                }
+                
+                this._currentModal = value;
+                
+                // Trigger Alpine reactivity
+                if (this._reactivity) {
+                    this._reactivity();
+                }
+            }
+        });
+        
+        // Store reactivity helper
+        originalStore._reactivity = function() {
+            // Alpine reactivity trigger
+        };
+    }
+
+    // Global click handler untuk prevent modal close
+    document.addEventListener('click', function(e) {
+        const passwordModal = document.getElementById('passwordEditModal');
+        if (passwordModal && window.getComputedStyle(passwordModal).display !== 'none') {
+            const isClickInside = document.getElementById('passwordEditContent')?.contains(e.target);
+            const isSweetAlert = e.target.closest('.swal2-container');
+            const isBackdrop = e.target.id === 'passwordEditBackdrop';
+            
+            // Jika klik di backdrop atau outside, dan ada SweetAlert, prevent close
+            if ((!isClickInside || isBackdrop) && isSweetAlert) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Preventing modal close - SweetAlert active');
+            }
+        }
+    }, true);
+
+    // Global escape key handler
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const passwordModal = document.getElementById('passwordEditModal');
+            if (passwordModal && window.getComputedStyle(passwordModal).display !== 'none') {
+                const hasSweetAlert = document.querySelector('.swal2-container');
+                if (hasSweetAlert) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Preventing escape close - SweetAlert active');
+                }
+            }
+        }
+    }, true);
+});
 </script>
 
 </div> <!-- /flex-1 -->

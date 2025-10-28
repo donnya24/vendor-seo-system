@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet" />
   <style>
     html,body{height:100%}body{font-family:'Montserrat',system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial}
@@ -45,6 +46,62 @@
     .divider:not(:empty)::after {
       margin-left: 0.75rem;
     }
+
+    /* Password Strength Styles */
+    .password-strength {
+      margin-top: 0.5rem;
+    }
+    
+    .strength-bar {
+      height: 4px;
+      border-radius: 2px;
+      transition: all 0.3s ease;
+      background: #e5e7eb;
+    }
+    
+    .strength-text {
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+      font-weight: 500;
+    }
+    
+    .strength-weak {
+      color: #dc2626;
+    }
+    
+    .strength-medium {
+      color: #ea580c;
+    }
+    
+    .strength-strong {
+      color: #16a34a;
+    }
+    
+    .strength-very-strong {
+      color: #059669;
+    }
+
+    /* Password Requirements */
+    .requirements {
+      font-size: 0.7rem;
+      color: #6b7280;
+      margin-top: 0.5rem;
+    }
+    
+    .requirement {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      margin-bottom: 0.125rem;
+    }
+    
+    .requirement.met {
+      color: #16a34a;
+    }
+    
+    .requirement.unmet {
+      color: #6b7280;
+    }
   </style>
 </head>
 <body class="bg-gray-50">
@@ -64,10 +121,88 @@
              confirm: '',
              showPw: false,
              showCf: false,
+             
+             // Password strength properties
+             passwordStrength: 0,
+             strengthText: '',
+             barWidth: '0%',
+             barColor: '#e5e7eb',
+             
+             // Password requirements
+             hasMinLength: false,
+             hasLowerCase: false,
+             hasUpperCase: false,
+             hasNumber: false,
+             hasSpecialChar: false,
+             
+             checkPasswordStrength() {
+               const password = this.password;
+               let strength = 0;
+               
+               // Reset requirements
+               this.hasMinLength = false;
+               this.hasLowerCase = false;
+               this.hasUpperCase = false;
+               this.hasNumber = false;
+               this.hasSpecialChar = false;
+               
+               if (password.length === 0) {
+                 this.passwordStrength = 0;
+                 this.strengthText = '';
+                 this.barWidth = '0%';
+                 this.barColor = '#e5e7eb';
+                 return;
+               }
+               
+               // Check requirements
+               this.hasMinLength = password.length >= 8;
+               this.hasLowerCase = /[a-z]/.test(password);
+               this.hasUpperCase = /[A-Z]/.test(password);
+               this.hasNumber = /[0-9]/.test(password);
+               this.hasSpecialChar = /[^a-zA-Z0-9]/.test(password);
+               
+               // Calculate strength
+               if (this.hasMinLength) strength += 1;
+               if (this.hasLowerCase) strength += 1;
+               if (this.hasUpperCase) strength += 1;
+               if (this.hasNumber) strength += 1;
+               if (this.hasSpecialChar) strength += 1;
+               
+               // Additional points for length
+               if (password.length >= 12) strength += 1;
+               
+               this.passwordStrength = strength;
+               
+               // Determine strength level
+               if (strength <= 2) {
+                 this.strengthText = 'Lemah';
+                 this.barWidth = '25%';
+                 this.barColor = '#dc2626';
+               } else if (strength <= 4) {
+                 this.strengthText = 'Cukup';
+                 this.barWidth = '50%';
+                 this.barColor = '#ea580c';
+               } else if (strength <= 5) {
+                 this.strengthText = 'Kuat';
+                 this.barWidth = '75%';
+                 this.barColor = '#16a34a';
+               } else {
+                 this.strengthText = 'Sangat Kuat';
+                 this.barWidth = '100%';
+                 this.barColor = '#059669';
+               }
+             },
+             
              get okPw(){ return this.password.length >= 8 },
              get match(){ return this.password !== '' && this.password === this.confirm },
-             get canSubmit(){ return this.vendor_name.trim() && this.email.trim() && this.okPw && this.match }
-           }">
+             get canSubmit(){ 
+               return this.vendor_name.trim() && 
+                      this.email.trim() && 
+                      this.okPw && 
+                      this.match 
+             }
+           }"
+           x-effect="checkPasswordStrength()">
 
         <div class="px-5 pt-6 pb-4 text-center border-b">
           <div class="mx-auto w-10 h-10 rounded-full bg-white flex items-center justify-center shadow">
@@ -90,7 +225,7 @@
           <div>
             <label class="block text-xs font-semibold text-gray-700 mb-1">Nama Vendor</label>
             <input type="text" name="vendor_name" x-model="vendor_name"
-                   class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-200 outline-none text-sm"
+                   class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-200 outline-none text-sm transition-colors"
                    placeholder="Nama perusahaan / brand" required enterkeyhint="next" />
           </div>
 
@@ -98,7 +233,7 @@
           <div>
             <label class="block text-xs font-semibold text-gray-700 mb-1">Email</label>
             <input type="email" name="email" x-model="email"
-                   class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-200 outline-none text-sm"
+                   class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-200 outline-none text-sm transition-colors"
                    placeholder="you@example.com" required autocomplete="username" inputmode="email" autocapitalize="none" enterkeyhint="next" />
           </div>
 
@@ -107,14 +242,52 @@
             <label class="block text-xs font-semibold text-gray-700 mb-1">Password</label>
             <div class="relative">
               <input :type="showPw ? 'text' : 'password'" name="password" x-model="password"
-                     class="w-full pr-16 pl-3 py-2 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-200 outline-none text-sm"
-                     placeholder="Minimal 8 karakter" required minlength="8" autocomplete="new-password" />
+                     class="w-full pr-16 pl-3 py-2 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-200 outline-none text-sm transition-colors"
+                     placeholder="Buat password yang kuat" required minlength="8" autocomplete="new-password" 
+                     @input="checkPasswordStrength()" />
               <button type="button"
-                      class="absolute inset-y-0 right-0 px-3 flex items-center text-xs text-gray-500 hover:text-gray-700"
+                      class="absolute inset-y-0 right-0 px-3 flex items-center text-xs text-gray-500 hover:text-gray-700 transition-colors"
                       @click="showPw = !showPw" x-text="showPw ? 'Sembunyi' : 'Tampil'"></button>
             </div>
-            <p class="mt-1 text-xs" :class="okPw ? 'text-green-600' : 'text-gray-500'"
-               x-text="okPw ? 'Kuat.' : 'Minimal 8 karakter.'"></p>
+            
+            <!-- Password Strength Indicator -->
+            <div class="password-strength" x-show="password.length > 0">
+              <div class="strength-bar" :style="`width: ${barWidth}; background: ${barColor};`"></div>
+              <div class="strength-text" :class="{
+                'strength-weak': passwordStrength <= 2,
+                'strength-medium': passwordStrength > 2 && passwordStrength <= 4,
+                'strength-strong': passwordStrength > 4 && passwordStrength <= 5,
+                'strength-very-strong': passwordStrength > 5
+              }" x-text="strengthText"></div>
+            </div>
+            
+            <!-- Password Requirements -->
+            <div class="requirements" x-show="password.length > 0">
+              <div class="requirement" :class="hasMinLength ? 'met' : 'unmet'">
+                <i class="fas" :class="hasMinLength ? 'fa-check-circle' : 'fa-circle'"></i>
+                <span>Minimal 8 karakter</span>
+              </div>
+              <div class="requirement" :class="hasLowerCase ? 'met' : 'unmet'">
+                <i class="fas" :class="hasLowerCase ? 'fa-check-circle' : 'fa-circle'"></i>
+                <span>Huruf kecil (a-z)</span>
+              </div>
+              <div class="requirement" :class="hasUpperCase ? 'met' : 'unmet'">
+                <i class="fas" :class="hasUpperCase ? 'fa-check-circle' : 'fa-circle'"></i>
+                <span>Huruf besar (A-Z)</span>
+              </div>
+              <div class="requirement" :class="hasNumber ? 'met' : 'unmet'">
+                <i class="fas" :class="hasNumber ? 'fa-check-circle' : 'fa-circle'"></i>
+                <span>Angka (0-9)</span>
+              </div>
+              <div class="requirement" :class="hasSpecialChar ? 'met' : 'unmet'">
+                <i class="fas" :class="hasSpecialChar ? 'fa-check-circle' : 'fa-circle'"></i>
+                <span>Karakter khusus (!@#$%^&*)</span>
+              </div>
+            </div>
+            
+            <p class="mt-1 text-xs text-gray-500" x-show="password.length === 0">
+              Buat password yang kuat dengan kombinasi huruf, angka, dan karakter khusus
+            </p>
           </div>
 
           <!-- Konfirmasi Password -->
@@ -122,14 +295,14 @@
             <label class="block text-xs font-semibold text-gray-700 mb-1">Konfirmasi Password</label>
             <div class="relative">
               <input :type="showCf ? 'text' : 'password'" name="pass_confirm" x-model="confirm"
-                     class="w-full pr-16 pl-3 py-2 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-200 outline-none text-sm"
+                     class="w-full pr-16 pl-3 py-2 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-200 outline-none text-sm transition-colors"
                      placeholder="Ulangi password" required autocomplete="new-password" />
               <button type="button"
-                      class="absolute inset-y-0 right-0 px-3 flex items-center text-xs text-gray-500 hover:text-gray-700"
+                      class="absolute inset-y-0 right-0 px-3 flex items-center text-xs text-gray-500 hover:text-gray-700 transition-colors"
                       @click="showCf = !showCf" x-text="showCf ? 'Sembunyi' : 'Tampil'"></button>
             </div>
-            <p class="mt-1 text-xs" :class="match ? 'text-green-600' : 'text-gray-500'"
-               x-text="match ? 'Cocok.' : 'Ketik ulang sama persis.'"></p>
+            <p class="mt-1 text-xs" :class="match ? 'text-green-600' : 'text-red-600'"
+               x-text="match ? '✓ Password cocok' : '✗ Password tidak cocok'"></p>
           </div>
 
           <button type="submit"
