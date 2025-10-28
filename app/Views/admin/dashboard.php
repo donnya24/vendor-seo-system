@@ -87,7 +87,8 @@
             width: 100%;
             height: 100%;
             display: flex;
-            align-items: center;
+            flex-direction: column;
+            justify-content: center;
             opacity: 0;
             transform: translateY(20px);
             transition: all 0.5s ease-out;
@@ -107,22 +108,22 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 23px; /* Lebih besar */
-            height: 23px; /* Lebih besar */
+            width: 23px;
+            height: 23px;
             margin-right: 0.4rem;
-            font-size: 1.4rem; /* Lebih besar */
+            font-size: 1.4rem;
         }
         
         .rank-1 {
-            color: #FFD700; /* Gold */
+            color: #FFD700;
         }
         
         .rank-2 {
-            color: #C0C0C0; /* Silver */
+            color: #C0C0C0;
         }
         
         .rank-3 {
-            color: #CD7F32; /* Bronze */
+            color: #CD7F32;
         }
     </style>
 </head>
@@ -182,56 +183,88 @@
                     </div>
                 </div>
 
-                <!-- 3. Top keyword (3 ranking dengan animasi slide) - TANPA INDICATORS -->
-                <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-2.5 rounded-lg border border-purple-200 shadow-xs hover:shadow-sm transition-shadow animate-fade-up"
-                     style="--delay:.20s">
-                    <div class="flex items-center justify-between">
-                        <div class="flex-1">
-                            <p class="text-[10px] font-semibold text-purple-800 uppercase tracking-wider mb-0.5">LEADS PALING DICARI</p>
-                            
-                            <?php if (!empty($stats['topKeywords'])): ?>
-                                <div class="keyword-slider" id="keywordSlider">
-                                    <?php foreach ($stats['topKeywords'] as $index => $keyword): ?>
-                                        <?php 
-                                        $rank = $index + 1;
-                                        $isActive = $index === 0 ? 'active' : '';
-                                        $rankClass = "rank-{$rank}";
-                                        $iconClass = '';
-                                        
-                                        // Set icon based on rank
-                                        if ($rank === 1) {
-                                            $iconClass = 'fa-crown';
-                                        } elseif ($rank === 2) {
-                                            $iconClass = 'fa-medal';
-                                        } else {
-                                            $iconClass = 'fa-award';
-                                        }
-                                        ?>
-                                        <div class="keyword-slide <?= $isActive ?>" data-index="<?= $index ?>">
-                                            <i class="fas <?= $iconClass ?> rank-icon <?= $rankClass ?>"></i>
-                                            <span class="text-xs font-semibold text-purple-900 truncate"><?= esc($keyword['keyword']) ?></span>
-                                            <span class="text-xs text-purple-700 ml-1">(<?= esc($keyword['current_position']) ?>)</span>
+              <!-- 3. Top keyword (3 ranking dengan animasi slide) - TANPA INDICATORS -->
+            <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-2.5 rounded-lg border border-purple-200 shadow-xs hover:shadow-sm transition-shadow animate-fade-up"
+                style="--delay:.20s">
+                <div class="flex items-center justify-between">
+                    <div class="flex-1">
+                        <p class="text-[10px] font-semibold text-purple-800 uppercase tracking-wider mb-0.5">KEYWORD PALING DICARI</p>
+                        
+                        <?php if (!empty($stats['topKeywords'])): ?>
+                            <div class="keyword-slider" id="keywordSlider">
+                                <?php foreach ($stats['topKeywords'] as $index => $keyword): ?>
+                                    <?php 
+                                    $rank = $index + 1;
+                                    $isActive = $index === 0 ? 'active' : '';
+                                    $rankClass = '';
+                                    $rankBgClass = '';
+                                    $rankTextClass = '';
+                                    
+                                    // Set colors based on rank
+                                    if ($rank === 1) {
+                                        $rankClass = 'rank-1';
+                                        $rankBgClass = 'bg-yellow-100';
+                                        $rankTextClass = 'text-yellow-700';
+                                    } elseif ($rank === 2) {
+                                        $rankClass = 'rank-2';
+                                        $rankBgClass = 'bg-gray-100';
+                                        $rankTextClass = 'text-gray-700';
+                                    } else {
+                                        $rankClass = 'rank-3';
+                                        $rankBgClass = 'bg-orange-100';
+                                        $rankTextClass = 'text-orange-700';
+                                    }
+                                    
+                                    // Hitung perubahan posisi
+                                    $positionChange = isset($keyword['change']) ? (int)$keyword['change'] : 0;
+                                    $changeText = '';
+                                    $changeClass = '';
+                                    
+                                    if ($positionChange > 0) {
+                                        $changeText = '+' . $positionChange;
+                                        $changeClass = 'text-green-600';
+                                    } elseif ($positionChange < 0) {
+                                        $changeText = $positionChange;
+                                        $changeClass = 'text-red-600';
+                                    } else {
+                                        $changeText = '0';
+                                        $changeClass = 'text-gray-600';
+                                    }
+                                    ?>
+                                    <div class="keyword-slide <?= $isActive ?>" data-index="<?= $index ?>">
+                                        <div class="flex items-center">
+                                            <!-- Medal dengan angka di dalamnya -->
+                                            <div class="flex items-center justify-center w-6 h-6 rounded-full <?= $rankBgClass ?> <?= $rankTextClass ?> font-bold text-xs mr-2">
+                                                <i class="fas fa-medal <?= $rankClass ?> text-xs mr-1"></i>
+                                                <?= $rank ?>
+                                            </div>
+                                            
+                                            <!-- Keyword dengan font size 12px -->
+                                            <span class="text-xs font-semibold text-purple-900" style="font-size: 12px;"><?= esc($keyword['keyword']) ?></span>
+                                            
+                                            <!-- Perubahan posisi -->
+                                            <span class="text-xs <?= $changeClass ?> ml-1"><?= $changeText ?></span>
                                         </div>
-                                    <?php endforeach; ?>
-                                </div>
-                            <?php else: ?>
-                                <div class="animate-fade-up-soft" style="--delay:.20s">
-                                    <p class="text-xs font-semibold text-purple-900">-</p>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                        <div class="flex items-center justify-center w-8 h-8 bg-purple-600 rounded-md text-white ml-2">
-                            <i class="fas fa-search text-xs"></i>
-                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else: ?>
+                            <div class="animate-fade-up-soft" style="--delay:.20s">
+                                <p class="text-xs font-semibold text-purple-900">-</p>
+                            </div>
+                        <?php endif; ?>
                     </div>
-                    <div class="mt-1.5 pt-1.5 border-t border-purple-200/50">
-                        <div class="flex items-center text-purple-700 text-[10px] font-medium">
-                            <i class="fas fa-fire mr-0.5"></i>
-                            <span class="font-semibold">Paling dicari</span>
-                        </div>
+                    <div class="flex items-center justify-center w-8 h-8 bg-purple-600 rounded-md text-white ml-2">
+                        <i class="fas fa-search text-xs"></i>
                     </div>
                 </div>
-
+                <div class="mt-1.5 pt-1.5 border-t border-purple-200/50">
+                    <div class="flex items-center text-purple-700 text-[10px] font-medium">
+                        <i class="fas fa-fire mr-0.5"></i>
+                        <span class="font-semibold">Paling dicari</span>
+                    </div>
+                </div>
+            </div>
                 <!-- 4. Total leads masuk -->
                 <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 p-2.5 rounded-lg border border-indigo-200 shadow-xs hover:shadow-sm transition-shadow animate-fade-up"
                      style="--delay:.26s">

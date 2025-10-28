@@ -1,11 +1,13 @@
 <?php
+
 namespace App\Controllers\Vendoruser;
 
 use App\Controllers\BaseController;
 use App\Models\VendorProfilesModel;
 use App\Models\LeadsModel;
-use App\Models\CommissionsModel; // Tambahkan model Commissions
+use App\Models\CommissionsModel;
 use App\Models\ActivityLogsModel;
+use App\Models\SeoReportsModel;
 
 class Dashboard extends BaseController
 {
@@ -24,6 +26,7 @@ class Dashboard extends BaseController
      */
     private function initVendor(): bool
     {
+        // PERBAIKAN: Memperbaiki pemanggilan service('auth')->user()
         $this->authUser = service('auth')->user();
 
         $this->vendorProfile = (new VendorProfilesModel())
@@ -57,7 +60,8 @@ class Dashboard extends BaseController
         );
 
         $leadsModel = new LeadsModel();
-        $commissionsModel = new CommissionsModel(); // Tambahkan inisialisasi model Commissions
+        $commissionsModel = new CommissionsModel();
+        $seoReportsModel = new SeoReportsModel();
 
         // ===== Statistik Leads Total =====
         $leadsNew = (clone $leadsModel)
@@ -110,15 +114,82 @@ class Dashboard extends BaseController
                 ->countAllResults();
         }
 
-        // ===== Top Keywords =====
+        // ===== Top Keywords - PERBAIKAN: Menampilkan 3 keywords terbaik dengan peringkat =====
         $topKeywords = [];
         if ($db->tableExists('seo_reports')) {
+            // Query untuk mendapatkan keywords dengan perubahan positif terbesar
             $topKeywords = $db->table('seo_reports')
-                ->select('id, keyword AS text, project, position, `change`')
+                ->select('id, keyword AS text, project, position, `change`, trend')
                 ->where('vendor_id', $this->vendorId)
-                ->orderBy('position', 'ASC')
-                ->limit(6)
-                ->get()->getResultArray();
+                ->where('status', 'active')
+                ->where('`change` >', 0) // Hanya yang memiliki perubahan positif
+                ->orderBy('`change`', 'DESC') // Urutkan berdasarkan perubahan terbesar
+                ->orderBy('position', 'ASC') // Jika perubahan sama, urutkan berdasarkan posisi terbaik
+                ->limit(3) // Ambil 3 keyword terbaik
+                ->get()
+                ->getResultArray();
+                
+            // Pastikan setiap keyword memiliki field yang diperlukan dan tambahkan peringkat
+            $topKeywords = array_map(function($keyword, $index) {
+                return [
+                    'id' => $keyword['id'] ?? 0,
+                    'text' => $keyword['text'] ?? '',
+                    'project' => $keyword['project'] ?? '',
+                    'position' => $keyword['position'] ?? 0,
+                    'change' => $keyword['change'] ?? 0,
+                    'trend' => $keyword['trend'] ?? 'up',
+                    'rank' => $index + 1 // Tambahkan peringkat
+                ];
+            }, $topKeywords, array_keys($topKeywords));
+            
+            // Jika tidak ada keywords dengan perubahan positif, ambil 3 keyword dengan posisi terbaik
+            if (empty($topKeywords)) {
+                $topKeywords = $db->table('seo_reports')
+                    ->select('id, keyword AS text, project, position, `change`, trend')
+                    ->where('vendor_id', $this->vendorId)
+                    ->where('status', 'active')
+                    ->orderBy('position', 'ASC') // Urutkan berdasarkan posisi terbaik
+                    ->limit(3) // Ambil 3 keyword terbaik
+                    ->get()
+                    ->getResultArray();
+                    
+                $topKeywords = array_map(function($keyword, $index) {
+                    return [
+                        'id' => $keyword['id'] ?? 0,
+                        'text' => $keyword['text'] ?? '',
+                        'project' => $keyword['project'] ?? '',
+                        'position' => $keyword['position'] ?? 0,
+                        'change' => $keyword['change'] ?? 0,
+                        'trend' => $keyword['trend'] ?? 'stable',
+                        'rank' => $index + 1 // Tambahkan peringkat
+                    ];
+                }, $topKeywords, array_keys($topKeywords));
+            }
+            
+            // Jika masih tidak ada data dari seo_reports, coba ambil dari seo_keyword_targets
+            if (empty($topKeywords) && $db->tableExists('seo_keyword_targets')) {
+                $topKeywords = $db->table('seo_keyword_targets')
+                    ->select('id, keyword AS text, project_name AS project, current_position AS position')
+                    ->where('vendor_id', $this->vendorId)
+                    ->where('status', 'completed')
+                    ->orderBy('current_position', 'ASC')
+                    ->limit(3) // Ambil 3 keyword terbaik
+                    ->get()
+                    ->getResultArray();
+                    
+                // Tambahkan field change, trend, dan rank secara manual
+                $topKeywords = array_map(function($keyword, $index) {
+                    return [
+                        'id' => $keyword['id'] ?? 0,
+                        'text' => $keyword['text'] ?? '',
+                        'project' => $keyword['project'] ?? '',
+                        'position' => $keyword['position'] ?? 0,
+                        'change' => 0, // Default value
+                        'trend' => 'stable', // Default value
+                        'rank' => $index + 1 // Tambahkan peringkat
+                    ];
+                }, $topKeywords, array_keys($topKeywords));
+            }
         }
 
         // ===== Activity Logs ringkas =====

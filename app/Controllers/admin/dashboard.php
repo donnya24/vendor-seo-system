@@ -6,7 +6,7 @@ use App\Controllers\Admin\BaseAdminController;
 use App\Models\VendorProfilesModel;
 use App\Models\LeadsModel;
 use App\Models\CommissionsModel;
-use App\Models\SeoKeywordTargetsModel;
+use App\Models\SeoReportsModel;
 use App\Models\SeoProfilesModel;
 use App\Models\ActivityLogsModel;
 
@@ -67,10 +67,18 @@ class Dashboard extends BaseAdminController
             ->selectSum('amount', 'total_commission')
             ->first()['total_commission'] ?? 0;
 
-        // Get top keywords
-        $seoKeywordModel = new SeoKeywordTargetsModel();
-        $topKeywords = $seoKeywordModel->getTopKeywords(3);
-        // If no data, set as empty array
+        // Get top keywords - PERBAIKAN: Ambil dari seo_reports
+        $seoReportsModel = new SeoReportsModel();
+        
+        // Coba dulu ambil berdasarkan perubahan terbesar
+        $topKeywords = $seoReportsModel->getTopKeywordsByChange(3);
+        
+        // Jika tidak ada data, coba ambil berdasarkan posisi terbaik
+        if (empty($topKeywords)) {
+            $topKeywords = $seoReportsModel->getTopKeywordsByPosition(3);
+        }
+        
+        // If still no data, set as empty array
         if (!$topKeywords) {
             $topKeywords = [];
         }
@@ -189,7 +197,7 @@ class Dashboard extends BaseAdminController
                 'monthlyDeals' => (int) $monthlyDeals,
                 'totalCommissionPaid' => (float) $totalCommissionPaid,
                 'monthlyCommissionPaid' => (float) $monthlyCommissionPaid,
-                'topKeywords'  => $topKeywords, // diubah dari topKeyword menjadi topKeywords
+                'topKeywords'  => $topKeywords,
                 'totalLeadsIn' => (int) $totalLeadsIn,
                 'totalLeadsClosing' => (int) $totalLeadsClosing,
                 'leadsToday'   => (int) $todayLeads,
@@ -332,9 +340,17 @@ class Dashboard extends BaseAdminController
             ->selectSum('amount', 'total_commission')
             ->first()['total_commission'] ?? 0;
 
-        $seoKeywordModel = new SeoKeywordTargetsModel();
-        $topKeywords = $seoKeywordModel->getTopKeywords(3);
-        // If no data, set as empty array
+        $seoReportsModel = new SeoReportsModel();
+        
+        // Coba dulu ambil berdasarkan perubahan terbesar
+        $topKeywords = $seoReportsModel->getTopKeywordsByChange(3);
+        
+        // Jika tidak ada data, coba ambil berdasarkan posisi terbaik
+        if (empty($topKeywords)) {
+            $topKeywords = $seoReportsModel->getTopKeywordsByPosition(3);
+        }
+        
+        // If still no data, set as empty array
         if (!$topKeywords) {
             $topKeywords = [];
         }
@@ -345,7 +361,7 @@ class Dashboard extends BaseAdminController
             'monthlyDeals' => (int) $monthlyDeals,
             'totalCommissionPaid' => (float) $totalCommissionPaid,
             'monthlyCommissionPaid' => (float) $monthlyCommissionPaid,
-            'topKeywords'  => $topKeywords, // diubah dari topKeyword menjadi topKeywords
+            'topKeywords'  => $topKeywords,
             'totalSeoTeam' => (int) $totalSeoTeam,
         ]);
     }
