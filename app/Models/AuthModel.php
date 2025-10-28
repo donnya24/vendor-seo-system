@@ -372,6 +372,84 @@ class AuthModel extends Model
     }
 
     /**
+     * Check if user can login with password (not Google OAuth user)
+     */
+    public function canLoginWithPassword($email)
+    {
+        try {
+            $identityModel = new \App\Models\IdentityModel();
+            $identity = $identityModel
+                ->where('secret', $email)
+                ->where('type', 'email_password')
+                ->first();
+            
+            if (!$identity) {
+                return [
+                    'can_login' => false,
+                    'error' => 'Login gagal. Periksa kembali email dan password Anda.',
+                    'error_type' => 'credentials'
+                ];
+            }
+            
+            // User Google tanpa password: secret2 adalah NULL atau empty string
+            $isGoogleUser = empty($identity['secret2']) || is_null($identity['secret2']);
+            
+            if ($isGoogleUser) {
+                return [
+                    'can_login' => false,
+                    'error' => 'Login gagal. Periksa kembali email dan password Anda.',
+                    'error_type' => 'google_user',
+                    'user_email' => $email
+                ];
+            }
+            
+            return ['can_login' => true];
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Error checking password login capability: ' . $e->getMessage());
+            return [
+                'can_login' => false,
+                'error' => 'Login gagal. Periksa kembali email dan password Anda.',
+                'error_type' => 'system'
+            ];
+        }
+    }
+
+    /**
+     * Attempt login dengan email/password dengan validasi Google OAuth
+     */
+    public function attemptLogin(string $email, string $password, bool $remember = false)
+    {
+        // Cek apakah user bisa login dengan password
+        $passwordCheck = $this->canLoginWithPassword($email);
+        if (!$passwordCheck['can_login']) {
+            return [
+                'success' => false, 
+                'error' => $passwordCheck['error'], 
+                'is_google_user' => ($passwordCheck['error_type'] === 'google_user'),
+                'user_email' => $passwordCheck['user_email'] ?? null
+            ];
+        }
+
+        // Jika bisa login dengan password, lanjutkan dengan Shield auth
+        $result = $this->auth->attempt(['email' => $email, 'password' => $password], $remember);
+
+        if ($result->isOK()) {
+            return ['success' => true, 'user' => $this->auth->user()];
+        }
+
+        $reason = $result->reason();
+        $error = match($reason) {
+            'invalid_password' => 'Login gagal. Periksa kembali email dan password Anda.',
+            'user_not_found'   => 'Login gagal. Periksa kembali email dan password Anda.',
+            'user_not_active'  => 'Akun belum aktif.',
+            default            => 'Login gagal. Periksa kembali email dan password Anda.',
+        };
+
+        return ['success' => false, 'error' => $error];
+    }
+
+    /**
      * Check if user has password (untuk validasi ubah password)
      */
     public function userHasPassword($userId)
@@ -400,8 +478,8 @@ class AuthModel extends Model
         }
     }
 
-    /**
-     * Update password untuk user
+        /**
+     * Update password untuk user - TANPA LOGIN OTOMATIS
      */
     public function updateUserPassword($userId, $newPassword)
     {
@@ -477,28 +555,6 @@ class AuthModel extends Model
             log_message('error', 'Error checking Google user: ' . $e->getMessage());
             return false;
         }
-    }
-
-    /**
-     * Attempt login dengan email/password
-     */
-    public function attemptLogin(string $email, string $password, bool $remember = false)
-    {
-        $result = $this->auth->attempt(['email' => $email, 'password' => $password], $remember);
-
-        if ($result->isOK()) {
-            return ['success' => true, 'user' => $this->auth->user()];
-        }
-
-        $reason = $result->reason();
-        $error = match($reason) {
-            'invalid_password' => 'Password salah.',
-            'user_not_found'   => 'Akun tidak tersedia.',
-            'user_not_active'  => 'Akun belum aktif.',
-            default            => 'Login gagal.',
-        };
-
-        return ['success' => false, 'error' => $error];
     }
 
     /**

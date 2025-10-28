@@ -10,9 +10,10 @@ use CodeIgniter\Router\RouteCollection;
  $routes->setAutoRoute(true);
 
 // ==================== PUBLIC ====================
- $routes->get('/', 'Landpage\Landpage::index');
+// Route untuk halaman utama
+ $routes->get('/', 'LandingPage\LandingPageController::index');
 
-// Auth
+// ==================== AUTH ====================
 // Google OAuth Routes - DIPISAH UNTUK LOGIN DAN REGISTER
 $routes->get('auth/google/login', 'Auth\AuthController::googleLogin');
 $routes->get('auth/google/register', 'Auth\AuthController::googleRegister');
@@ -224,9 +225,9 @@ $routes->get('admin/dashboard/index', static fn () => redirect()->to('/admin/das
     $routes->get('profile/edit', 'Profile::edit');
     $routes->post('profile/update', 'Profile::update');
     
-    // Password
-    $routes->get('password', 'Profile::password');
-    $routes->post('password/update', 'Profile::passwordUpdate');
+    // Password - PERBAIKAN ROUTING
+    $routes->get('profile/password', 'Profile::password');
+    $routes->post('profile/password/update', 'Profile::passwordUpdate');
 
     // Keyword Targets
     $routes->get('targets', 'Targets::index');

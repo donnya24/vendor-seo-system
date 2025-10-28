@@ -18,7 +18,7 @@
       border-radius: 16px !important;
       padding: 1.5rem !important;
       width: auto !important;
-      max-width: 420px !important;
+      max-width: 500px !important;
     }
     
     .swal2-title {
@@ -113,6 +113,66 @@
     .divider:not(:empty)::after {
       margin-left: 0.75rem;
     }
+
+    /* Password Strength Styles */
+    .password-strength {
+      margin-top: 0.5rem;
+    }
+    
+    .strength-bar {
+      height: 4px;
+      border-radius: 2px;
+      transition: all 0.3s ease;
+      background: #e5e7eb;
+    }
+    
+    .strength-text {
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+      font-weight: 500;
+    }
+    
+    .strength-weak {
+      color: #dc2626;
+    }
+    
+    .strength-medium {
+      color: #ea580c;
+    }
+    
+    .strength-strong {
+      color: #16a34a;
+    }
+    
+    .strength-very-strong {
+      color: #059669;
+    }
+
+    /* Help section styles */
+    .help-section {
+      background: #f0f9ff;
+      border: 1px solid #bae6fd;
+      border-radius: 10px;
+      padding: 1rem;
+    }
+
+    .help-tips {
+      background: white;
+      border-radius: 8px;
+      padding: 0.75rem;
+      margin-top: 0.75rem;
+      border: 1px solid #e0f2fe;
+    }
+
+    /* Success notification styles */
+    .success-notification {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      border-radius: 12px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+    }
   </style>
 </head>
 <body class="bg-gray-50">
@@ -128,8 +188,58 @@
            password: '',
            show: false,
            loading: false,
-           get validPw(){ return this.password.length >= 8 }
-         }">
+           get validPw(){ return this.password.length >= 8 },
+           passwordStrength: 0,
+           strengthText: '',
+           strengthColor: '',
+           barWidth: '0%',
+           barColor: '#e5e7eb',
+           
+           checkPasswordStrength() {
+             const password = this.password;
+             let strength = 0;
+             
+             if (password.length === 0) {
+               this.passwordStrength = 0;
+               this.strengthText = '';
+               this.barWidth = '0%';
+               this.barColor = '#e5e7eb';
+               return;
+             }
+             
+             // Length check
+             if (password.length >= 8) strength += 1;
+             if (password.length >= 12) strength += 1;
+             
+             // Character variety checks
+             if (/[a-z]/.test(password)) strength += 1;
+             if (/[A-Z]/.test(password)) strength += 1;
+             if (/[0-9]/.test(password)) strength += 1;
+             if (/[^a-zA-Z0-9]/.test(password)) strength += 1;
+             
+             // Determine strength level
+             this.passwordStrength = strength;
+             
+             if (strength <= 2) {
+               this.strengthText = 'Lemah';
+               this.barWidth = '25%';
+               this.barColor = '#dc2626';
+             } else if (strength <= 4) {
+               this.strengthText = 'Cukup';
+               this.barWidth = '50%';
+               this.barColor = '#ea580c';
+             } else if (strength <= 5) {
+               this.strengthText = 'Kuat';
+               this.barWidth = '75%';
+               this.barColor = '#16a34a';
+             } else {
+               this.strengthText = 'Sangat Kuat';
+               this.barWidth = '100%';
+               this.barColor = '#059669';
+             }
+           }
+         }"
+         x-effect="checkPasswordStrength()">
 
       <div class="px-5 pt-6 pb-4 text-center border-b">
         <div class="mx-auto w-10 h-10 rounded-full bg-white flex items-center justify-center shadow">
@@ -147,13 +257,14 @@
 
         <?= csrf_field() ?>
 
-        <!-- Hapus flashdata biasa karena kita pakai SweetAlert -->
-        <?php if (session()->getFlashdata('error') || session()->getFlashdata('message') || session()->getFlashdata('success') || session()->getFlashdata('show_contact')): ?>
+        <!-- Flash Messages untuk SweetAlert -->
+        <?php if (session()->getFlashdata('error') || session()->getFlashdata('message') || session()->getFlashdata('success') || session()->getFlashdata('show_contact') || session()->getFlashdata('login_hint')): ?>
         <div class="hidden" id="flash-messages" 
              data-error="<?= esc(session()->getFlashdata('error') ?? '') ?>"
              data-message="<?= esc(session()->getFlashdata('message') ?? '') ?>"
              data-success="<?= esc(session()->getFlashdata('success') ?? '') ?>"
-             data-show-contact="<?= session()->getFlashdata('show_contact') ? 'true' : 'false' ?>">
+             data-show-contact="<?= session()->getFlashdata('show_contact') ? 'true' : 'false' ?>"
+             data-login-hint="<?= esc(session()->getFlashdata('login_hint') ?? '') ?>">
         </div>
         <?php endif; ?>
 
@@ -171,13 +282,27 @@
           <div class="relative">
             <input :type="show ? 'text' : 'password'" id="password" name="password" x-model="password"
                    class="w-full pr-16 pl-3 py-2 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-200 outline-none text-sm transition-colors"
-                   placeholder="Minimal 8 karakter" required minlength="6" autocomplete="current-password" enterkeyhint="done" />
+                   placeholder="Masukkan password Anda" required minlength="6" autocomplete="current-password" enterkeyhint="done" 
+                   @input="checkPasswordStrength()" />
             <button type="button"
                     class="absolute inset-y-0 right-0 px-3 flex items-center text-xs text-gray-500 hover:text-gray-700 transition-colors"
                     @click="show = !show" x-text="show ? 'Sembunyi' : 'Tampil'"></button>
           </div>
-          <p class="mt-1 text-xs transition-colors" :class="validPw ? 'text-green-600' : 'text-gray-500'"
-             x-text="validPw ? 'Siap.' : 'Minimal 8 karakter.'"></p>
+          
+          <!-- Password Strength Indicator -->
+          <div class="password-strength" x-show="password.length > 0">
+            <div class="strength-bar" :style="`width: ${barWidth}; background: ${barColor};`"></div>
+            <div class="strength-text" :class="{
+              'strength-weak': passwordStrength <= 2,
+              'strength-medium': passwordStrength > 2 && passwordStrength <= 4,
+              'strength-strong': passwordStrength > 4 && passwordStrength <= 5,
+              'strength-very-strong': passwordStrength > 5
+            }" x-text="strengthText"></div>
+          </div>
+          
+          <p class="mt-1 text-xs text-gray-500" x-show="password.length === 0">
+            Minimal 8 karakter untuk keamanan optimal
+          </p>
         </div>
 
         <!-- Ingat saya & Lupa password -->
@@ -192,7 +317,7 @@
         <!-- Tombol Login -->
         <button type="submit"
                 class="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 transition font-semibold text-white shadow disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center text-sm"
-                :disabled="!validPw || loading">
+                :disabled="!password || loading">
           <span x-show="!loading" class="flex items-center gap-1.5">
             <i class="fas fa-sign-in-alt text-xs"></i>
             Masuk
@@ -221,11 +346,98 @@
           <span>Sign in with Google</span>
         </a>
 
+        <!-- Section Bantuan Login -->
+        <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div class="flex items-start gap-2">
+            <div class="flex-shrink-0 mt-0.5">
+              <i class="fas fa-info-circle text-blue-500 text-sm"></i>
+            </div>
+            <div class="flex-1">
+              <h4 class="text-xs font-semibold text-blue-800 mb-1">Butuh Bantuan Login?</h4>
+              <p class="text-xs text-blue-700 mb-2">
+                Gunakan opsi berikut jika mengalami kendala:
+              </p>
+              <div class="flex flex-wrap gap-2">
+                <a href="<?= site_url('forgot-password') ?>" class="text-xs text-blue-600 hover:text-blue-800 font-medium underline">
+                  <i class="fas fa-key mr-1"></i>Lupa Password
+                </a>
+                <button type="button" onclick="showLoginHelp()" class="text-xs text-blue-600 hover:text-blue-800 font-medium underline">
+                  <i class="fas fa-question-circle mr-1"></i>Panduan
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Subtle Hint untuk Google User -->
+        <?php if (session()->getFlashdata('login_hint') === 'google_hint'): ?>
+        <div class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
+          <div class="flex items-center gap-1.5 text-blue-700">
+            <i class="fas fa-lightbulb text-blue-500 text-xs"></i>
+            <span class="text-xs">
+              <strong>Tips:</strong> Coba gunakan <strong>Login dengan Google</strong> jika biasanya login dengan akun Google.
+            </span>
+          </div>
+        </div>
+        <?php endif; ?>
+
         <p class="text-center text-xs text-gray-600">
           Belum punya akun?
           <a href="<?= site_url('register') ?>" class="text-blue-600 font-semibold hover:underline transition-colors">Daftar</a>
         </p>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal Panduan Login -->
+  <div id="loginHelpModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl max-w-md w-full mx-4 p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-bold text-gray-800">Panduan Login</h3>
+        <button onclick="closeLoginHelp()" class="text-gray-400 hover:text-gray-600">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div class="space-y-4">
+        <div class="bg-blue-50 p-4 rounded-lg">
+          <h4 class="font-semibold text-blue-800 mb-2 flex items-center gap-2">
+            <i class="fas fa-envelope"></i>Login dengan Email & Password
+          </h4>
+          <p class="text-sm text-blue-700">
+            Gunakan email dan password yang Anda daftarkan. Pastikan:
+          </p>
+          <ul class="text-sm text-blue-700 mt-2 list-disc list-inside space-y-1">
+            <li>Email sudah terdaftar di sistem</li>
+            <li>Password minimal 8 karakter</li>
+            <li>Gunakan password yang benar</li>
+          </ul>
+        </div>
+        
+        <div class="bg-green-50 p-4 rounded-lg">
+          <h4 class="font-semibold text-green-800 mb-2 flex items-center gap-2">
+            <i class="fab fa-google"></i>Login dengan Google
+          </h4>
+          <p class="text-sm text-green-700">
+            Jika Anda mendaftar menggunakan akun Google, gunakan tombol <strong>"Sign in with Google"</strong>.
+          </p>
+        </div>
+        
+        <div class="bg-orange-50 p-4 rounded-lg">
+          <h4 class="font-semibold text-orange-800 mb-2 flex items-center gap-2">
+            <i class="fas fa-key"></i>Lupa Password?
+          </h4>
+          <p class="text-sm text-orange-700">
+            Klik <strong>"Lupa password"</strong> untuk mereset password Anda.
+          </p>
+        </div>
+      </div>
+      
+      <div class="mt-6 flex justify-end">
+        <button onclick="closeLoginHelp()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm">
+          Mengerti
+        </button>
+      </div>
     </div>
   </div>
 
@@ -239,6 +451,7 @@
         const message = flashElem.getAttribute('data-message');
         const success = flashElem.getAttribute('data-success');
         const showContact = flashElem.getAttribute('data-show-contact') === 'true';
+        const loginHint = flashElem.getAttribute('data-login-hint');
 
         // Fungsi untuk membuat HTML kontak admin
         const getAdminContactHTML = () => {
@@ -264,48 +477,183 @@
           `;
         };
 
-        // Tampilkan error dengan SweetAlert (warna merah) + kontak admin
-        if (error) {
+        // Fungsi untuk membuat HTML help
+        const getLoginHelpHTML = () => {
+          return `
+            <div class="text-left">
+              <div class="mb-4">
+                <p class="text-gray-700 mb-3">Beberapa hal yang bisa Anda coba:</p>
+                
+                <div class="bg-blue-50 p-3 rounded-lg mb-3">
+                  <h5 class="font-semibold text-blue-800 mb-1 flex items-center gap-2">
+                    <i class="fas fa-check-circle"></i>Periksa Kembali
+                  </h5>
+                  <ul class="text-sm text-blue-700 list-disc list-inside space-y-1">
+                    <li>Pastikan email yang dimasukkan benar</li>
+                    <li>Password harus minimal 8 karakter</li>
+                    <li>Perhatikan huruf kapital/kecil</li>
+                  </ul>
+                </div>
+                
+                <div class="bg-green-50 p-3 rounded-lg">
+                  <h5 class="font-semibold text-green-800 mb-1 flex items-center gap-2">
+                    <i class="fas fa-sync-alt"></i>Alternatif Lain
+                  </h5>
+                  <ul class="text-sm text-green-700 list-disc list-inside space-y-1">
+                    <li>Gunakan <strong>Login dengan Google</strong> jika pernah mendaftar via Google</li>
+                    <li>Klik <strong>Lupa Password</strong> untuk reset password</li>
+                    <li>Pastikan akun Anda sudah terdaftar</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          `;
+        };
+        // ✅ PERBAIKAN: Tampilkan success message dengan SweetAlert yang lebih menarik
+        if (success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                html: `
+                    <div class="text-center">
+                        <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-check text-green-600 text-2xl"></i>
+                        </div>
+                        <p class="text-gray-700 mb-2 text-lg font-semibold">${success}</p>
+                        <p class="text-sm text-gray-600">Silakan login dengan password baru Anda</p>
+                    </div>
+                `,
+                confirmButtonColor: '#10b981',
+                confirmButtonText: 'Login Sekarang',
+                width: 420,
+                background: '#f9fafb',
+                backdrop: 'rgba(16, 185, 129, 0.1)'
+            }).then((result) => {
+                // Focus ke email field setelah user menutup notifikasi
+                if (result.isConfirmed) {
+                    document.getElementById('email')?.focus();
+                }
+            });
+        }
+        
+        // Tampilkan error dengan SweetAlert (warna kuning/warning) + bantuan
+        else if (error) {
           Swal.fire({
-            icon: 'error',
+            icon: 'warning',
             title: 'Login Gagal',
             html: `
               <div class="text-left">
-                <div class="mb-3">${error}</div>
+                <p class="mb-3 text-gray-700">${error}</p>
+                ${getLoginHelpHTML()}
                 ${showContact ? getAdminContactHTML() : ''}
               </div>
             `,
-            confirmButtonColor: '#dc2626',
-            confirmButtonText: 'Mengerti',
-            width: showContact ? 420 : 380
-          });
-        }
-        
-        // Tampilkan success message dengan SweetAlert (warna hijau)
-        if (success) {
-          Swal.fire({
-            icon: 'success',
-            title: 'Berhasil',
-            text: success,
-            confirmButtonColor: '#16a34a',
-            confirmButtonText: 'Mengerti',
-            width: 380
+            confirmButtonColor: '#3b82f6',
+            confirmButtonText: 'Coba Lagi',
+            width: 500
+          }).then((result) => {
+            // Focus ke email field setelah user menutup notifikasi
+            if (result.isConfirmed) {
+              document.getElementById('email')?.focus();
+            }
           });
         }
         
         // Tampilkan info message dengan SweetAlert (warna biru)
-        if (message) {
+        else if (message) {
           Swal.fire({
             icon: 'info',
             title: 'Informasi',
-            text: message,
+            html: `
+              <div class="text-center">
+                <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <i class="fas fa-info text-blue-600 text-xl"></i>
+                </div>
+                <p class="text-gray-700">${message}</p>
+              </div>
+            `,
             confirmButtonColor: '#2563eb',
             confirmButtonText: 'Mengerti',
             width: 380
+          }).then((result) => {
+            // Focus ke email field setelah user menutup notifikasi
+            if (result.isConfirmed) {
+              document.getElementById('email')?.focus();
+            }
+          });
+        }
+
+        // Tampilkan login hint untuk Google user
+        else if (loginHint === 'google_hint') {
+          Swal.fire({
+            icon: 'info',
+            title: 'Login dengan Google',
+            html: `
+              <div class="text-left">
+                <div class="flex items-center gap-3 mb-3">
+                  <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <i class="fab fa-google text-blue-600"></i>
+                  </div>
+                  <div>
+                    <p class="font-semibold text-gray-800">Akun Terdaftar dengan Google</p>
+                    <p class="text-sm text-gray-600">Gunakan tombol Google untuk login</p>
+                  </div>
+                </div>
+                <div class="bg-blue-50 p-3 rounded-lg">
+                  <p class="text-sm text-blue-700">
+                    <strong>Tips:</strong> Akun ini terdaftar menggunakan Google OAuth. 
+                    Silakan gunakan tombol <strong>"Sign in with Google"</strong> di bawah untuk login.
+                  </p>
+                </div>
+              </div>
+            `,
+            confirmButtonColor: '#3b82f6',
+            confirmButtonText: 'Mengerti',
+            width: 450
           });
         }
       }
+
+      // Auto focus ke email field setelah page load (jika tidak ada notifikasi)
+      setTimeout(() => {
+        if (!flashElem) {
+          document.getElementById('email')?.focus();
+        }
+      }, 300);
     });
+
+    function showLoginHelp() {
+      document.getElementById('loginHelpModal').classList.remove('hidden');
+    }
+
+    function closeLoginHelp() {
+      document.getElementById('loginHelpModal').classList.add('hidden');
+    }
+
+    // Close modal when clicking outside
+    document.getElementById('loginHelpModal').addEventListener('click', function(e) {
+      if (e.target === this) closeLoginHelp();
+    });
+
+    // Handle form submission loading state
+    const loginForm = document.querySelector('form');
+    if (loginForm) {
+      loginForm.addEventListener('submit', function(e) {
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const password = this.querySelector('#password').value;
+        
+        if (!password) {
+          e.preventDefault();
+          Swal.fire({
+            icon: 'warning',
+            title: 'Password Kosong',
+            text: 'Silakan masukkan password Anda',
+            confirmButtonColor: '#3b82f6',
+            confirmButtonText: 'Mengerti'
+          });
+        }
+      });
+    }
   </script>
 </body>
 </html>
