@@ -168,9 +168,9 @@
 <div id="createModal" class="modal-overlay">
   <div class="modal-container">
     <!-- Header -->
-    <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200">
-      <h2 class="text-lg font-semibold text-gray-800">Tambah Lead Baru</h2>
-      <button onclick="closeCreateModal()" class="text-gray-400 hover:text-gray-600">
+    <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200 bg-blue-600">
+      <h2 class="text-lg font-semibold text-white">Tambah Lead Baru</h2>
+      <button onclick="closeCreateModal()" class="text-white hover:text-gray-200">
         <i class="fa fa-times text-lg"></i>
       </button>
     </div>
@@ -241,9 +241,9 @@
 <div id="editModal" class="modal-overlay">
   <div class="modal-container">
     <!-- Header -->
-    <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200">
-      <h2 class="text-lg font-semibold text-gray-800">Edit Lead</h2>
-      <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600">
+    <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200 bg-blue-600">
+      <h2 class="text-lg font-semibold text-white">Edit Lead</h2>
+      <button onclick="closeEditModal()" class="text-white hover:text-gray-200">
         <i class="fa fa-times text-lg"></i>
       </button>
     </div>

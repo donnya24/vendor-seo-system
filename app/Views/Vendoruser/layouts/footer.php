@@ -22,20 +22,30 @@ function markNotifAsRead(){
 </script>
 
 <script>
-// SweetAlert2 toast helper (VERSI YANG SUDAH DIPERBAIKI)
+// SweetAlert2 toast helper - DISABLE UNTUK MENCEGAH KONFLIK
 window.swalToast = (icon, title) => {
-  if (!window.Swal || !title) return;
+  // Nonaktifkan SweetAlert toast untuk mencegah konflik dengan custom toast
+  console.log('SweetAlert toast disabled - using custom toast instead');
   
-  // Hanya mengatur perilaku, semua styling diatur via CSS di header.php
-  const Toast = Swal.mixin({
-    toast: true,
-    position: 'top-end',
-    showConfirmButton: false,
-    timer: 3000, // Sedikit lebih lama agar terbaca
-    timerProgressBar: true
-  });
+  // Alihkan ke custom toast system
+  const typeMap = {
+    'success': 'success',
+    'error': 'error', 
+    'warning': 'warning',
+    'info': 'info',
+    'question': 'info'
+  };
   
-  Toast.fire({ icon, title });
+  const toastType = typeMap[icon] || 'info';
+  if (window.toastSuccess && toastType === 'success') {
+    window.toastSuccess(title);
+  } else if (window.toastError && toastType === 'error') {
+    window.toastError(title);
+  } else if (window.toastWarning && toastType === 'warning') {
+    window.toastWarning(title);
+  } else if (window.toastInfo) {
+    window.toastInfo(title);
+  }
 };
 </script>
 
@@ -100,7 +110,11 @@ window.swalToast = (icon, title) => {
           cancelButton: 'bg-gray-100 text-gray-700 px-3 py-2 rounded'
         }
       }).then((r) => { 
-        if (r.isConfirmed) form.submit(); 
+        if (r.isConfirmed) {
+          form.submit(); 
+          // Show custom toast instead of SweetAlert toast
+          setTimeout(() => toastSuccess('Berhasil', 'Notifikasi berhasil dihapus'), 100);
+        }
       });
     }
 
@@ -119,7 +133,11 @@ window.swalToast = (icon, title) => {
           cancelButton: 'bg-gray-100 text-gray-700 px-3 py-2 rounded'
         }
       }).then((r) => { 
-        if (r.isConfirmed) form.submit(); 
+        if (r.isConfirmed) {
+          form.submit(); 
+          // Show custom toast instead of SweetAlert toast
+          setTimeout(() => toastSuccess('Berhasil', 'Semua notifikasi berhasil dihapus'), 100);
+        }
       });
     }
   }, true);

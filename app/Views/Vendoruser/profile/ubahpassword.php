@@ -16,6 +16,7 @@ header("Expires: 0");
 ?>
 
 <style>
+  
 /* Password Strength Styles */
 .password-strength {
   margin-top: 0.5rem;
@@ -153,11 +154,6 @@ header("Expires: 0");
   cursor: not-allowed;
 }
 
-/* Hide SweetAlert confirm button */
-.swal2-confirm {
-  display: none !important;
-}
-
 /* Remove disabled button strikethrough */
 .btn-primary:disabled::after,
 .btn-secondary:disabled::after {
@@ -203,6 +199,80 @@ header("Expires: 0");
 
 .swal2-timer-progress-bar {
   height: 3px !important;
+}
+
+/* CSS spesifik untuk SweetAlert di dalam modal ubah password */
+#passwordEditModal .swal2-actions,
+#passwordEditModal .swal2-confirm,
+#passwordEditModal .swal2-cancel,
+#passwordEditModal .swal2-popup .swal2-actions,
+#passwordEditModal .swal2-popup .swal2-confirm,
+#passwordEditModal .swal2-popup .swal2-cancel {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  position: absolute !important;
+  top: -9999px !important;
+  left: -9999px !important;
+}
+
+/* Pastikan modal ubah password memiliki z-index lebih tinggi */
+#passwordEditModal {
+  z-index: 99999 !important;
+}
+
+#passwordEditContent {
+  z-index: 100000 !important;
+}
+
+/* Class khusus untuk notifikasi perubahan password */
+.password-change-notification {
+  padding: 1rem !important;
+  border-radius: 0.5rem !important;
+  width: 28rem !important;
+  font-size: 0.875rem !important;
+}
+
+.password-change-notification-container {
+  z-index: 100001 !important;
+}
+
+/* Sembunyikan tombol untuk notifikasi khusus */
+.password-change-notification .swal2-actions {
+  display: none !important;
+}
+
+.password-change-notification .swal2-confirm,
+.password-change-notification .swal2-cancel {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+/* Class untuk SweetAlert tanpa tombol */
+.swal2-no-buttons .swal2-actions,
+.swal2-no-buttons .swal2-confirm,
+.swal2-no-buttons .swal2-cancel {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  position: absolute !important;
+  top: -9999px !important;
+  left: -9999px !important;
+}
+
+.swal2-no-buttons {
+  padding-bottom: 1em !important;
 }
 </style>
 
@@ -606,6 +676,51 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Fungsi khusus untuk SweetAlert di modal ubah password
+    function showPasswordModalAlert(options) {
+      // Pastikan tombol tidak ditampilkan
+      options.showConfirmButton = false;
+      options.showCancelButton = false;
+      
+      // Tambahkan class khusus
+      if (!options.customClass) {
+        options.customClass = {};
+      }
+      if (!options.customClass.popup) {
+        options.customClass.popup = '';
+      }
+      options.customClass.popup += ' swal2-no-buttons';
+      
+      // Panggil fungsi asli
+      const result = Swal.fire(options);
+      
+      // Tambahkan CSS spesifik untuk modal ini
+      setTimeout(() => {
+        const modalElement = document.getElementById('passwordEditModal');
+        if (modalElement) {
+          const swalContainer = modalElement.querySelector('.swal2-container');
+          if (swalContainer) {
+            const buttons = swalContainer.querySelectorAll('.swal2-actions, .swal2-confirm, .swal2-cancel');
+            buttons.forEach(button => {
+              button.style.display = 'none';
+              button.style.visibility = 'hidden';
+              button.style.opacity = '0';
+              button.style.height = '0';
+              button.style.width = '0';
+              button.style.margin = '0';
+              button.style.padding = '0';
+              button.style.border = 'none';
+              button.style.position = 'absolute';
+              button.style.top = '-9999px';
+              button.style.left = '-9999px';
+            });
+          }
+        }
+      }, 10);
+      
+      return result;
+    }
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
@@ -658,7 +773,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             if (res.ok && data?.status === 'success') {
-                await Swal.fire({
+                await showPasswordModalAlert({
                     icon: 'success',
                     title: 'Berhasil!',
                     html: `
@@ -670,14 +785,14 @@ document.addEventListener('DOMContentLoaded', function() {
                             <p class="text-xs text-gray-500">Anda akan di-logout otomatis dalam 3 detik...</p>
                         </div>
                     `,
-                    showConfirmButton: false,
                     timer: 3000,
                     timerProgressBar: true,
+                    customClass: {
+                        popup: 'password-change-notification swal2-no-buttons',
+                        container: 'password-change-notification-container'
+                    },
                     didOpen: () => {
                         Swal.showLoading();
-                    },
-                    willClose: () => {
-                        // Don't close the modal when SweetAlert closes
                     }
                 });
 
@@ -691,7 +806,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     errorMessage = Object.values(data.errors).join('<br>');
                 }
                 
-                await Swal.fire({
+                await showPasswordModalAlert({
                     icon: 'error',
                     title: 'Gagal',
                     html: `
@@ -702,12 +817,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             <p class="text-gray-700 text-sm">${errorMessage}</p>
                         </div>
                     `,
-                    showConfirmButton: false,
-                    confirmButtonColor: '#dc2626',
                     timer: 2000,
                     timerProgressBar: true,
-                    willClose: () => {
-                        // Don't close the modal when SweetAlert closes
+                    customClass: {
+                        popup: 'password-change-notification swal2-no-buttons',
+                        container: 'password-change-notification-container'
                     }
                 });
 
@@ -725,7 +839,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         } catch (err) {
-            await Swal.fire({
+            await showPasswordModalAlert({
                 icon: 'error',
                 title: 'Gagal',
                 html: `
@@ -736,12 +850,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         <p class="text-gray-700 text-sm">Tidak dapat menghubungi server. Coba lagi.</p>
                     </div>
                 `,
-                showConfirmButton: false,
-                confirmButtonColor: '#dc2626',
                 timer: 2000,
                 timerProgressBar: true,
-                willClose: () => {
-                    // Don't close the modal when SweetAlert closes
+                customClass: {
+                    popup: 'password-change-notification swal2-no-buttons',
+                    container: 'password-change-notification-container'
                 }
             });
             
@@ -822,4 +935,36 @@ setInterval(async () => {
         }
     }
 }, 300000);
+
+// Override modal close behavior saat SweetAlert aktif
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const passwordModal = document.getElementById('passwordEditModal');
+        const hasSweetAlert = document.querySelector('.swal2-container');
+        
+        if (passwordModal && hasSweetAlert && 
+            window.getComputedStyle(passwordModal).display !== 'none') {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        }
+    }
+}, true);
+
+document.addEventListener('click', function(e) {
+    const passwordModal = document.getElementById('passwordEditModal');
+    const hasSweetAlert = document.querySelector('.swal2-container');
+    
+    if (passwordModal && hasSweetAlert && 
+        window.getComputedStyle(passwordModal).display !== 'none') {
+        const backdrop = document.getElementById('passwordEditBackdrop');
+        const closeBtn = passwordModal.querySelector('button[aria-label="Close"]');
+        
+        if ((e.target === backdrop || e.target === closeBtn) && hasSweetAlert) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        }
+    }
+}, true);
 </script>

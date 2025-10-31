@@ -67,94 +67,168 @@ $profileImagePath = ($profileImage && is_file($profileOnDisk))
       border: 2px solid transparent!important; background-clip: padding-box!important;
     }
     :where(html, body, *){ scrollbar-width: thin; scrollbar-color: var(--sb-thumb) transparent; }
-    
-    /* ✅ MODAL LOCK STYLES */
-    .modal-lock {
-      pointer-events: auto !important;
+
+    /* ===== TOAST NOTIFICATION STYLES ===== */
+    .custom-toast {
+      position: fixed;
+      top: 5rem;
+      right: 1rem;
+      z-index: 10000; /* Lebih tinggi dari SweetAlert (z-index: 1060) */
+      min-width: 300px;
+      max-width: 400px;
+      border-radius: 0.75rem;
+      padding: 1rem 1.25rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      transform: translateX(400px);
+      opacity: 0;
+      transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      pointer-events: none;
+      border-left: 4px solid;
     }
-    
-    .password-edit-modal {
-      z-index: 99998 !important;
+
+    .custom-toast.show {
+      transform: translateX(0);
+      opacity: 1;
+      pointer-events: all;
     }
-    
-    .swal2-container {
-      z-index: 99999 !important;
+
+    .custom-toast.hide {
+      transform: translateX(400px);
+      opacity: 0;
     }
-    
-    /* Pastikan backdrop modal tidak bisa diklik ketika SweetAlert aktif */
-    .swal2-shown .modal-lock .bg-black\/50 {
-      pointer-events: none !important;
+
+    .custom-toast.success {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      border-left-color: #34d399;
     }
-    /* Kustomisasi ukuran SweetAlert toast */
-/* ✅ PERBAIKAN FINAL: Atur Layout Internal Agar Teks Tidak Terpotong */
-.swal2-container {
-  z-index: 99999 !important;
-}
 
-.swal2-popup.swal2-toast {
-  /* --- 1. KUASAI TATA LETAK DENGAN FLEXBOX --- */
-  display: flex !important;
-  align-items: center !important; /* Ratakan tengah secara vertikal */
-  justify-content: flex-start !important; /* Mulai dari kiri */
+    .custom-toast.error {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: white;
+      border-left-color: #f87171;
+    }
 
-  /* --- 2. POSISI & UKURAN KONTAINER --- */
-  margin-right: 1rem !important; /* Jarak dari tepi layar */
-  box-sizing: border-box !important;
-  min-width: 280px !important;
-  max-width: 350px !important;
-  width: auto !important;
-  padding: 0.75rem 1rem !important;
-  font-size: 0.825rem !important;
-  border-radius: 0.5rem !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-}
+    .custom-toast.warning {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: white;
+      border-left-color: #fbbf24;
+    }
 
-/* --- 3. ATUR IKON AGAR TIDAK MENGGANGGU --- */
-.swal2-popup.swal2-toast .swal2-icon {
-  flex-shrink: 0 !important; /* PENTING: Cegah ikon mengecil/menghilang */
-  width: 1.75rem !important;
-  height: 1.75rem !important;
-  margin-right: 0.75rem !important; /* Jarak antara ikon dan teks */
-  margin-left: 0 !important;
-  margin-top: 0 !important;
-  margin-bottom: 0 !important;
-}
+    .custom-toast.info {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: white;
+      border-left-color: #60a5fa;
+    }
 
-/* --- 4. BERI RUANG UNTUK TEKS (SOLUSI UTAMA) --- */
-.swal2-popup.swal2-toast .swal2-title {
-  flex-grow: 1 !important; /* PENTING: Biarkan area teks memenuhi sisa ruang */
-  flex-shrink: 1 !important;
-  min-width: 0 !important; /* PENTING: Izinkan teks untuk dipotong dengan benar jika perlu */
+    .custom-toast-icon {
+      font-size: 1.25rem;
+      width: 24px;
+      text-align: center;
+      flex-shrink: 0;
+    }
 
-  /* --- 5. STILING TEKS --- */
-  font-size: 0.825rem !important;
-  font-weight: 500 !important;
-  margin: 0 !important;
-  line-height: 1.4 !important;
-  text-align: left !important; /* Pastikan teks rata kiri */
-}
+    .custom-toast-content {
+      flex: 1;
+      min-width: 0;
+    }
 
-/* --- 6. HANDLER JIKA TEKS PANJANG (TAMBAHAN) --- */
-.swal2-popup.swal2-toast .swal2-title {
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important; /* Tampilkan "..." jika teks terlalu panjang */
-}
+    .custom-toast-title {
+      font-weight: 600;
+      font-size: 0.875rem;
+      margin-bottom: 0.25rem;
+      line-height: 1.2;
+    }
 
-.swal2-popup.swal2-toast .swal2-html-container {
-  flex-grow: 1 !important;
-  flex-shrink: 1 !important;
-  min-width: 0 !important;
-  font-size: 0.825rem !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  line-height: 1.4 !important;
-}
+    .custom-toast-message {
+      font-size: 0.8rem;
+      opacity: 0.9;
+      line-height: 1.3;
+      word-wrap: break-word;
+    }
 
-.swal2-popup.swal2-toast .swal2-timer-progress-bar {
-  height: 0.25rem !important;
-  margin: 0.5rem 0 0 0 !important;
-}
+    .custom-toast-close {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: white;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.2s ease;
+      font-size: 0.75rem;
+    }
+
+    .custom-toast-close:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: scale(1.1);
+    }
+
+    .custom-toast-progress {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.7);
+      border-radius: 0 0 0 0.75rem;
+      width: 100%;
+      transform-origin: left;
+      animation: progress linear;
+    }
+
+    @keyframes progress {
+      from { transform: scaleX(1); }
+      to { transform: scaleX(0); }
+    }
+
+    /* Responsive toast */
+    @media (max-width: 640px) {
+      .custom-toast {
+        top: 1rem;
+        right: 0.5rem;
+        left: 0.5rem;
+        min-width: auto;
+        max-width: none;
+        transform: translateY(-100px);
+      }
+      
+      .custom-toast.show {
+        transform: translateY(0);
+      }
+      
+      .custom-toast.hide {
+        transform: translateY(-100px);
+      }
+    }
+
+    /* Additional utility classes */
+    .line-clamp-1 {
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 1;
+    }
+
+    .line-clamp-2 {
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+
+    .line-clamp-3 {
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+    }
   </style>
 
   <script>
@@ -238,7 +312,151 @@ $profileImagePath = ($profileImage && is_file($profileOnDisk))
         });
       }
     });
+
+    // ===== CUSTOM TOAST SYSTEM =====
+    Alpine.store('toast', {
+      queue: [],
+      current: null,
+      isShowing: false,
+
+      // Main method to show toast
+      show(type, title, message = '', duration = 5000) {
+        const toast = { type, title, message, duration, id: Date.now() + Math.random() };
+        
+        this.queue.push(toast);
+        
+        if (!this.isShowing) {
+          this.processQueue();
+        }
+        
+        return toast.id;
+      },
+
+      // Process queue
+      processQueue() {
+        if (this.queue.length === 0 || this.isShowing) {
+          return;
+        }
+
+        this.isShowing = true;
+        this.current = this.queue.shift();
+
+        // Create toast element
+        this.createToastElement(this.current);
+
+        // Auto remove after duration
+        setTimeout(() => {
+          this.hide();
+        }, this.current.duration);
+      },
+
+      // Create toast DOM element
+      createToastElement(toast) {
+        // Remove existing toast
+        const existing = document.getElementById('custom-toast-container');
+        if (existing) existing.remove();
+
+        const toastEl = document.createElement('div');
+        toastEl.id = 'custom-toast-container';
+        toastEl.className = `custom-toast ${toast.type} show`;
+        toastEl.innerHTML = `
+          <div class="custom-toast-icon">
+            <i class="fas ${this.getIcon(toast.type)}"></i>
+          </div>
+          <div class="custom-toast-content">
+            <div class="custom-toast-title">${toast.title}</div>
+            ${toast.message ? `<div class="custom-toast-message">${toast.message}</div>` : ''}
+          </div>
+          <button class="custom-toast-close" onclick="Alpine.store('toast').hide()">
+            <i class="fas fa-times"></i>
+          </button>
+          <div class="custom-toast-progress" style="animation-duration: ${toast.duration}ms"></div>
+        `;
+
+        document.body.appendChild(toastEl);
+      },
+
+      // Hide current toast
+      hide() {
+        const toastEl = document.getElementById('custom-toast-container');
+        if (toastEl) {
+          toastEl.classList.remove('show');
+          toastEl.classList.add('hide');
+          
+          setTimeout(() => {
+            toastEl.remove();
+            this.isShowing = false;
+            this.current = null;
+            this.processQueue(); // Process next in queue
+          }, 400);
+        } else {
+          this.isShowing = false;
+          this.current = null;
+          this.processQueue();
+        }
+      },
+
+      // Helper methods
+      getIcon(type) {
+        const icons = {
+          success: 'fa-check-circle',
+          error: 'fa-exclamation-circle',
+          warning: 'fa-exclamation-triangle',
+          info: 'fa-info-circle'
+        };
+        return icons[type] || 'fa-info-circle';
+      },
+
+      // Convenience methods
+      success(title, message = '', duration = 5000) {
+        return this.show('success', title, message, duration);
+      },
+
+      error(title, message = '', duration = 5000) {
+        return this.show('error', title, message, duration);
+      },
+
+      warning(title, message = '', duration = 5000) {
+        return this.show('warning', title, message, duration);
+      },
+
+      info(title, message = '', duration = 5000) {
+        return this.show('info', title, message, duration);
+      },
+
+      // Clear all toasts
+      clear() {
+        this.queue = [];
+        this.hide();
+      }
+    });
   });
+
+  // Global toast function untuk digunakan di mana saja
+  function showToast(type, title, message = '', duration = 5000) {
+    const toastStore = Alpine.store('toast');
+    if (toastStore) {
+      return toastStore.show(type, title, message, duration);
+    }
+    return null;
+  }
+
+  // Convenience global functions
+  function toastSuccess(title, message = '', duration = 5000) {
+    return showToast('success', title, message, duration);
+  }
+
+  function toastError(title, message = '', duration = 5000) {
+    return showToast('error', title, message, duration);
+  }
+
+  function toastWarning(title, message = '', duration = 5000) {
+    return showToast('warning', title, message, duration);
+  }
+
+  function toastInfo(title, message = '', duration = 5000) {
+    return showToast('info', title, message, duration);
+  }
   </script>
 </head>
 

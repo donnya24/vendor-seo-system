@@ -3,6 +3,7 @@ namespace App\Controllers\Vendoruser;
 
 use App\Controllers\BaseController;
 use App\Models\VendorProfilesModel;
+use App\Models\ActivityLogsModel;
 
 class ActivityLogs extends BaseController
 {
@@ -46,7 +47,8 @@ class ActivityLogs extends BaseController
 
         // Log aktivitas view logs menggunakan helper
         log_activity_auto('view', 'Melihat riwayat aktivitas', [
-            'module' => 'vendor_activity_logs'
+            'module' => 'vendor_activity_logs',
+            'vendor_id' => $this->vendorId
         ]);
 
         // Konfigurasi pagination
@@ -55,20 +57,22 @@ class ActivityLogs extends BaseController
         $offset = ($currentPage - 1) * $perPage;
 
         // Query logs berdasarkan vendor_id
-        $logsModel = new \App\Models\ActivityLogsModel();
+        $logsModel = new ActivityLogsModel();
         
+        // Total logs untuk pagination
         $totalLogs = $logsModel->where('vendor_id', $this->vendorId)->countAllResults();
+        
+        // Ambil data dengan pagination
         $logs = $logsModel->where('vendor_id', $this->vendorId)
                          ->orderBy('created_at', 'DESC')
                          ->findAll($perPage, $offset);
 
-        // Process logs untuk display - HAPUS REFERENSI KE STATUS
+        // Process logs untuk display
         $processedLogs = [];
         foreach ($logs as $log) {
             $log['action_label'] = $this->getActionLabel($log['action']);
             $log['module_label'] = $this->getModuleLabel($log['module']);
             $log['badge_class'] = $this->getActionBadgeClass($log['action']);
-            // HAPUS BARIS INI: $log['status_badge'] = $this->getStatusBadgeClass($log['status']);
             $processedLogs[] = $log;
         }
 
