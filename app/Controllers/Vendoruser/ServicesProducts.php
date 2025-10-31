@@ -99,6 +99,7 @@ class ServicesProducts extends BaseController
 
         $list = (new VendorServicesProductsModel())
             ->where('vendor_id', $this->vendorId)
+            ->orderBy('created_at', 'ASC') // Data lama di atas, baru di bawah
             ->orderBy('service_name', 'ASC')
             ->orderBy('product_name', 'ASC')
             ->findAll();
@@ -145,7 +146,7 @@ class ServicesProducts extends BaseController
         $validation->setRules([
             'service_name' => 'required|min_length[3]|max_length[255]',
             'products.*.product_name' => 'required|min_length[2]|max_length[255]',
-            'products.*.price' => 'permit_empty|numeric|greater_than_equal_to[0]',
+            'products.*.price' => 'permit_empty|numeric|greater_than_equal_to[0]|max_length[20]', // Tambah max_length
         ], [
             'service_name' => [
                 'required' => 'Nama layanan wajib diisi.',
@@ -159,7 +160,8 @@ class ServicesProducts extends BaseController
             ],
             'products.*.price' => [
                 'numeric' => 'Harga harus berupa angka.',
-                'greater_than_equal_to' => 'Harga tidak boleh negatif.'
+                'greater_than_equal_to' => 'Harga tidak boleh negatif.',
+                'max_length' => 'Harga terlalu besar. Maksimal 20 digit.'
             ]
         ]);
 
@@ -188,6 +190,9 @@ class ServicesProducts extends BaseController
         $rowsToInsert = [];
         $validProducts = 0;
 
+        // Ambil timestamp yang sama untuk semua produk dalam layanan yang sama
+        $currentTimestamp = date('Y-m-d H:i:s');
+
         foreach ($products as $index => $p) {
             $productName = trim($p['product_name'] ?? '');
             if ($productName === '') {
@@ -211,17 +216,29 @@ class ServicesProducts extends BaseController
             // Bersihkan format harga - hapus semua karakter non-digit
             $price = preg_replace('/[^\d]/', '', $p['price'] ?? '0');
             
+            // Validasi harga tidak melebihi batas
+            if (strlen($price) > 20) {
+                $errorMsg = "Harga produk '{$productName}' terlalu besar. Maksimal 20 digit.";
+                if ($this->request->isAJAX()) {
+                    return $this->respondAjax('error', $errorMsg, 422);
+                }
+                return redirect()->back()->withInput()->with('error', $errorMsg);
+            }
+            
+            // Gunakan string untuk harga yang sangat besar, atau gunakan DECIMAL di database
+            $priceValue = $price === '' ? null : $price;
+            
             $rowsToInsert[] = [
                 'vendor_id'           => $this->vendorId,
                 'service_name'        => $svcName,
                 'service_description' => !empty($svcDesc) ? $svcDesc : null,
                 'product_name'        => $productName,
                 'product_description' => !empty(trim($p['product_description'] ?? '')) ? trim($p['product_description']) : null,
-                'price'               => (int)$price, // Pastikan tipe data integer
+                'price'               => $priceValue, // Simpan sebagai string atau ubah ke DECIMAL di database
                 'attachment'          => $attachmentName,
                 'attachment_url'      => !empty(trim($p['attachment_url'] ?? '')) ? trim($p['attachment_url']) : null,
-                'created_at'          => date('Y-m-d H:i:s'),
-                'updated_at'          => date('Y-m-d H:i:s'),
+                'created_at'          => $currentTimestamp, // Gunakan timestamp yang sama
+                'updated_at'          => $currentTimestamp,
             ];
             
             $validProducts++;
@@ -343,13 +360,15 @@ class ServicesProducts extends BaseController
 
         $products = $this->request->getPost('products') ?? [];
 
+        $currentTimestamp = date('Y-m-d H:i:s');
+
         if ($svcNameOrig !== '') {
             $m->where('vendor_id', $this->vendorId)
               ->where('service_name', $svcNameOrig)
               ->set([
                   'service_name'        => $svcName,
                   'service_description' => $svcDesc,
-                  'updated_at'          => date('Y-m-d H:i:s'),
+                  'updated_at'          => $currentTimestamp, // Update timestamp saat edit
               ])->update();
         }
 
@@ -402,9 +421,9 @@ class ServicesProducts extends BaseController
                     'service_description' => $svcDesc,
                     'product_name'        => $pname,
                     'product_description' => $pdesc,
-                    'price'               => ($price === '' ? null : (int)$price),
+                    'price'               => ($price === '' ? null : $price),
                     'attachment_url'      => $url !== '' ? $url : null,
-                    'updated_at'          => date('Y-m-d H:i:s'),
+                    'updated_at'          => $currentTimestamp, // Update timestamp
                 ];
                 if ($clearAttachment) {
                     $data['attachment'] = null;
@@ -424,11 +443,11 @@ class ServicesProducts extends BaseController
                     'service_description' => $svcDesc,
                     'product_name'        => $pname,
                     'product_description' => $pdesc,
-                    'price'               => ($price === '' ? null : (int)$price),
+                    'price'               => ($price === '' ? null : $price),
                     'attachment'          => $newAttachment ?: null,
                     'attachment_url'      => $url !== '' ? $url : null,
-                    'created_at'          => date('Y-m-d H:i:s'),
-                    'updated_at'          => date('Y-m-d H:i:s'),
+                    'created_at'          => $currentTimestamp, // Timestamp baru untuk produk baru
+                    'updated_at'          => $currentTimestamp,
                 ];
                 $m->insert($data);
             }

@@ -1,164 +1,141 @@
-<div class="min-h-[60vh] flex items-center justify-center p-4">
-  <div class="w-full max-w-2xl md:max-w-3xl">
-    <div class="relative">
+<div class="max-h-[65vh] overflow-y-auto p-1">
+  <form id="editForm" method="post" action="<?= route_to('sp_update_group') ?>" enctype="multipart/form-data" class="space-y-6">
+    <?= csrf_field() ?>
 
-      <!-- tombol tutup (jalan di popup & non-popup) -->
-      <button type="button"
-              onclick="(window.closeAreasPopup ? closeAreasPopup() : (window.closeModal ? closeModal() : history.back()))"
-              class="absolute top-2 right-2 inline-flex h-9 w-9 items-center justify-center rounded-full
-                     text-gray-500 hover:text-gray-800 hover:bg-gray-100 focus:outline-none"
-              aria-label="Tutup">
-        &times;
-      </button>
+    <!-- Nama & Deskripsi Layanan -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="space-y-2">
+        <label class="block text-sm font-medium text-gray-700">Nama Layanan <span class="text-red-500">*</span></label>
+        <input type="text" name="service_name" value="<?= esc($serviceName ?? '') ?>"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          placeholder="Masukkan nama layanan" required>
+      </div>
+      <div class="space-y-2">
+        <label class="block text-sm font-medium text-gray-700">Deskripsi Layanan</label>
+        <textarea name="service_description" rows="3"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          placeholder="Masukkan deskripsi layanan"><?= esc($serviceDescription ?? '') ?></textarea>
+      </div>
+    </div>
 
-      <!-- card form: lebih kecil & scroll di dalam -->
-      <div class="max-h-[70vh] overflow-y-auto p-4 border border-gray-200 rounded-xl bg-white shadow
-                  scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 scrollbar-thumb-rounded-full">
+    <input type="hidden" name="service_name_original" value="<?= esc($serviceName ?? '') ?>">
 
-        <form id="editForm" method="post" action="<?= route_to('sp_update_group') ?>" enctype="multipart/form-data" class="space-y-5">
-          <?= csrf_field() ?>
-
-          <!-- Nama & Deskripsi Layanan -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium mb-1 text-gray-700">Nama Layanan <span class="text-red-500">*</span></label>
-              <input type="text" name="service_name" value="<?= esc($serviceName ?? '') ?>"
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Masukkan nama layanan" required>
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1 text-gray-700">Deskripsi Layanan</label>
-              <textarea name="service_description" rows="2"
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Masukkan deskripsi layanan"><?= esc($serviceDescription ?? '') ?></textarea>
-            </div>
-          </div>
-
-          <input type="hidden" name="service_name_original" value="<?= esc($serviceName ?? '') ?>">
-
-          <!-- Produk -->
-          <div>
-            <div class="flex items-center justify-between mb-3">
-              <h3 class="font-semibold text-gray-800 text-sm md:text-base">Produk di Layanan ini</h3>
-              <button type="button" id="addProductBtn"
-                class="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs md:text-sm hover:bg-blue-700 transition-colors">
-                + Tambah Produk
-              </button>
-            </div>
-
-            <div id="productsWrapper" class="space-y-4">
-              <!-- Produk yang sudah ada -->
-              <?php $i = 0; foreach ($products as $row): ?>
-                <?php
-                  $pid   = $row['id'] ?? '';
-                  $pname = $row['product_name'] ?? '';
-                  $pdesc = $row['product_description'] ?? '';
-                  $price = number_format((float)$row['price'], 0, ',', '.');
-                  $att   = $row['attachment'] ?? '';
-                  $aurl  = $row['attachment_url'] ?? '';
-                ?>
-                <div class="product-row border border-gray-200 rounded-lg p-4 bg-gray-50" id="product-row-<?= $i ?>">
-                  <div class="flex items-start justify-between mb-3">
-                    <div class="font-medium text-sm text-gray-700">Produk <?= $i + 1 ?></div>
-                    <button type="button" onclick="deleteProduct(<?= $i ?>, <?= $pid ?>)" class="text-red-600 hover:text-red-800 text-xs transition-colors"
-                      data-existing-id="<?= esc($pid) ?>">Hapus produk</button>
-                  </div>
-
-                  <input type="hidden" name="products[<?= $i ?>][id]" value="<?= esc($pid) ?>" id="product-id-<?= $i ?>">
-                  <input type="hidden" name="products[<?= $i ?>][delete_flag]" value="0" id="delete-flag-<?= $i ?>">
-                  <input type="hidden" name="products[<?= $i ?>][remove_attachment]" value="0" id="remove-attachment-<?= $i ?>">
-
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label class="block text-sm font-medium mb-1 text-gray-700">Nama Produk <span class="text-red-500">*</span></label>
-                      <input type="text" name="products[<?= $i ?>][product_name]" value="<?= esc($pname) ?>"
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 product-name-input"
-                        placeholder="Nama produk" required>
-                    </div>
-                    <div>
-                      <label class="block text-sm font-medium mb-1 text-gray-700">Harga (Rp) <span class="text-red-500">*</span></label>
-                      <input type="text" name="products[<?= $i ?>][price]" value="<?= esc($price) ?>"
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 product-price-input price-input"
-                        placeholder="0" required>
-                    </div>
-                    <div class="md:col-span-2">
-                      <label class="block text-sm font-medium mb-1 text-gray-700">Deskripsi Produk</label>
-                      <textarea name="products[<?= $i ?>][product_description]" rows="2"
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Deskripsi produk"><?= esc($pdesc) ?></textarea>
-                    </div>
-
-                    <div class="md:col-span-2">
-                      <?php if (!empty($att)): ?>
-                        <div class="current-attachment mb-3" id="current-attachment-<?= $i ?>">
-                          <label class="block text-sm font-medium mb-1 text-gray-700">Lampiran Saat Ini</label>
-                          <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-white text-sm">
-                            <a href="<?= base_url('uploads/vendor_products/'.$att) ?>" target="_blank"
-                              class="text-blue-600 hover:underline truncate">Lihat Lampiran</a>
-                            <button type="button" onclick="removeAttachment(<?= $i ?>)" class="text-red-600 text-xs hover:underline">
-                              Hapus lampiran
-                            </button>
-                          </div>
-                        </div>
-                      <?php endif; ?>
-
-                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-                        <div>
-                          <label class="block text-sm font-medium mb-1 text-gray-700">
-                            <?= !empty($att) ? 'Ganti Lampiran' : 'Unggah Lampiran' ?>
-                          </label>
-                          <input type="file" name="products[<?= $i ?>][attachment]"
-                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                            accept=".pdf,.jpg,.jpeg,.png">
-                          <p class="text-xs text-gray-500 mt-1">PDF/JPG/PNG maks 2MB</p>
-                        </div>
-                        <div>
-                          <label class="block text-sm font-medium mb-1 text-gray-700">atau URL Lampiran</label>
-                          <input type="url" name="products[<?= $i ?>][attachment_url]" value="<?= esc($aurl) ?>"
-                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="https://contoh.com/file.pdf">
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              <?php $i++; endforeach; ?>
-
-              <!-- Container untuk produk baru -->
-              <div id="newProductsContainer"></div>
-            </div>
-          </div>
-
-          <!-- Tombol Aksi (sticky) -->
-          <div class="flex justify-end gap-3 pt-4 border-t sticky bottom-0 bg-white">
-            <button type="button"
-              onclick="(window.closeAreasPopup ? closeAreasPopup() : (window.closeModal ? closeModal() : history.back()))"
-              class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300 transition-colors">
-              Batal
-            </button>
-            <button type="submit" id="submitButton"
-              class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors">
-              Update Semua
-            </button>
-          </div>
-        </form>
+    <!-- Produk -->
+    <div>
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-semibold text-gray-800 text-sm md:text-base">Produk di Layanan ini</h3>
+        <button type="button" id="addProductBtn"
+          class="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs md:text-sm hover:bg-blue-700 transition-colors">
+          + Tambah Produk
+        </button>
       </div>
 
+      <div id="productsWrapper" class="space-y-4">
+        <!-- Produk yang sudah ada -->
+        <?php $i = 0; foreach ($products as $row): ?>
+          <?php
+            $pid   = $row['id'] ?? '';
+            $pname = $row['product_name'] ?? '';
+            $pdesc = $row['product_description'] ?? '';
+            $price = isset($row['price']) ? number_format((float)$row['price'], 0, ',', '.') : '';
+            $att   = $row['attachment'] ?? '';
+            $aurl  = $row['attachment_url'] ?? '';
+          ?>
+          <div class="product-row border border-gray-200 rounded-lg p-5 bg-gray-50" id="product-row-<?= $i ?>">
+            <div class="flex items-start justify-between mb-4">
+              <div class="font-medium text-sm text-gray-700">Produk <?= $i + 1 ?></div>
+              <button type="button" onclick="deleteProduct(<?= $i ?>, <?= $pid ?>)" class="text-red-600 hover:text-red-800 text-xs transition-colors"
+                data-existing-id="<?= esc($pid) ?>">Hapus produk</button>
+            </div>
+
+            <input type="hidden" name="products[<?= $i ?>][id]" value="<?= esc($pid) ?>" id="product-id-<?= $i ?>">
+            <input type="hidden" name="products[<?= $i ?>][delete_flag]" value="0" id="delete-flag-<?= $i ?>">
+            <input type="hidden" name="products[<?= $i ?>][remove_attachment]" value="0" id="remove-attachment-<?= $i ?>">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700">Nama Produk <span class="text-red-500">*</span></label>
+                <input type="text" name="products[<?= $i ?>][product_name]" value="<?= esc($pname) ?>"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 product-name-input"
+                  placeholder="Nama produk" required>
+              </div>
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700">Harga (Rp) <span class="text-red-500">*</span></label>
+                <input type="text" name="products[<?= $i ?>][price]" value="<?= esc($price) ?>"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 product-price-input price-input"
+                  placeholder="0" required>
+              </div>
+              <div class="md:col-span-2 space-y-2">
+                <label class="block text-sm font-medium text-gray-700">Deskripsi Produk</label>
+                <textarea name="products[<?= $i ?>][product_description]" rows="3"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Deskripsi produk"><?= esc($pdesc) ?></textarea>
+              </div>
+
+              <div class="md:col-span-2">
+                <?php if (!empty($att)): ?>
+                  <div class="current-attachment mb-4" id="current-attachment-<?= $i ?>">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Lampiran Saat Ini</label>
+                    <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-white text-sm">
+                      <a href="<?= base_url('uploads/vendor_products/'.$att) ?>" target="_blank"
+                        class="text-blue-600 hover:underline truncate">Lihat Lampiran</a>
+                      <button type="button" onclick="removeAttachment(<?= $i ?>)" class="text-red-600 text-xs hover:underline">
+                        Hapus lampiran
+                      </button>
+                    </div>
+                  </div>
+                <?php endif; ?>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                  <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700">
+                      <?= !empty($att) ? 'Ganti Lampiran' : 'Unggah Lampiran' ?>
+                    </label>
+                    <input type="file" name="products[<?= $i ?>][attachment]"
+                      class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      accept=".pdf,.jpg,.jpeg,.png">
+                    <p class="text-xs text-gray-500 mt-1">PDF/JPG/PNG maks 2MB</p>
+                  </div>
+                  <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700">atau URL Lampiran</label>
+                    <input type="url" name="products[<?= $i ?>][attachment_url]" value="<?= esc($aurl) ?>"
+                      class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="https://contoh.com/file.pdf">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        <?php $i++; endforeach; ?>
+
+        <!-- Container untuk produk baru -->
+        <div id="newProductsContainer"></div>
+      </div>
     </div>
-  </div>
+
+    <!-- Tombol Aksi - Layout diperbaiki -->
+    <div class="flex justify-end gap-3 pt-6 border-t mt-6">
+      <button type="button" onclick="closeModal()"
+        class="px-5 py-2.5 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300 transition-colors">
+        Batal
+      </button>
+      <button type="submit" id="submitButton"
+        class="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors">
+        Update Semua
+      </button>
+    </div>
+  </form>
 </div>
 
 <!-- SweetAlert2 -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
-// Konfigurasi SweetAlert
+// KONFIGURASI SWEETALERT YANG SAMA PERSIS DENGAN ADMIN
 const swalMini = {
-  popup: 'rounded-md p-4',
-  title: 'text-lg font-semibold',
-  htmlContainer: 'text-sm',
-  confirmButton: 'px-4 py-2 rounded-lg text-sm',
-  cancelButton: 'px-4 py-2 rounded-lg text-sm'
+  popup: 'rounded-md text-sm p-3 shadow',
+  title: 'text-sm font-semibold',
+  htmlContainer: 'text-sm'
 };
 
 // Format mata uang dengan titik
@@ -182,24 +159,40 @@ function unformatCurrency(formattedValue) {
 let newProductCount = 0;
 let totalProducts = <?= count($products) ?>;
 
-// Notifikasi
+// NOTIFIKASI TOAST YANG SAMA DENGAN ADMIN
 function showNotification(icon, title, text) {
   Swal.fire({
-    icon, title, text, toast: true, position: 'top-end',
-    showConfirmButton: false, timer: 3000, timerProgressBar: true,
+    icon: icon,
+    title: title,
+    text: text,
+    toast: true,
+    position: 'top-end',
+    timer: 3000,
+    timerProgressBar: true,
+    showConfirmButton: false,
     customClass: swalMini
   });
 }
 
-// Hapus produk lama
+// Hapus produk lama - DENGAN SWEETALERT YANG LEBIH BESAR
 function deleteProduct(index, productId) {
   Swal.fire({
     title: 'Apakah Anda yakin?',
     text: 'Produk ini akan dihapus dari layanan',
-    icon: 'warning', showCancelButton: true,
-    confirmButtonColor: '#3085d6', cancelButtonColor: '#d33',
-    confirmButtonText: 'Ya, hapus!', cancelButtonText: 'Batal',
-    customClass: swalMini
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#3085d6',
+    cancelButtonColor: '#d33',
+    confirmButtonText: 'Ya, Hapus',
+    cancelButtonText: 'Batal',
+    width: 400,
+    customClass: {
+      popup: 'rounded-md p-4',
+      title: 'text-lg font-semibold mb-2',
+      htmlContainer: 'text-sm mb-3',
+      confirmButton: 'px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 mr-2',
+      cancelButton: 'px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300'
+    }
   }).then((r) => {
     if (!r.isConfirmed) return;
     document.getElementById('delete-flag-' + index).value = '1';
@@ -214,15 +207,25 @@ function deleteProduct(index, productId) {
   });
 }
 
-// Hapus lampiran
+// Hapus lampiran - DENGAN SWEETALERT YANG LEBIH BESAR
 function removeAttachment(index) {
   Swal.fire({
     title: 'Apakah Anda yakin?',
     text: 'Lampiran ini akan dihapus',
-    icon: 'warning', showCancelButton: true,
-    confirmButtonColor: '#3085d6', cancelButtonColor: '#d33',
-    confirmButtonText: 'Ya, hapus!', cancelButtonText: 'Batal',
-    customClass: swalMini
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#3085d6',
+    cancelButtonColor: '#d33',
+    confirmButtonText: 'Ya, Hapus',
+    cancelButtonText: 'Batal',
+    width: 400,
+    customClass: {
+      popup: 'rounded-md p-4',
+      title: 'text-lg font-semibold mb-2',
+      htmlContainer: 'text-sm mb-3',
+      confirmButton: 'px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 mr-2',
+      cancelButton: 'px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300'
+    }
   }).then((r) => {
     if (!r.isConfirmed) return;
     document.getElementById('remove-attachment-' + index).value = '1';
@@ -232,15 +235,25 @@ function removeAttachment(index) {
   });
 }
 
-// Hapus produk baru
+// Hapus produk baru - DENGAN SWEETALERT YANG LEBIH BESAR
 function removeNewProduct(i) {
   Swal.fire({
     title: 'Apakah Anda yakin?',
     text: 'Produk baru ini akan dihapus',
-    icon: 'warning', showCancelButton: true,
-    confirmButtonColor: '#3085d6', cancelButtonColor: '#d33',
-    confirmButtonText: 'Ya, hapus!', cancelButtonText: 'Batal',
-    customClass: swalMini
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#3085d6',
+    cancelButtonColor: '#d33',
+    confirmButtonText: 'Ya, Hapus',
+    cancelButtonText: 'Batal',
+    width: 400,
+    customClass: {
+      popup: 'rounded-md p-4',
+      title: 'text-lg font-semibold mb-2',
+      htmlContainer: 'text-sm mb-3',
+      confirmButton: 'px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 mr-2',
+      cancelButton: 'px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300'
+    }
   }).then((r) => {
     if (!r.isConfirmed) return;
     const row = document.getElementById('new-product-row-' + i);
@@ -254,8 +267,8 @@ function addNewProduct() {
   const index = totalProducts + newProductCount;
   const i = newProductCount;
   const html = `
-    <div class="product-row border border-gray-200 rounded-lg p-4 bg-gray-50" id="new-product-row-${i}">
-      <div class="flex items-start justify-between mb-3">
+    <div class="product-row border border-gray-200 rounded-lg p-5 bg-gray-50 mb-4" id="new-product-row-${i}">
+      <div class="flex items-start justify-between mb-4">
         <div class="font-medium text-sm text-gray-700">Produk Baru</div>
         <button type="button" onclick="removeNewProduct(${i})" class="text-red-600 hover:text-red-800 text-xs transition-colors">
           Hapus produk
@@ -265,39 +278,39 @@ function addNewProduct() {
       <input type="hidden" name="products[${index}][delete_flag]" value="0">
       <input type="hidden" name="products[${index}][remove_attachment]" value="0">
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-medium mb-1 text-gray-700">Nama Produk <span class="text-red-500">*</span></label>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-gray-700">Nama Produk <span class="text-red-500">*</span></label>
           <input type="text" name="products[${index}][product_name]"
-            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 product-name-input"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 product-name-input"
             placeholder="Nama produk" required>
         </div>
-        <div>
-          <label class="block text-sm font-medium mb-1 text-gray-700">Harga (Rp) <span class="text-red-500">*</span></label>
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-gray-700">Harga (Rp) <span class="text-red-500">*</span></label>
           <input type="text" name="products[${index}][price]"
-            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 product-price-input price-input"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 product-price-input price-input"
             placeholder="0" required>
         </div>
-        <div class="md:col-span-2">
-          <label class="block text-sm font-medium mb-1 text-gray-700">Deskripsi Produk</label>
-          <textarea name="products[${index}][product_description]" rows="2"
-            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        <div class="md:col-span-2 space-y-2">
+          <label class="block text-sm font-medium text-gray-700">Deskripsi Produk</label>
+          <textarea name="products[${index}][product_description]" rows="3"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             placeholder="Deskripsi produk"></textarea>
         </div>
 
         <div class="md:col-span-2">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium mb-1 text-gray-700">Unggah Lampiran</label>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">Unggah Lampiran</label>
               <input type="file" name="products[${index}][attachment]"
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                 accept=".pdf,.jpg,.jpeg,.png">
               <p class="text-xs text-gray-500 mt-1">PDF/JPG/PNG maks 2MB</p>
             </div>
-            <div>
-              <label class="block text-sm font-medium mb-1 text-gray-700">atau URL Lampiran</label>
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">atau URL Lampiran</label>
               <input type="url" name="products[${index}][attachment_url]"
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="https://contoh.com/file.pdf">
             </div>
           </div>
@@ -313,12 +326,6 @@ function addNewProduct() {
     const firstInput = newRow.querySelector('input');
     if (firstInput) firstInput.focus();
   }
-}
-
-// Tutup modal (fallback non-popup)
-function closeModal() {
-  const modal = document.querySelector('.modal');
-  if (modal) modal.style.display = 'none';
 }
 
 // Validasi form
@@ -470,13 +477,36 @@ function handleFormSubmit(form){
     .then(data => {
       if (data.csrfHash) document.querySelector('meta[name="csrf-token"]')?.setAttribute('content', data.csrfHash);
       if (data.status === 'success') {
-        Swal.fire({ icon:'success', title:'Berhasil', text:data.message, timer:1500, showConfirmButton:false, width:300, customClass:swalMini })
-          .then(() => { closeModal(); window.location.reload(); });
+        Swal.fire({ 
+          icon:'success', 
+          title:'Berhasil', 
+          text:data.message, 
+          timer:1500, 
+          showConfirmButton:false, 
+          width:300, 
+          customClass:swalMini 
+        })
+        .then(() => { 
+          closeModal(); 
+          window.location.reload(); 
+        });
       } else {
-        Swal.fire({ icon:'error', title:'Gagal', text:data.message||'Terjadi kesalahan', width:300, customClass:swalMini });
+        Swal.fire({ 
+          icon:'error', 
+          title:'Gagal', 
+          text:data.message||'Terjadi kesalahan', 
+          width:300, 
+          customClass:swalMini 
+        });
       }
     })
-    .catch(() => Swal.fire({ icon:'error', title:'Error', text:'Koneksi gagal', width:300, customClass:swalMini }));
+    .catch(() => Swal.fire({ 
+      icon:'error', 
+      title:'Error', 
+      text:'Koneksi gagal', 
+      width:300, 
+      customClass:swalMini 
+    }));
 }
 
 function getCsrfHeaders(){

@@ -98,11 +98,11 @@
             <thead class="sticky top-0 z-10 bg-blue-600 text-white">
               <tr class="uppercase tracking-wide">
                 <th class="px-3.5 py-2.5 sm:px-4 sm:py-3 text-center font-semibold w-12">No</th>
-                <th class="px-3.5 py-2.5 sm:px-4 sm:py-3 text-left font-semibold">Vendor</th>
-                <th class="px-3.5 py-2.5 sm:px-4 sm:py-3 text-left font-semibold">Layanan</th>
-                <th class="px-3.5 py-2.5 sm:px-4 sm:py-3 text-left font-semibold">Deskripsi Layanan</th>
-                <th class="px-3.5 py-2.5 sm:px-4 sm:py-3 text-left font-semibold">Produk & Harga</th>
-                <th class="px-3.5 py-2.5 sm:px-4 sm:py-3 text-left font-semibold">Deskripsi Produk</th>
+                <th class="px-3.5 py-2.5 sm:px-4 sm:py-3 text-justify font-semibold">Vendor</th>
+                <th class="px-3.5 py-2.5 sm:px-4 sm:py-3 text-justify font-semibold">Layanan</th>
+                <th class="px-3.5 py-2.5 sm:px-4 sm:py-3 text-justify font-semibold">Deskripsi Layanan</th>
+                <th class="px-3.5 py-2.5 sm:px-4 sm:py-3 text-justify font-semibold">Produk & Harga</th>
+                <th class="px-3.5 py-2.5 sm:px-4 sm:py-3 text-justify font-semibold">Deskripsi Produk</th>
                 <th class="px-3.5 py-2.5 sm:px-4 sm:py-3 text-center font-semibold">Lampiran</th>
                 <th class="px-3.5 py-2.5 sm:px-4 sm:py-3 text-center font-semibold">URL Lampiran</th>
                 <th class="px-3.5 py-2.5 sm:px-4 sm:py-3 text-center font-semibold">Aksi</th>
@@ -212,12 +212,16 @@
 
                       <!-- Produk & Harga -->
                       <td class="px-4 py-3 align-top">
-                        <span class="inline-block max-w-[240px] truncate font-medium text-gray-900" title="<?= esc($product['product_name']); ?>">
-                          <?= esc($product['product_name']); ?>
-                        </span>
-                        <span class="ml-1 inline-block rounded-full border border-gray-300 bg-gray-100 px-2.5 py-0.5 text-[11px] text-gray-700 align-middle">
-                        Rp <?= number_format($product['price'], 0, ',', '.'); ?>
-                        </span>
+                        <div class="mb-1">
+                          <span class="inline-block max-w-[240px] truncate font-medium text-gray-900" title="<?= esc($product['product_name']); ?>">
+                            <?= esc($product['product_name']); ?>
+                          </span>
+                        </div>
+                        <div>
+                          <span class="inline-block rounded-full border border-gray-300 bg-gray-100 px-2.5 py-0.5 text-[11px] text-gray-700">
+                            Rp <?= number_format($product['price'], 0, ',', '.'); ?>
+                          </span>
+                        </div>
                       </td>
 
                       <!-- Deskripsi Produk -->
@@ -310,7 +314,11 @@
 
 <!-- MODAL: wrapper tetap, tampilan diperhalus -->
 <div id="spModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
-  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-auto ring-1 ring-gray-200">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-auto ring-1 ring-gray-200 overflow-hidden">
+    <!-- Header Modal -->
+    <div class="bg-blue-600 text-white px-6 py-4 rounded-t-xl">
+      <h3 id="modalTitle" class="text-lg font-semibold">Loading...</h3>
+    </div>
     <div id="modalContent">
       <div class="flex justify-center items-center h-40">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -390,13 +398,27 @@ function closeDescriptionModal(){
 function openModal(url){
   const modal = document.getElementById('spModal');
   const content = document.getElementById('modalContent');
-  if(!modal || !content) return;
+  const modalTitle = document.getElementById('modalTitle');
+  if(!modal || !content || !modalTitle) return;
 
-  modal.classList.remove('hidden'); modal.classList.add('flex');
+  // Set judul berdasarkan URL
+  if (url.includes('create')) {
+    modalTitle.textContent = 'Tambah Layanan & Produk';
+  } else if (url.includes('edit')) {
+    modalTitle.textContent = 'Edit Layanan & Produk';
+  } else {
+    modalTitle.textContent = 'Form';
+  }
+
+  modal.classList.remove('hidden'); 
+  modal.classList.add('flex');
   content.innerHTML = '<div class="flex justify-center items-center h-40"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>';
 
   fetch(url, { headers: getCsrfHeaders() })
-    .then(r => { if(!r.ok) throw new Error(`HTTP ${r.status} ${r.statusText}`); return r.text(); })
+    .then(r => { 
+      if(!r.ok) throw new Error(`HTTP ${r.status} ${r.statusText}`); 
+      return r.text(); 
+    })
     .then(html => {
       content.innerHTML = html;
       initFormScripts();          // penting: aktifkan handler setelah inject HTML

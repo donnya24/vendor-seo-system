@@ -1,4 +1,4 @@
-<div class="max-h-[75vh] overflow-y-auto p-4 border border-gray-200 rounded-lg bg-white shadow">
+<div class="max-h-[65vh] overflow-y-auto p-1">
   <style>[x-cloak]{display:none}</style>
 
   <form id="createForm" method="post" action="<?= route_to('sp_store') ?>" enctype="multipart/form-data"
@@ -9,16 +9,16 @@
 
     <!-- Info Layanan -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div class="space-y-1">
-        <label class="block text-sm font-medium text-gray-700">Nama Layanan</label>
+      <div class="space-y-2">
+        <label class="block text-sm font-medium text-gray-700">Nama Layanan <span class="text-red-500">*</span></label>
         <input type="text" name="service_name"
-          class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           placeholder="Masukkan nama layanan" required>
       </div>
-      <div class="space-y-1">
+      <div class="space-y-2">
         <label class="block text-sm font-medium text-gray-700">Deskripsi Layanan</label>
-        <textarea name="service_description" rows="2"
-          class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        <textarea name="service_description" rows="3"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           placeholder="Masukkan deskripsi layanan"></textarea>
       </div>
     </div>
@@ -28,61 +28,61 @@
       <div class="flex items-center justify-between">
         <h3 class="font-semibold text-gray-800 text-sm md:text-base">Produk di Layanan ini</h3>
         <button type="button" @click="productCount++"
-          class="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs md:text-sm hover:bg-blue-700">
+          class="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs md:text-sm hover:bg-blue-700 transition-colors">
           + Tambah Produk
         </button>
       </div>
 
       <div class="space-y-5" x-show="productCount > 0" x-cloak>
         <template x-for="(_, index) in Array.from({ length: productCount })" :key="index">
-          <div class="product-row border rounded-lg p-5 bg-gray-50">
+          <div class="product-row border border-gray-200 rounded-lg p-5 bg-gray-50">
             <div class="flex items-start justify-between mb-4">
               <span class="font-medium text-sm">Produk <span x-text="index + 1"></span></span>
               <button type="button"
                 @click="if(productCount>1){productCount--} else {productCount=0}"
-                class="text-red-600 hover:text-red-800 text-xs">
+                class="text-red-600 hover:text-red-800 text-xs transition-colors">
                 Hapus produk
               </button>
             </div>
 
             <input type="hidden" :name="'products['+index+'][id]'" value="">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="space-y-1">
-                <label class="text-sm">Nama Produk</label>
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700">Nama Produk <span class="text-red-500">*</span></label>
                 <input type="text" :name="'products['+index+'][product_name]'"
-                  class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
-                  placeholder="Nama produk">
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Nama produk" required>
               </div>
 
-              <div class="space-y-1">
-                <label class="text-sm">Harga (Rp)</label>
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700">Harga (Rp) <span class="text-red-500">*</span></label>
                 <input type="text" :name="'products['+index+'][price]'"
-                  class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 price-input"
-                  placeholder="0">
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 price-input"
+                  placeholder="0" required>
               </div>
 
-              <div class="md:col-span-2 space-y-1">
-                <label class="text-sm">Deskripsi Produk</label>
-                <textarea :name="'products['+index+'][product_description]'" rows="2"
-                  class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+              <div class="md:col-span-2 space-y-2">
+                <label class="block text-sm font-medium text-gray-700">Deskripsi Produk</label>
+                <textarea :name="'products['+index+'][product_description]'" rows="3"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Deskripsi produk"></textarea>
               </div>
               
               <!-- Bagian yang ditambahkan: Upload File dan URL Lampiran -->
               <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="space-y-1">
+                <div class="space-y-2">
                   <label class="block text-sm font-medium text-gray-700">Unggah Lampiran</label>
                   <input type="file" :name="'products[' + index + '][attachment]'"
-                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm
                            file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0
                            file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700
                            hover:file:bg-blue-100">
-                  <p class="text-xs text-gray-500">PDF/JPG/PNG maks 2MB</p>
+                  <p class="text-xs text-gray-500 mt-1">PDF/JPG/PNG maks 2MB</p>
                 </div>
-                <div class="space-y-1">
+                <div class="space-y-2">
                   <label class="block text-sm font-medium text-gray-700">atau URL Lampiran</label>
                   <input type="url" :name="'products[' + index + '][attachment_url]'"
-                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="https://contoh.com/file.pdf">
                 </div>
               </div>
@@ -93,13 +93,13 @@
     </div>
 
     <!-- Actions -->
-    <div class="flex justify-end gap-3 pt-5 border-t">
+    <div class="flex justify-end gap-3 pt-6 border-t mt-6">
       <button type="button" onclick="closeModal()"
-        class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300">
+        class="px-5 py-2.5 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300 transition-colors">
         Batal
       </button>
       <button type="submit"
-        class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+        class="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors">
         Simpan
       </button>
     </div>
@@ -109,9 +109,11 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 const swalMini = {
-  popup: 'rounded-md text-sm p-3 shadow',
-  title: 'text-sm font-semibold',
-  htmlContainer: 'text-sm'
+  popup: 'rounded-md text-sm p-4',
+  title: 'text-sm font-semibold mb-2',
+  htmlContainer: 'text-sm mb-3',
+  confirmButton: 'px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 mr-2',
+  cancelButton: 'px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300'
 };
 
 // Format mata uang dengan titik

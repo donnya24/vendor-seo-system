@@ -27,7 +27,7 @@
       </div>
     </div>
 
-        <!-- Filter Bar - Alternatif lebih compact -->
+    <!-- Filter Bar - Alternatif lebih compact -->
     <div class="bg-white ring-1 ring-gray-200 rounded-xl shadow-sm px-5 py-4 sm:px-6 sm:py-5">
       <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
         <!-- Filter Layanan -->
@@ -82,10 +82,10 @@
             <thead class="sticky top-0 z-10 bg-blue-600 text-white">
               <tr class="uppercase tracking-wide">
                 <th class="px-3.5 py-2.5 sm:px-4 sm:py-3 text-center font-semibold w-12">No</th>
-                <th class="px-3.5 py-2.5 sm:px-4 sm:py-3 text-left font-semibold">Layanan</th>
-                <th class="px-3.5 py-2.5 sm:px-4 sm:py-3 text-left font-semibold">Deskripsi Layanan</th>
-                <th class="px-3.5 py-2.5 sm:px-4 sm:py-3 text-left font-semibold">Produk & Harga</th>
-                <th class="px-3.5 py-2.5 sm:px-4 sm:py-3 text-left font-semibold">Deskripsi Produk</th>
+                <th class="px-3.5 py-2.5 sm:px-4 sm:py-3 text-justify font-semibold">Layanan</th>
+                <th class="px-3.5 py-2.5 sm:px-4 sm:py-3 text-justify font-semibold">Deskripsi Layanan</th>
+                <th class="px-3.5 py-2.5 sm:px-4 sm:py-3 text-justify font-semibold">Produk & Harga</th>
+                <th class="px-3.5 py-2.5 sm:px-4 sm:py-3 text-justify font-semibold">Deskripsi Produk</th>
                 <th class="px-3.5 py-2.5 sm:px-4 sm:py-3 text-center font-semibold">Lampiran</th>
                 <th class="px-3.5 py-2.5 sm:px-4 sm:py-3 text-center font-semibold">URL Lampiran</th>
                 <th class="px-3.5 py-2.5 sm:px-4 sm:py-3 text-center font-semibold">Aksi</th>
@@ -164,12 +164,16 @@
 
                       <!-- Produk & Harga -->
                       <td class="px-4 py-3 align-top">
-                        <span class="inline-block max-w-[240px] truncate font-medium text-gray-900" title="<?= esc($product['product_name']); ?>">
-                          <?= esc($product['product_name']); ?>
-                        </span>
-                        <span class="ml-1 inline-block rounded-full border border-gray-300 bg-gray-100 px-2.5 py-0.5 text-[11px] text-gray-700 align-middle">
-                          Rp <?= number_format((int)$product['price'], 0, ',', '.'); ?>
-                        </span>
+                        <div class="mb-1">
+                          <span class="inline-block max-w-[240px] truncate font-medium text-gray-900" title="<?= esc($product['product_name']); ?>">
+                            <?= esc($product['product_name']); ?>
+                          </span>
+                        </div>
+                        <div>
+                          <span class="inline-block rounded-full border border-gray-300 bg-gray-100 px-2.5 py-0.5 text-[11px] text-gray-700">
+                            Rp <?= number_format((int)$product['price'], 0, ',', '.'); ?>
+                          </span>
+                        </div>
                       </td>
 
                       <!-- Deskripsi Produk -->
@@ -262,8 +266,12 @@
 
 <!-- MODAL: wrapper tetap, tampilan diperhalus -->
 <div id="spModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
-  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-auto ring-1 ring-gray-200">
-    <div id="modalContent">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-auto ring-1 ring-gray-200 overflow-hidden">
+    <!-- Header Modal akan diisi secara dinamis -->
+    <div id="modalHeader" class="bg-blue-600 text-white px-6 py-4 rounded-t-xl">
+      <h3 id="modalTitle" class="text-lg font-semibold">Loading...</h3>
+    </div>
+    <div id="modalContent" class="p-6">
       <div class="flex justify-center items-center h-40">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
@@ -306,9 +314,11 @@
 <script>
 /* ---------- SweetAlert mini style ---------- */
 const swalMini = {
-  popup: 'rounded-md text-sm p-3 shadow',
-  title: 'text-sm font-semibold',
-  htmlContainer: 'text-sm'
+  popup: 'rounded-md text-sm p-4',
+  title: 'text-sm font-semibold mb-2',
+  htmlContainer: 'text-sm mb-3',
+  confirmButton: 'px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 mr-2',
+  cancelButton: 'px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300'
 };
 
 /* ---------- Format mata uang ---------- */
@@ -391,13 +401,27 @@ function closeDescriptionModal(){
 function openModal(url){
   const modal = document.getElementById('spModal');
   const content = document.getElementById('modalContent');
-  if(!modal || !content) return;
+  const modalTitle = document.getElementById('modalTitle');
+  if(!modal || !content || !modalTitle) return;
 
-  modal.classList.remove('hidden'); modal.classList.add('flex');
+  // Set judul default berdasarkan URL
+  if (url.includes('create')) {
+    modalTitle.textContent = 'Tambah Layanan & Produk';
+  } else if (url.includes('edit')) {
+    modalTitle.textContent = 'Edit Layanan & Produk';
+  } else {
+    modalTitle.textContent = 'Form';
+  }
+
+  modal.classList.remove('hidden'); 
+  modal.classList.add('flex');
   content.innerHTML = '<div class="flex justify-center items-center h-40"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>';
 
   fetch(url, { headers: getCsrfHeaders() })
-    .then(r => { if(!r.ok) throw new Error(`HTTP ${r.status} ${r.statusText}`); return r.text(); })
+    .then(r => { 
+      if(!r.ok) throw new Error(`HTTP ${r.status} ${r.statusText}`); 
+      return r.text(); 
+    })
     .then(html => {
       content.innerHTML = html;
       initFormScripts();          // penting: aktifkan handler setelah inject HTML
@@ -449,7 +473,7 @@ window.addNewProduct = function(){
   if(!wrap) return;
 
   const html = `
-    <div class="product-row border border-gray-200 rounded-lg p-4 bg-gray-50" id="new-product-row-${localId}">
+    <div class="product-row border border-gray-200 rounded-lg p-4 bg-gray-50 mb-4" id="new-product-row-${localId}">
       <div class="flex items-start justify-between mb-3">
         <div class="font-medium text-sm text-gray-700">Produk Baru</div>
         <button type="button" onclick="removeNewProduct(${localId})" class="text-red-600 hover:text-red-800 text-xs transition-colors">
@@ -462,37 +486,37 @@ window.addNewProduct = function(){
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-medium mb-1 text-gray-700">Nama Produk <span class="text-red-500">*</span></label>
+          <label class="block text-sm font-medium mb-2 text-gray-700">Nama Produk <span class="text-red-500">*</span></label>
           <input type="text" name="products[${idx}][product_name]"
-            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 product-name-input"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 product-name-input"
             placeholder="Nama produk" required>
         </div>
         <div>
-          <label class="block text-sm font-medium mb-1 text-gray-700">Harga (Rp) <span class="text-red-500">*</span></label>
+          <label class="block text-sm font-medium mb-2 text-gray-700">Harga (Rp) <span class="text-red-500">*</span></label>
           <input type="text" name="products[${idx}][price]"
-            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 product-price-input price-input"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 product-price-input price-input"
             placeholder="0" required>
         </div>
         <div class="md:col-span-2">
-          <label class="block text-sm font-medium mb-1 text-gray-700">Deskripsi Produk</label>
+          <label class="block text-sm font-medium mb-2 text-gray-700">Deskripsi Produk</label>
           <textarea name="products[${idx}][product_description]" rows="2"
-            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             placeholder="Deskripsi produk"></textarea>
         </div>
 
         <div class="md:col-span-2">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium mb-1 text-gray-700">Unggah Lampiran</label>
+              <label class="block text-sm font-medium mb-2 text-gray-700">Unggah Lampiran</label>
               <input type="file" name="products[${idx}][attachment]"
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                 accept=".pdf,.jpg,.jpeg,.png">
               <p class="text-xs text-gray-500 mt-1">PDF/JPG/PNG maks 2MB</p>
             </div>
             <div>
-              <label class="block text-sm font-medium mb-1 text-gray-700">atau URL Lampiran</label>
+              <label class="block text-sm font-medium mb-2 text-gray-700">atau URL Lampiran</label>
               <input type="url" name="products[${idx}][attachment_url]"
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="https://contoh.com/file.pdf">
             </div>
           </div>
@@ -662,21 +686,24 @@ document.addEventListener("DOMContentLoaded", function(){
   selectAll?.addEventListener("change", function(){ const on = this.checked; document.querySelectorAll(".rowCheckbox").forEach(cb => cb.checked=on); toggleDeleteBtn(); });
   document.querySelectorAll(".rowCheckbox").forEach(cb => cb.addEventListener("change", toggleDeleteBtn));
 
-  deleteBtn?.addEventListener("click", function(e){
+  // Ganti bagian ini di index.php (sekitar baris 570-590)
+deleteBtn?.addEventListener("click", function(e){
     e.preventDefault();
     const serviceNames = Array.from(document.querySelectorAll(".rowCheckbox:checked")).map(cb => cb.value);
     if (serviceNames.length === 0) return;
+    
+    // Perbaikan: Hapus customClass dan gunakan styling default SweetAlert2
     Swal.fire({
-      title:'Hapus terpilih?',
-      text:`Ada ${serviceNames.length} layanan yang akan dihapus beserta semua produknya.`,
-      icon:'warning',
-      showCancelButton:true,
-      confirmButtonColor:'#d33',
-      cancelButtonColor:'#3085d6',
-      confirmButtonText:'Ya',
-      cancelButtonText:'Batal',
-      width:300,
-      customClass:swalMini
+      title: 'Hapus terpilih?',
+      text: `Ada ${serviceNames.length} layanan yang akan dihapus beserta semua produknya.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Ya, Hapus',
+      cancelButtonText: 'Batal',
+      width: 400
+      // Hapus baris customClass: swalMini
     }).then((result)=>{
       if(!result.isConfirmed) return;
       fetch("<?= route_to('sp_delete_multiple') ?>", {
@@ -688,15 +715,28 @@ document.addEventListener("DOMContentLoaded", function(){
       .then(data=>{
         if (data.csrfHash) document.querySelector("meta[name='csrf-token']")?.setAttribute("content", data.csrfHash);
         if (data.status === 'success') {
-          Swal.fire({ icon:'success', title:'Berhasil', text:data.message, timer:1500, showConfirmButton:false, width:300, customClass:swalMini })
-            .then(()=>window.location.reload());
+          Swal.fire({ 
+            icon:'success', 
+            title:'Berhasil', 
+            text:data.message, 
+            timer:1500, 
+            showConfirmButton:false 
+          }).then(()=>window.location.reload());
         } else {
-          Swal.fire({ icon:'error', title:'Gagal', text:data.message||'Terjadi kesalahan', width:300, customClass:swalMini });
+          Swal.fire({ 
+            icon:'error', 
+            title:'Gagal', 
+            text:data.message||'Terjadi kesalahan' 
+          });
         }
       })
-      .catch(()=> Swal.fire({ icon:'error', title:'Error', text:'Koneksi gagal', width:300, customClass:swalMini }));
+      .catch(()=> Swal.fire({ 
+        icon:'error', 
+        title:'Error', 
+        text:'Koneksi gagal' 
+      }));
     });
-  });
+});
 
   // Filter tabel (tetap)
   const $svc = document.getElementById('filterService');

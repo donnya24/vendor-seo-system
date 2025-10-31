@@ -96,7 +96,7 @@
       text-align: center;
       color: #6b7280;
       font-size: 0.875rem;
-      margin: 1rem 0;
+      margin: 0.75rem 0;
     }
     
     .divider::before,
@@ -116,19 +116,19 @@
 
     /* Password Strength Styles */
     .password-strength {
-      margin-top: 0.5rem;
+      margin-top: 0.25rem;
     }
     
     .strength-bar {
-      height: 4px;
+      height: 3px;
       border-radius: 2px;
       transition: all 0.3s ease;
       background: #e5e7eb;
     }
     
     .strength-text {
-      font-size: 0.75rem;
-      margin-top: 0.25rem;
+      font-size: 0.7rem;
+      margin-top: 0.125rem;
       font-weight: 500;
     }
     
@@ -152,26 +152,35 @@
     .help-section {
       background: #f0f9ff;
       border: 1px solid #bae6fd;
-      border-radius: 10px;
-      padding: 1rem;
+      border-radius: 8px;
+      padding: 0.75rem;
     }
 
     .help-tips {
       background: white;
-      border-radius: 8px;
-      padding: 0.75rem;
-      margin-top: 0.75rem;
+      border-radius: 6px;
+      padding: 0.5rem;
+      margin-top: 0.5rem;
       border: 1px solid #e0f2fe;
     }
 
-    /* Success notification styles */
-    .success-notification {
-      background: linear-gradient(135deg, #10b981, #059669);
-      color: white;
-      border-radius: 12px;
-      padding: 1rem;
-      margin-bottom: 1rem;
-      box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+    /* Email validation styles */
+    .email-validation {
+      margin-top: 0.125rem;
+    }
+    
+    .validation-text {
+      font-size: 0.7rem;
+      margin-top: 0.125rem;
+      font-weight: 500;
+    }
+    
+    .validation-valid {
+      color: #16a34a;
+    }
+    
+    .validation-invalid {
+      color: #dc2626;
     }
   </style>
 </head>
@@ -181,79 +190,23 @@
        style="background-image:url('/assets/img/logo/background.png');">
     <div class="absolute inset-0 bg-black/60"></div>
 
-    <!-- Card yang lebih kecil -->
+    <!-- Card yang lebih kecil dan lebih padat -->
     <div class="relative z-10 w-[90%] max-w-xs bg-white rounded-xl shadow-xl overflow-hidden"
-         x-data="{
-           email: '<?= esc(old('email') ?? '') ?>',
-           password: '',
-           show: false,
-           loading: false,
-           get validPw(){ return this.password.length >= 8 },
-           passwordStrength: 0,
-           strengthText: '',
-           strengthColor: '',
-           barWidth: '0%',
-           barColor: '#e5e7eb',
-           
-           checkPasswordStrength() {
-             const password = this.password;
-             let strength = 0;
-             
-             if (password.length === 0) {
-               this.passwordStrength = 0;
-               this.strengthText = '';
-               this.barWidth = '0%';
-               this.barColor = '#e5e7eb';
-               return;
-             }
-             
-             // Length check
-             if (password.length >= 8) strength += 1;
-             if (password.length >= 12) strength += 1;
-             
-             // Character variety checks
-             if (/[a-z]/.test(password)) strength += 1;
-             if (/[A-Z]/.test(password)) strength += 1;
-             if (/[0-9]/.test(password)) strength += 1;
-             if (/[^a-zA-Z0-9]/.test(password)) strength += 1;
-             
-             // Determine strength level
-             this.passwordStrength = strength;
-             
-             if (strength <= 2) {
-               this.strengthText = 'Lemah';
-               this.barWidth = '25%';
-               this.barColor = '#dc2626';
-             } else if (strength <= 4) {
-               this.strengthText = 'Cukup';
-               this.barWidth = '50%';
-               this.barColor = '#ea580c';
-             } else if (strength <= 5) {
-               this.strengthText = 'Kuat';
-               this.barWidth = '75%';
-               this.barColor = '#16a34a';
-             } else {
-               this.strengthText = 'Sangat Kuat';
-               this.barWidth = '100%';
-               this.barColor = '#059669';
-             }
-           }
-         }"
-         x-effect="checkPasswordStrength()">
+         x-data="loginForm()">
 
-      <div class="px-5 pt-6 pb-4 text-center border-b">
-        <div class="mx-auto w-10 h-10 rounded-full bg-white flex items-center justify-center shadow">
-          <img src="/assets/img/logo/icon.png" alt="Logo" class="w-6 h-6" />
+      <div class="px-5 pt-5 pb-3 text-center border-b">
+        <div class="mx-auto w-8 h-8 rounded-full bg-white flex items-center justify-center shadow">
+          <img src="/assets/img/logo/icon.png" alt="Logo" class="w-5 h-5" />
         </div>
-        <h1 class="mt-2 text-lg font-bold text-gray-800">Masuk ke Sistem</h1>
-        <p class="text-gray-500 text-xs mt-1">Vendor Partnership & SEO Performance</p>
+        <h1 class="mt-2 text-base font-bold text-gray-800">Masuk ke Sistem</h1>
+        <p class="text-gray-500 text-xs mt-0.5">Vendor Partnership & SEO Performance</p>
       </div>
 
-      <!-- FORM LOGIN -->
+      <!-- FORM LOGIN - lebih padat -->
       <form action="<?= site_url('login') ?>" method="post" 
-            class="px-5 py-5 space-y-4" 
+            class="px-5 py-4 space-y-3" 
             novalidate
-            @submit="loading = true">
+            @submit="if (!validateEmail()) { $event.preventDefault(); } loading = true">
 
         <?= csrf_field() ?>
 
@@ -271,26 +224,37 @@
         <!-- Email -->
         <div>
           <label for="email" class="block text-xs font-semibold text-gray-700 mb-1">Email</label>
-          <input id="email" name="email" type="email" x-model="email"
-                 class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-200 outline-none text-sm transition-colors"
+          <input id="email" name="email" type="email" x-model="formData.email" @blur="validateEmail()" @input="emailTouched = true"
+                 class="w-full px-3 py-2 text-sm rounded-lg border transition-colors outline-none"
+                 :class="emailTouched && formData.email.length > 0 ? (emailValid ? 'border-green-500 focus:border-green-600 focus:ring-1 focus:ring-green-200' : 'border-red-500 focus:border-red-600 focus:ring-1 focus:ring-red-200') : 'border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-200'"
                  placeholder="you@example.com" required autocomplete="username" inputmode="email" autocapitalize="none" enterkeyhint="next" />
+          
+          <!-- Email Validation Indicator -->
+          <div class="email-validation" x-show="emailTouched && formData.email.length > 0">
+            <div class="validation-text" :class="emailValid ? 'validation-valid' : 'validation-invalid'" 
+                 x-text="getEmailValidationText()"></div>
+          </div>
+          
+          <p class="mt-0.5 text-xs text-gray-500" x-show="!emailTouched || formData.email.length === 0">
+            Masukkan alamat email yang valid
+          </p>
         </div>
 
         <!-- Password -->
         <div>
           <label for="password" class="block text-xs font-semibold text-gray-700 mb-1">Kata Sandi</label>
           <div class="relative">
-            <input :type="show ? 'text' : 'password'" id="password" name="password" x-model="password"
-                   class="w-full pr-16 pl-3 py-2 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-200 outline-none text-sm transition-colors"
+            <input :type="showPassword ? 'text' : 'password'" id="password" name="password" x-model="formData.password"
+                   class="w-full pr-14 pl-3 py-2 text-sm rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-200 outline-none transition-colors"
                    placeholder="Masukkan password Anda" required minlength="6" autocomplete="current-password" enterkeyhint="done" 
                    @input="checkPasswordStrength()" />
             <button type="button"
                     class="absolute inset-y-0 right-0 px-3 flex items-center text-xs text-gray-500 hover:text-gray-700 transition-colors"
-                    @click="show = !show" x-text="show ? 'Sembunyi' : 'Tampil'"></button>
+                    @click="showPassword = !showPassword" x-text="showPassword ? 'Sembunyi' : 'Tampil'"></button>
           </div>
           
           <!-- Password Strength Indicator -->
-          <div class="password-strength" x-show="password.length > 0">
+          <div class="password-strength" x-show="formData.password.length > 0">
             <div class="strength-bar" :style="`width: ${barWidth}; background: ${barColor};`"></div>
             <div class="strength-text" :class="{
               'strength-weak': passwordStrength <= 2,
@@ -300,15 +264,15 @@
             }" x-text="strengthText"></div>
           </div>
           
-          <p class="mt-1 text-xs text-gray-500" x-show="password.length === 0">
+          <p class="mt-0.5 text-xs text-gray-500" x-show="formData.password.length === 0">
             Minimal 8 karakter untuk keamanan optimal
           </p>
         </div>
 
         <!-- Ingat saya & Lupa password -->
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between pt-1">
           <label class="flex items-center gap-1.5 text-xs text-gray-700 select-none cursor-pointer">
-            <input type="checkbox" name="remember" value="1" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-200 transition-colors" />
+            <input type="checkbox" name="remember" value="1" class="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-200 transition-colors" />
             <span>Ingat saya</span>
           </label>
           <a href="<?= site_url('forgot-password') ?>" class="text-blue-600 font-semibold hover:underline text-xs transition-colors">Lupa password?</a>
@@ -316,14 +280,14 @@
 
         <!-- Tombol Login -->
         <button type="submit"
-                class="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 transition font-semibold text-white shadow disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center text-sm"
-                :disabled="!password || loading">
+                class="w-full py-2 rounded-lg bg-blue-600 hover:bg-blue-700 transition font-semibold text-white shadow disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center text-sm mt-2"
+                :disabled="!formData.password || !formData.email || loading || (emailTouched && !emailValid)">
           <span x-show="!loading" class="flex items-center gap-1.5">
             <i class="fas fa-sign-in-alt text-xs"></i>
             Masuk
           </span>
           <span x-show="loading" class="flex items-center gap-1.5">
-            <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <svg class="animate-spin h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
             </svg>
@@ -336,8 +300,8 @@
 
         <!-- Google Sign In Button -->
         <a href="<?= site_url('auth/google/login') ?>" 
-          class="w-full py-2.5 rounded-lg google-btn font-semibold shadow flex items-center justify-center gap-2 transition-colors text-sm">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16">
+          class="w-full py-2 rounded-lg google-btn font-semibold shadow flex items-center justify-center gap-2 transition-colors text-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
             <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
@@ -346,23 +310,17 @@
           <span>Sign in with Google</span>
         </a>
 
-        <!-- Section Bantuan Login -->
-        <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <!-- Section Bantuan Login - lebih kecil -->
+        <div class="mt-3 p-2 bg-blue-50 border border-blue-200 rounded-lg">
           <div class="flex items-start gap-2">
             <div class="flex-shrink-0 mt-0.5">
-              <i class="fas fa-info-circle text-blue-500 text-sm"></i>
+              <i class="fas fa-info-circle text-blue-500 text-xs"></i>
             </div>
             <div class="flex-1">
               <h4 class="text-xs font-semibold text-blue-800 mb-1">Butuh Bantuan Login?</h4>
-              <p class="text-xs text-blue-700 mb-2">
-                Gunakan opsi berikut jika mengalami kendala:
-              </p>
-              <div class="flex flex-wrap gap-2">
-                <a href="<?= site_url('forgot-password') ?>" class="text-xs text-blue-600 hover:text-blue-800 font-medium underline">
-                  <i class="fas fa-key mr-1"></i>Lupa Password
-                </a>
+              <div class="flex flex-wrap gap-1.5">
                 <button type="button" onclick="showLoginHelp()" class="text-xs text-blue-600 hover:text-blue-800 font-medium underline">
-                  <i class="fas fa-question-circle mr-1"></i>Panduan
+                  <i class="fas fa-question-circle mr-0.5"></i>Panduan
                 </button>
               </div>
             </div>
@@ -371,8 +329,8 @@
 
         <!-- Subtle Hint untuk Google User -->
         <?php if (session()->getFlashdata('login_hint') === 'google_hint'): ?>
-        <div class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
-          <div class="flex items-center gap-1.5 text-blue-700">
+        <div class="mt-1 p-1.5 bg-blue-50 border border-blue-200 rounded-lg">
+          <div class="flex items-center gap-1 text-blue-700">
             <i class="fas fa-lightbulb text-blue-500 text-xs"></i>
             <span class="text-xs">
               <strong>Tips:</strong> Coba gunakan <strong>Login dengan Google</strong> jika biasanya login dengan akun Google.
@@ -381,7 +339,7 @@
         </div>
         <?php endif; ?>
 
-        <p class="text-center text-xs text-gray-600">
+        <p class="text-center text-xs text-gray-600 pt-1">
           Belum punya akun?
           <a href="<?= site_url('register') ?>" class="text-blue-600 font-semibold hover:underline transition-colors">Daftar</a>
         </p>
@@ -411,6 +369,7 @@
             <li>Email sudah terdaftar di sistem</li>
             <li>Password minimal 8 karakter</li>
             <li>Gunakan password yang benar</li>
+            <li>Email harus mengandung @ dan format valid</li>
           </ul>
         </div>
         
@@ -424,7 +383,7 @@
         </div>
         
         <div class="bg-orange-50 p-4 rounded-lg">
-          <h4 class="font-semibold text-orange-800 mb-2 flex items-center gap-2">
+          <h4 class="font-semibold text-orange-800 mb-2 flex items-center gap=2">
             <i class="fas fa-key"></i>Lupa Password?
           </h4>
           <p class="text-sm text-orange-700">
@@ -441,8 +400,126 @@
     </div>
   </div>
 
-  <!-- ✅ SCRIPT UNTUK SWEETALERT NOTIFICATION YANG LEBIH BAIK -->
   <script>
+    // Fungsi Alpine.js yang terpisah untuk menghindari masalah escaping
+    function loginForm() {
+      return {
+        formData: {
+          email: '<?= esc(old('email') ?? '') ?>',
+          password: ''
+        },
+        showPassword: false,
+        loading: false,
+        emailValid: true,
+        emailTouched: false,
+        passwordStrength: 0,
+        strengthText: '',
+        barWidth: '0%',
+        barColor: '#e5e7eb',
+        
+        get validPw() { 
+          return this.formData.password.length >= 8 
+        },
+        
+        checkPasswordStrength() {
+          const password = this.formData.password;
+          let strength = 0;
+          
+          if (password.length === 0) {
+            this.passwordStrength = 0;
+            this.strengthText = '';
+            this.barWidth = '0%';
+            this.barColor = '#e5e7eb';
+            return;
+          }
+          
+          // Length check
+          if (password.length >= 8) strength += 1;
+          if (password.length >= 12) strength += 1;
+          
+          // Character variety checks
+          if (/[a-z]/.test(password)) strength += 1;
+          if (/[A-Z]/.test(password)) strength += 1;
+          if (/[0-9]/.test(password)) strength += 1;
+          if (/[^a-zA-Z0-9]/.test(password)) strength += 1;
+          
+          // Determine strength level
+          this.passwordStrength = strength;
+          
+          if (strength <= 2) {
+            this.strengthText = 'Lemah';
+            this.barWidth = '25%';
+            this.barColor = '#dc2626';
+          } else if (strength <= 4) {
+            this.strengthText = 'Cukup';
+            this.barWidth = '50%';
+            this.barColor = '#ea580c';
+          } else if (strength <= 5) {
+            this.strengthText = 'Kuat';
+            this.barWidth = '75%';
+            this.barColor = '#16a34a';
+          } else {
+            this.strengthText = 'Sangat Kuat';
+            this.barWidth = '100%';
+            this.barColor = '#059669';
+          }
+        },
+        
+        validateEmail() {
+          this.emailTouched = true;
+          const email = this.formData.email.trim();
+          
+          if (email.length === 0) {
+            this.emailValid = false;
+            return false;
+          }
+          
+          // Validasi harus mengandung @
+          if (email.indexOf('@') === -1) {
+            this.emailValid = false;
+            return false;
+          }
+          
+          // Validasi karakter yang tidak diizinkan
+          const invalidChars = ["'", "~", "`", "\"", "<", ">", ";", "(", ")", "[", "]", "{", "}", "|", "\\"];
+          for (let char of invalidChars) {
+            if (email.includes(char)) {
+              this.emailValid = false;
+              return false;
+            }
+          }
+          
+          // Validasi format email dasar
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          this.emailValid = emailRegex.test(email);
+          return this.emailValid;
+        },
+        
+        getEmailValidationText() {
+          if (!this.emailTouched || this.formData.email.length === 0) {
+            return '';
+          }
+          
+          if (!this.emailValid) {
+            if (this.formData.email.indexOf('@') === -1) {
+              return 'Email harus mengandung @';
+            }
+            
+            const invalidChars = ["'", "~", "`", "\"", "<", ">", ";", "(", ")", "[", "]", "{", "}", "|", "\\"];
+            for (let char of invalidChars) {
+              if (this.formData.email.includes(char)) {
+                return 'Email mengandung karakter tidak valid';
+              }
+            }
+            
+            return 'Format email tidak valid';
+          }
+          
+          return 'Format email valid';
+        }
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
       const flashElem = document.getElementById('flash-messages');
       
@@ -490,6 +567,7 @@
                   </h5>
                   <ul class="text-sm text-blue-700 list-disc list-inside space-y-1">
                     <li>Pastikan email yang dimasukkan benar</li>
+                    <li>Email harus mengandung @ dan format valid</li>
                     <li>Password harus minimal 8 karakter</li>
                     <li>Perhatikan huruf kapital/kecil</li>
                   </ul>
@@ -509,6 +587,7 @@
             </div>
           `;
         };
+
         // ✅ PERBAIKAN: Tampilkan success message dengan SweetAlert yang lebih menarik
         if (success) {
             Swal.fire({
@@ -635,12 +714,24 @@
       if (e.target === this) closeLoginHelp();
     });
 
-    // Handle form submission loading state
-    const loginForm = document.querySelector('form');
-    if (loginForm) {
-      loginForm.addEventListener('submit', function(e) {
-        const submitBtn = this.querySelector('button[type="submit"]');
+    // Handle form submission - ganti nama variabel untuk menghindari konflik
+    const loginFormElement = document.querySelector('form');
+    if (loginFormElement) {
+      loginFormElement.addEventListener('submit', function(e) {
         const password = this.querySelector('#password').value;
+        const email = this.querySelector('#email').value;
+        
+        if (!email) {
+          e.preventDefault();
+          Swal.fire({
+            icon: 'warning',
+            title: 'Email Kosong',
+            text: 'Silakan masukkan email Anda',
+            confirmButtonColor: '#3b82f6',
+            confirmButtonText: 'Mengerti'
+          });
+          return;
+        }
         
         if (!password) {
           e.preventDefault();

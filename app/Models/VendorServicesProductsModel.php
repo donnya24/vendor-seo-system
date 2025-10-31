@@ -22,6 +22,14 @@ class VendorServicesProductsModel extends Model
         'updated_at',
     ];
 
+    // Tambahkan validasi untuk harga
+    protected $validationRules = [
+        'price' => 'permit_empty|is_natural_no_zero'
+    ];
+
+    // Ubah tipe data price menjadi BIGINT atau DECIMAL di database
+    // ALTER TABLE vendor_services_products MODIFY price BIGINT;
+
     public function getGroupedServicesProducts($vendorId)
     {
         return $this->select("
@@ -30,7 +38,7 @@ class VendorServicesProductsModel extends Model
                 service_description,
                 GROUP_CONCAT(product_name SEPARATOR '<br>')                  AS products,
                 GROUP_CONCAT(product_description SEPARATOR '<br>')           AS products_deskripsi,
-                GROUP_CONCAT(CAST(price AS UNSIGNED) SEPARATOR '<br>')       AS products_harga,
+                GROUP_CONCAT(price SEPARATOR '<br>')                         AS products_harga, // Hapus CAST ke UNSIGNED
                 GROUP_CONCAT(attachment SEPARATOR '<br>')                    AS products_lampiran,
                 GROUP_CONCAT(attachment_url SEPARATOR '<br>')                AS products_lampiran_url,
                 GROUP_CONCAT(id SEPARATOR ',')                               AS product_ids,
@@ -39,6 +47,7 @@ class VendorServicesProductsModel extends Model
             ")
             ->where('vendor_id', $vendorId)
             ->groupBy('service_name, service_description')
+            ->orderBy('MIN(created_at)', 'DESC') // Tambahkan order by untuk data terbaru di atas
             ->findAll();
     }
 }

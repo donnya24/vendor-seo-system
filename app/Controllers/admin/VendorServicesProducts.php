@@ -40,9 +40,10 @@ class VendorServicesProducts extends BaseAdminController
         $vendorServices = [];
         
         foreach ($vendors as $vendor) {
-            // Ambil semua produk untuk vendor ini
+            // Ambil semua produk untuk vendor ini dengan urutan terbaru di atas
             $products = $this->vendorServicesProductsModel
                 ->where('vendor_id', $vendor['id'])
+                ->orderBy('created_at', 'DESC') // Data terbaru di atas
                 ->orderBy('service_name', 'ASC')
                 ->findAll();
 
@@ -103,7 +104,7 @@ class VendorServicesProducts extends BaseAdminController
         return view('admin/layanan_produk_vendor/index', array_merge($data, $commonData));
     }
 
-    public function create()
+        public function create()
     {
         // Log activity akses form create
         $this->logActivity(
@@ -163,7 +164,11 @@ class VendorServicesProducts extends BaseAdminController
                     continue;
                 }
 
-                $price = (int)preg_replace('/[^\d]/', '', $product['price'] ?? '0');
+                // Validasi harga
+                $price = preg_replace('/[^\d]/', '', $product['price'] ?? '0');
+                if (strlen($price) > 20) {
+                    throw new \Exception("Harga produk '{$product['product_name']}' terlalu besar. Maksimal 20 digit.");
+                }
                 
                 $data = [
                     'vendor_id'          => $vendorId,
@@ -171,7 +176,7 @@ class VendorServicesProducts extends BaseAdminController
                     'service_description'=> $serviceDescription,
                     'product_name'       => $product['product_name'],
                     'product_description'=> $product['product_description'] ?? '',
-                    'price'              => $price,
+                    'price'              => $price, // Simpan sebagai string
                     'attachment_url'     => $product['attachment_url'] ?? '',
                     'created_at'         => date('Y-m-d H:i:s'),
                     'updated_at'         => date('Y-m-d H:i:s')

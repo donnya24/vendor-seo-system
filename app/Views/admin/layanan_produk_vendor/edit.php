@@ -1,167 +1,145 @@
-<div class="min-h-[60vh] flex items-center justify-center p-4">
-  <div class="w-full max-w-2xl md:max-w-3xl">
-    <div class="relative">
+<div class="max-h-[65vh] overflow-y-auto">
+  <form id="editForm" method="post" action="<?= site_url('admin/services/update') ?>" enctype="multipart/form-data" class="space-y-6 px-2 py-2">
+    <?= csrf_field() ?>
 
-      <!-- tombol tutup -->
-      <button type="button"
-              onclick="(window.closeAreasPopup ? closeAreasPopup() : (window.closeModal ? closeModal() : history.back()))"
-              class="absolute top-2 right-2 inline-flex h-9 w-9 items-center justify-center rounded-full
-                     text-gray-500 hover:text-gray-800 hover:bg-gray-100 focus:outline-none"
-              aria-label="Tutup">
-        &times;
-      </button>
+    <!-- Info Vendor -->
+    <div class="space-y-2">
+      <label class="block text-sm font-medium text-gray-700">Vendor <span class="text-red-500">*</span></label>
+      <select name="vendor_id" required
+        class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+        <?php foreach ($vendors as $vendor): ?>
+          <option value="<?= esc($vendor['id']) ?>" <?= (!empty($service) && $service['vendor_id'] == $vendor['id']) ? 'selected' : '' ?>>
+            <?= esc($vendor['business_name']) ?>
+          </option>
+        <?php endforeach; ?>
+      </select>
+    </div>
 
-      <!-- card form -->
-      <div class="max-h-[70vh] overflow-y-auto p-4 border border-gray-200 rounded-xl bg-white shadow
-                  scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 scrollbar-thumb-rounded-full">
+    <!-- Nama & Deskripsi Layanan -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="space-y-2">
+        <label class="block text-sm font-medium text-gray-700">Nama Layanan <span class="text-red-500">*</span></label>
+        <input type="text" name="service_name" value="<?= esc($service['service_name'] ?? '') ?>"
+          class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+          placeholder="Masukkan nama layanan" required>
+      </div>
+      <div class="space-y-2">
+        <label class="block text-sm font-medium text-gray-700">Deskripsi Layanan</label>
+        <textarea name="service_description" rows="3"
+          class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+          placeholder="Masukkan deskripsi layanan"><?= esc($service['service_description'] ?? '') ?></textarea>
+      </div>
+    </div>
 
-        <form id="editForm" method="post" action="<?= site_url('admin/services/update') ?>" enctype="multipart/form-data" class="space-y-5">
-          <?= csrf_field() ?>
+    <input type="hidden" name="service_name_original" value="<?= esc($service['service_name'] ?? '') ?>">
+    <input type="hidden" name="vendor_id_original" value="<?= esc($service['vendor_id'] ?? '') ?>">
 
-          <!-- Info Vendor -->
-          <div>
-            <label class="block text-sm font-medium mb-1 text-gray-700">Vendor <span class="text-red-500">*</span></label>
-            <select name="vendor_id" required
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-              <?php foreach ($vendors as $vendor): ?>
-                <option value="<?= esc($vendor['id']) ?>" <?= (!empty($service) && $service['vendor_id'] == $vendor['id']) ? 'selected' : '' ?>>
-                  <?= esc($vendor['business_name']) ?>
-                </option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-
-          <!-- Nama & Deskripsi Layanan -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium mb-1 text-gray-700">Nama Layanan <span class="text-red-500">*</span></label>
-              <input type="text" name="service_name" value="<?= esc($service['service_name'] ?? '') ?>"
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Masukkan nama layanan" required>
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1 text-gray-700">Deskripsi Layanan</label>
-              <textarea name="service_description" rows="2"
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Masukkan deskripsi layanan"><?= esc($service['service_description'] ?? '') ?></textarea>
-            </div>
-          </div>
-
-          <input type="hidden" name="service_name_original" value="<?= esc($service['service_name'] ?? '') ?>">
-          <input type="hidden" name="vendor_id_original" value="<?= esc($service['vendor_id'] ?? '') ?>">
-
-          <!-- Produk -->
-          <div>
-            <div class="flex items-center justify-between mb-3">
-              <h3 class="font-semibold text-gray-800 text-sm md:text-base">Produk di Layanan ini</h3>
-              <button type="button" id="addProductBtn"
-                class="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs md:text-sm hover:bg-blue-700 transition-colors">
-                + Tambah Produk
-              </button>
-            </div>
-
-            <div id="productsWrapper" class="space-y-4">
-              <!-- Produk yang sudah ada -->
-              <?php $i = 0; foreach ($products as $row): ?>
-                <?php
-                  $pid   = $row['id'] ?? '';
-                  $pname = $row['product_name'] ?? '';
-                  $pdesc = $row['product_description'] ?? '';
-                  $price = $row['price'] ?? '';
-                  $att   = $row['attachment'] ?? '';
-                  $aurl  = $row['attachment_url'] ?? '';
-                ?>
-                <div class="product-row border border-gray-200 rounded-lg p-4 bg-gray-50" id="product-row-<?= $i ?>">
-                  <div class="flex items-start justify-between mb-3">
-                    <div class="font-medium text-sm text-gray-700">Produk <?= $i + 1 ?></div>
-                    <button type="button" onclick="deleteProduct(<?= $i ?>, <?= $pid ?>)" class="text-red-600 hover:text-red-800 text-xs transition-colors"
-                      data-existing-id="<?= esc($pid) ?>">Hapus produk</button>
-                  </div>
-
-                  <input type="hidden" name="products[<?= $i ?>][id]" value="<?= esc($pid) ?>" id="product-id-<?= $i ?>">
-                  <input type="hidden" name="products[<?= $i ?>][delete_flag]" value="0" id="delete-flag-<?= $i ?>">
-                  <input type="hidden" name="products[<?= $i ?>][remove_attachment]" value="0" id="remove-attachment-<?= $i ?>">
-
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label class="block text-sm font-medium mb-1 text-gray-700">Nama Produk <span class="text-red-500">*</span></label>
-                      <input type="text" name="products[<?= $i ?>][product_name]" value="<?= esc($pname) ?>"
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 product-name-input"
-                        placeholder="Nama produk" required>
-                    </div>
-                    <div>
-                      <label class="block text-sm font-medium mb-1 text-gray-700">Harga (Rp) <span class="text-red-500">*</span></label>
-                      <input type="text" name="products[<?= $i ?>][price]" value="<?= number_format((float)$price, 0, ',', '.') ?>" 
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 product-price-input price-input"
-                        placeholder="0" required>
-                    </div>
-                    <div class="md:col-span-2">
-                      <label class="block text-sm font-medium mb-1 text-gray-700">Deskripsi Produk</label>
-                      <textarea name="products[<?= $i ?>][product_description]" rows="2"
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Deskripsi produk"><?= esc($pdesc) ?></textarea>
-                    </div>
-
-                    <div class="md:col-span-2">
-                      <?php if (!empty($att)): ?>
-                        <div class="current-attachment mb-3" id="current-attachment-<?= $i ?>">
-                          <label class="block text-sm font-medium mb-1 text-gray-700">Lampiran Saat Ini</label>
-                          <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-white text-sm">
-                            <a href="<?= base_url('uploads/vendor_products/'.$att) ?>" target="_blank"
-                              class="text-blue-600 hover:underline truncate">Lihat Lampiran</a>
-                            <button type="button" onclick="removeAttachment(<?= $i ?>)" class="text-red-600 text-xs hover:underline">
-                              Hapus lampiran
-                            </button>
-                          </div>
-                          <input type="hidden" name="products[<?= $i ?>][existing_attachment]" value="<?= esc($att) ?>">
-                        </div>
-                      <?php endif; ?>
-
-                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-                        <div>
-                          <label class="block text-sm font-medium mb-1 text-gray-700">
-                            <?= !empty($att) ? 'Ganti Lampiran' : 'Unggah Lampiran' ?>
-                          </label>
-                          <!-- Perbaikan: Ubah nama input file agar konsisten -->
-                          <input type="file" name="products[<?= $i ?>][attachment]"
-                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                            accept=".pdf,.jpg,.jpeg,.png">
-                          <p class="text-xs text-gray-500 mt-1">PDF/JPG/PNG maks 2MB</p>
-                        </div>
-                        <div>
-                          <label class="block text-sm font-medium mb-1 text-gray-700">atau URL Lampiran</label>
-                          <input type="url" name="products[<?= $i ?>][attachment_url]" value="<?= esc($aurl) ?>"
-                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="https://contoh.com/file.pdf">
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              <?php $i++; endforeach; ?>
-
-              <!-- Container untuk produk baru -->
-              <div id="newProductsContainer"></div>
-            </div>
-          </div>
-
-          <!-- Tombol Aksi -->
-          <div class="flex justify-end gap-3 pt-4 border-t sticky bottom-0 bg-white">
-            <button type="button"
-              onclick="(window.closeAreasPopup ? closeAreasPopup() : (window.closeModal ? closeModal() : history.back()))"
-              class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300 transition-colors">
-              Batal
-            </button>
-            <button type="submit" id="submitButton"
-              class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors">
-              Update Semua
-            </button>
-          </div>
-        </form>
+    <!-- Produk -->
+    <div>
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-semibold text-gray-800 text-base">Produk di Layanan ini</h3>
+        <button type="button" id="addProductBtn"
+          class="px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors font-medium">
+          + Tambah Produk
+        </button>
       </div>
 
+      <div id="productsWrapper" class="space-y-5">
+        <!-- Produk yang sudah ada -->
+        <?php $i = 0; foreach ($products as $row): ?>
+          <?php
+            $pid   = $row['id'] ?? '';
+            $pname = $row['product_name'] ?? '';
+            $pdesc = $row['product_description'] ?? '';
+            $price = $row['price'] ?? '';
+            $att   = $row['attachment'] ?? '';
+            $aurl  = $row['attachment_url'] ?? '';
+          ?>
+          <div class="product-row border border-gray-200 rounded-xl p-6 bg-gray-50/50" id="product-row-<?= $i ?>">
+            <div class="flex items-start justify-between mb-4">
+              <div class="font-medium text-sm text-gray-700">Produk <?= $i + 1 ?></div>
+              <button type="button" onclick="deleteProduct(<?= $i ?>, <?= $pid ?>)" class="text-red-600 hover:text-red-800 text-xs font-medium transition-colors"
+                data-existing-id="<?= esc($pid) ?>">Hapus produk</button>
+            </div>
+
+            <input type="hidden" name="products[<?= $i ?>][id]" value="<?= esc($pid) ?>" id="product-id-<?= $i ?>">
+            <input type="hidden" name="products[<?= $i ?>][delete_flag]" value="0" id="delete-flag-<?= $i ?>">
+            <input type="hidden" name="products[<?= $i ?>][remove_attachment]" value="0" id="remove-attachment-<?= $i ?>">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700">Nama Produk <span class="text-red-500">*</span></label>
+                <input type="text" name="products[<?= $i ?>][product_name]" value="<?= esc($pname) ?>"
+                  class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors product-name-input"
+                  placeholder="Nama produk" required>
+              </div>
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700">Harga (Rp) <span class="text-red-500">*</span></label>
+                <input type="text" name="products[<?= $i ?>][price]" value="<?= number_format((float)$price, 0, ',', '.') ?>" 
+                  class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors product-price-input price-input"
+                  placeholder="0" required>
+              </div>
+              <div class="md:col-span-2 space-y-2">
+                <label class="block text-sm font-medium text-gray-700">Deskripsi Produk</label>
+                <textarea name="products[<?= $i ?>][product_description]" rows="3"
+                  class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  placeholder="Deskripsi produk"><?= esc($pdesc) ?></textarea>
+              </div>
+
+              <div class="md:col-span-2 space-y-3">
+                <?php if (!empty($att)): ?>
+                  <div class="current-attachment mb-4" id="current-attachment-<?= $i ?>">
+                    <label class="block text-sm font-medium text-gray-700">Lampiran Saat Ini</label>
+                    <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg bg-white text-sm">
+                      <a href="<?= base_url('uploads/vendor_products/'.$att) ?>" target="_blank"
+                        class="text-blue-600 hover:underline truncate font-medium">Lihat Lampiran</a>
+                      <button type="button" onclick="removeAttachment(<?= $i ?>)" class="text-red-600 text-xs font-medium hover:underline transition-colors">
+                        Hapus lampiran
+                      </button>
+                    </div>
+                    <input type="hidden" name="products[<?= $i ?>][existing_attachment]" value="<?= esc($att) ?>">
+                  </div>
+                <?php endif; ?>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700">
+                      <?= !empty($att) ? 'Ganti Lampiran' : 'Unggah Lampiran' ?>
+                    </label>
+                    <input type="file" name="products[<?= $i ?>][attachment]"
+                      class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-colors"
+                      accept=".pdf,.jpg,.jpeg,.png">
+                    <p class="text-xs text-gray-500 mt-2">PDF/JPG/PNG maks 2MB</p>
+                  </div>
+                  <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700">atau URL Lampiran</label>
+                    <input type="url" name="products[<?= $i ?>][attachment_url]" value="<?= esc($aurl) ?>"
+                      class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      placeholder="https://contoh.com/file.pdf">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        <?php $i++; endforeach; ?>
+
+        <!-- Container untuk produk baru -->
+        <div id="newProductsContainer"></div>
+      </div>
     </div>
-  </div>
+
+    <!-- Tombol Aksi - Layout diperbaiki -->
+    <div class="flex justify-end gap-3 pt-6 pb-2">
+      <button type="button" onclick="closeModal()"
+        class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300 transition-colors font-medium">
+        Batal
+      </button>
+      <button type="submit" id="submitButton"
+        class="px-6 py-3 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors font-medium shadow-sm">
+        Update Semua
+      </button>
+    </div>
+  </form>
 </div>
 
 <!-- SweetAlert2 -->
@@ -288,8 +266,6 @@ function addNewProduct() {
   const currentIndex = nextProductIndex++;
   const uniqueId = 'new-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
   
-  console.log('Adding new product with index:', currentIndex, 'uniqueId:', uniqueId);
-  
   // Hitung jumlah produk yang ada untuk memberi nomor yang benar
   const existingRows = document.querySelectorAll('#productsWrapper .product-row[id^="product-row-"]').length;
   const newRows = document.querySelectorAll('#newProductsContainer .product-row[id^="new-product-row-"]').length;
@@ -356,12 +332,6 @@ function addNewProduct() {
     const firstInput = newRow.querySelector('input[type="text"]');
     if (firstInput) firstInput.focus();
   }
-}
-
-// Tutup modal
-function closeModal() {
-  const modal = document.querySelector('.modal');
-  if (modal) modal.style.display = 'none';
 }
 
 // Validasi form
@@ -463,25 +433,8 @@ document.addEventListener('focusin', function(e) {
   }
 });
 
-// Handle form submit dengan debugging
+// Handle form submit
 function handleFormSubmit(form) {
-  // Debug: Log semua data form sebelum submit
-  console.log('Form data before submit:');
-  const formData = new FormData(form);
-  for (let pair of formData.entries()) {
-    console.log(pair[0] + ':', pair[1]);
-  }
-  
-  const fileInputs = form.querySelectorAll('input[type="file"]');
-  console.log('File inputs found:', fileInputs.length);
-  fileInputs.forEach((input, index) => {
-    console.log(`File input ${index}:`, {
-      name: input.name,
-      files: input.files.length,
-      fileName: input.files[0] ? input.files[0].name : 'none'
-    });
-  });
-
   // Format semua input harga sebelum submit
   form.querySelectorAll('.price-input').forEach(input => {
     const originalName = input.name;
@@ -497,25 +450,15 @@ function handleFormSubmit(form) {
     input.name = originalName + '_formatted';
   });
 
-  // Buat FormData baru untuk memastikan file terkirim
   const submitFormData = new FormData(form);
   
-  console.log('FormData to be submitted:');
-  for (let pair of submitFormData.entries()) {
-    console.log(pair[0] + ':', pair[1]);
-  }
-
   fetch(form.action, { 
     method:'POST', 
     body: submitFormData,
     headers: getCsrfHeaders()
   })
-    .then(res => {
-      console.log('Response status:', res.status);
-      return res.json();
-    })
+    .then(res => res.json())
     .then(data => {
-      console.log('Response data:', data);
       if (data.csrfHash) document.querySelector('meta[name="csrf-token"]')?.setAttribute('content', data.csrfHash);
       if (data.status === 'success') {
         Swal.fire({ 
@@ -539,7 +482,6 @@ function handleFormSubmit(form) {
       }
     })
     .catch(error => {
-      console.error('Fetch error:', error);
       Swal.fire({ 
         icon:'error', 
         title:'Error', 
@@ -552,21 +494,12 @@ function handleFormSubmit(form) {
 
 // Init
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('DOM Content Loaded, initializing...');
-  console.log('Existing product count:', existingProductCount);
-  console.log('Next product index:', nextProductIndex);
-  
   const addBtn = document.getElementById('addProductBtn');
   if (addBtn) {
-    addBtn.style.cursor = 'pointer';
     addBtn.addEventListener('click', function(e) {
       e.preventDefault();
-      console.log('Add product button clicked!');
       addNewProduct();
     });
-    console.log('Add product button listener attached');
-  } else {
-    console.error('Add product button not found!');
   }
 
   const form = document.getElementById('editForm');

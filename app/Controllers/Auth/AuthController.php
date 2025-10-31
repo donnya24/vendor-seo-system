@@ -35,7 +35,7 @@ class AuthController extends Controller
     {
         $validation = service('validation');
         $validation->setRules([
-            'email'    => 'required|valid_email',
+            'email'    => 'required|valid_email|max_length[255]',
             'password' => 'required|min_length[6]',
         ]);
 
@@ -51,6 +51,15 @@ class AuthController extends Controller
         $remember = (bool) $this->request->getPost('remember');
         $email = (string) $this->request->getPost('email');
         $password = (string) $this->request->getPost('password');
+
+        // Validasi email tambahan untuk karakter yang tidak diizinkan
+        if (!$this->isValidEmail($email)) {
+            log_activity_auto('login_failed', 'Email mengandung karakter tidak valid: ' . $email, [
+                'module' => 'auth'
+            ]);
+            
+            return redirect()->back()->withInput()->with('error', 'Format email tidak valid. Gunakan format email yang benar.');
+        }
 
         // Gunakan custom authentication
         $result = $this->authModel->attemptLogin($email, $password, $remember);
@@ -108,6 +117,49 @@ class AuthController extends Controller
             ->withInput()
             ->with('error', $result['error'] ?? 'Login gagal. Periksa kembali email dan password Anda.')
             ->with('login_hint', $hint);
+    }
+
+    // ===== VALIDASI EMAIL TAMBAHAN =====
+    private function isValidEmail($email)
+    {
+        // Validasi dasar format email
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return false;
+        }
+
+        // Validasi karakter yang tidak diizinkan
+        $invalidChars = ["'", "~", "`", "\"", "<", ">", ";", "(", ")", "[", "]", "{", "}", "|", "\\"];
+        foreach ($invalidChars as $char) {
+            if (strpos($email, $char) !== false) {
+                return false;
+            }
+        }
+
+        // Validasi harus mengandung @
+        if (strpos($email, '@') === false) {
+            return false;
+        }
+
+        // Validasi bagian domain
+        $parts = explode('@', $email);
+        if (count($parts) !== 2) {
+            return false;
+        }
+
+        $localPart = $parts[0];
+        $domainPart = $parts[1];
+
+        // Validasi local part tidak boleh kosong
+        if (empty($localPart)) {
+            return false;
+        }
+
+        // Validasi domain part harus mengandung titik
+        if (strpos($domainPart, '.') === false) {
+            return false;
+        }
+
+        return true;
     }
 
     // ===== GOOGLE OAUTH LOGIN =====
@@ -248,30 +300,30 @@ class AuthController extends Controller
         return $response;
     }
 
- public function logout()
-{
-    $user = null;
-    
-    if ($this->auth->loggedIn()) {
-        $user = $this->auth->user();
-        $this->logLogout($user);
+    public function logout()
+    {
+        $user = null;
+        
+        if ($this->auth->loggedIn()) {
+            $user = $this->auth->user();
+            $this->logLogout($user);
+        }
+
+        helper('auth_remember');
+        try {
+            forget_remember_token_from_cookie();
+        } catch (\Throwable $e) {
+            log_message('error', 'forget_remember_token_from_cookie failed: ' . $e->getMessage());
+        }
+
+        $this->auth->logout();
+        session()->destroy();
+
+        // Set flashdata untuk notifikasi di login page
+        session()->setFlashdata('success', 'Password berhasil diperbarui! Silakan login dengan password baru Anda.');
+
+        return redirect()->to('/login');
     }
-
-    helper('auth_remember');
-    try {
-        forget_remember_token_from_cookie();
-    } catch (\Throwable $e) {
-        log_message('error', 'forget_remember_token_from_cookie failed: ' . $e->getMessage());
-    }
-
-    $this->auth->logout();
-    session()->destroy();
-
-    // Set flashdata untuk notifikasi di login page
-    session()->setFlashdata('success', 'Password berhasil diperbarui! Silakan login dengan password baru Anda.');
-
-    return redirect()->to('/login');
-}
 
     // ===== REMEMBER STATUS =====
     public function checkRememberStatus()
@@ -324,7 +376,7 @@ class AuthController extends Controller
         $validation = service('validation');
         $validation->setRules([
             'vendor_name'  => 'required|min_length[3]',
-            'email'        => 'required|valid_email',
+            'email'        => 'required|valid_email|max_length[255]',
             'password'     => 'required|min_length[8]',
             'pass_confirm' => 'required|matches[password]',
         ], [
@@ -345,6 +397,15 @@ class AuthController extends Controller
         $email      = trim((string) $this->request->getPost('email'));
         $password   = ((string) $this->request->getPost('password'));
         $vendorName = trim((string) $this->request->getPost('vendor_name'));
+
+        // Validasi email tambahan untuk karakter yang tidak diizinkan
+        if (!$this->isValidEmail($email)) {
+            log_activity_auto('register_failed', 'Email mengandung karakter tidak valid: ' . $email, [
+                'module' => 'auth'
+            ]);
+            
+            return redirect()->back()->withInput()->with('error', 'Format email tidak valid. Gunakan format email yang benar dan hindari karakter khusus.');
+        }
 
         $db    = db_connect();
         $users = $this->auth->getProvider();
