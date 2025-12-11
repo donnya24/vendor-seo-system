@@ -1,5 +1,5 @@
 <?php
-// app/Helpers/Upload_helper.php
+// app/Helpers/upload_helper.php
 
 use CodeIgniter\Files\File;
 

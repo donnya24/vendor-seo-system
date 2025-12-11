@@ -114,7 +114,7 @@ class Notifications extends BaseController
 
         $ap = (new AdminProfileModel())->where('user_id', $userId)->first();
 
-        return view('admin/layouts/admin_master', [
+        return view('admin/notifications/modal', [
             'title'            => 'Notifikasi',
             'ap'               => $ap ?? [],
             'notifications'    => $items,

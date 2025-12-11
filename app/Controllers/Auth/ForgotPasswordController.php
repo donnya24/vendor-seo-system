@@ -22,7 +22,7 @@ class ForgotPasswordController extends BaseController
     // 🔹 Tampilkan form "Forgot Password"
     public function showForgotForm()
     {
-        return view('auth/ForgotPassword'); 
+        return view('auth/forgot_password'); 
     }
 
     // 🔹 Proses kirim link reset
@@ -114,7 +114,7 @@ class ForgotPasswordController extends BaseController
             'token' => $token
         ]);
         
-        return view('auth/ResetPassword', ['token' => $token]);
+        return view('auth/reset_password', ['token' => $token]);
     }
 
     // 🔹 Proses reset password

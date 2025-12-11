@@ -11,7 +11,7 @@ use CodeIgniter\Router\RouteCollection;
 
 // ==================== PUBLIC ====================
 // Route untuk halaman utama
- $routes->get('/', 'LandingPage\LandingPageController::index');
+ $routes->get('/', 'Landingpage\LandingPageController::index');
 
 // ==================== AUTH ====================
 // Google OAuth Routes - DIPISAH UNTUK LOGIN DAN REGISTER
